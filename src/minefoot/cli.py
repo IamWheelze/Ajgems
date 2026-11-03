@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -27,6 +27,17 @@ def main(argv=None):
     a = sub.add_parser("prepare"); a.add_argument("raw"); a.add_argument("--out", default="data/prepared")
     a = sub.add_parser("view"); a.add_argument("prepared", nargs="+"); a.add_argument("--labels"); a.add_argument("--out", default="data/view")
     a = sub.add_parser("inspect-dataset"); a.add_argument("path")
+    a = sub.add_parser("ingest", help="convert an external dataset into the common site schema")
+    a.add_argument("dataset", choices=["global-ml-ready"]); a.add_argument("path")
+    a.add_argument("--label-layer", default="preferred_polygons"); a.add_argument("--out", default="data/datasets/global_ml_ready")
+    a = sub.add_parser("fetch-sites", help="fetch each site's exact scene and labels")
+    a.add_argument("sites", help="sites.gpkg written by ingest"); a.add_argument("--n", type=int, default=50)
+    a.add_argument("--site-id", action="append", help="fetch only these sites (repeatable)")
+    a.add_argument("--seed", type=int, default=0); a.add_argument("--provider", choices=list(PROVIDERS))
+    a.add_argument("--out", default="data/raw/global_ml_ready")
+    a = sub.add_parser("label-audit", help="how much labelled ground the quality mask removes, per scene")
+    a.add_argument("prepared", nargs="+"); a.add_argument("--raw-root", required=True,
+                   help="folder holding <scene>/labels.geojson"); a.add_argument("--csv")
     a = sub.add_parser("demo"); a.add_argument("--out", default="data/demo")
     x = ap.parse_args(argv)
 
@@ -72,6 +83,29 @@ def main(argv=None):
     if x.cmd == "inspect-dataset":
         from .labels import inspect_dataset
         print(json.dumps(inspect_dataset(x.path), indent=2)); return 0
+    if x.cmd == "ingest":
+        from .datasets import load_global_ml_ready, write_ingest
+        sites, labels, report = load_global_ml_ready(x.path, x.label_layer)
+        path = write_ingest(sites, labels, report, x.out)
+        print(json.dumps(report, indent=2)); print(path)
+        return 1 if report["schema_problems"] else 0
+    if x.cmd == "fetch-sites":
+        from .datasets import fetch_sites
+        r = fetch_sites(x.sites, x.out, n=x.n, site_ids=x.site_id, seed=x.seed, provider=x.provider)
+        print(f"fetched {len(r['fetched'])}, already present {len(r['skipped_existing'])}, failed {len(r['failed'])}")
+        return 1 if r["failed"] else 0
+    if x.cmd == "label-audit":
+        import csv
+        from .labels import audit_labels
+        rows = [audit_labels(d, Path(x.raw_root) / Path(d).name / "labels.geojson") for d in x.prepared]
+        rows = [r for r in rows if r["inside_pixels"] > 0]
+        if x.csv and rows:
+            with open(x.csv, "w", newline="") as f:
+                w = csv.DictWriter(f, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
+        for r in rows:
+            print(f"{r['scene']}: cloud inside {r['inside_cloud']:.1%} vs outside {r['outside_cloud']:.1%}; "
+                  f"usable inside {r['inside_usable']:.1%} vs outside {r['outside_usable']:.1%}")
+        return 0
     if x.cmd == "demo":
         from .preprocess import prepare_scene
         from .synthetic import make_scene

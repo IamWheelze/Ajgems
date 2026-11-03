@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 import numpy as np
 
-# Columns seen in the mine-segmentation repository code. Not checked against the released file.
-EXPECTED_COLUMNS = {"tile_id", "s2_tile_id", "split"}
+# Global ML-ready v1.0.0, checked against the released file on 2026-11-03: the `tiles`
+# layer has these columns; label layers have only tile_id and geometry.
+EXPECTED_COLUMNS = {"tiles": {"tile_id", "s2_tile_id", "split"}}
+EXPECTED_LABEL_COLUMNS = {"tile_id"}
 
 
 def read_vectors(path, layer=None):
@@ -32,5 +34,16 @@ def inspect_dataset(path) -> dict:
         cols = set(info["fields"].tolist())
         report["layers"][name] = {"features": int(info["features"]), "crs": info["crs"],
                                   "columns": sorted(cols),
-                                  "missing_expected": sorted(EXPECTED_COLUMNS - cols)}
+                                  "missing_expected": sorted(EXPECTED_COLUMNS.get(name, EXPECTED_LABEL_COLUMNS) - cols)}
     return report
+
+
+def audit_labels(prepared_dir, labels_path) -> dict:
+    """Mask rates inside versus outside the labels for one prepared scene."""
+    import rasterio
+    from .quality import mask_rates
+    prepared_dir = Path(prepared_dir)
+    inside = rasterize_to(prepared_dir / "reflectance.tif", read_vectors(labels_path))
+    with rasterio.open(prepared_dir / "scl.tif") as src:
+        scl = src.read(1)
+    return {"scene": prepared_dir.name, **mask_rates(scl, inside)}

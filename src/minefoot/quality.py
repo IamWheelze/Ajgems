@@ -58,3 +58,21 @@ def tile_outcome(scl: np.ndarray | None, candidate_pixels: int | None,
     if coverage(scl, block_below=block_below).decision == "block":
         return Outcome.INSUFFICIENT
     return Outcome.CANDIDATE_FOUND if candidate_pixels > 0 else Outcome.NO_CANDIDATE
+
+
+def mask_rates(scl: np.ndarray, inside: np.ndarray) -> dict:
+    """Share of pixels in each mask group, inside and outside a label mask.
+
+    Used to audit whether the scene classifier removes labelled ground more often
+    than its surroundings, e.g. bright tailings classed as cloud or snow.
+    """
+    groups = {"usable": None, "cloud": (8, 9, 10), "cloud_medium": (8,), "shadow": (3,),
+              "no_data": (0, 1), "snow": SUSPECT_BRIGHT}
+    inside = inside.astype(bool)
+    out = {"inside_pixels": int(inside.sum()), "outside_pixels": int((~inside).sum())}
+    for where, sel in (("inside", inside), ("outside", ~inside)):
+        v = scl[sel]
+        for g, codes in groups.items():
+            hit = usable_mask(v) if codes is None else np.isin(v, codes)
+            out[f"{where}_{g}"] = float(hit.mean()) if v.size else float("nan")
+    return out

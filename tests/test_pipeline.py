@@ -141,3 +141,86 @@ def test_copernicus_notice_has_acquisition_year():
     from minefoot.catalog import copernicus_notice
     assert copernicus_notice("2026-01-03T09:58:12Z") == "Contains modified Copernicus Sentinel data 2026"
     assert copernicus_notice(None) == "Contains modified Copernicus Sentinel data"
+
+
+def _fake_global_ml_ready(path):
+    """Tiny GeoPackage with the layer structure of Global ML-ready v1.0.0."""
+    import geopandas as gpd
+    from shapely.geometry import box
+    sid = "S2B_MSIL2A_20191004T074749_R135_T35KQR_20201003T223418"
+    rows = [  # tile_id, lon, split, source_dataset, preferred, scene, has_label
+        (1, -1.9, "train", "both", "maus", sid, True),       # Africa
+        (2, 25.0, "test", "maus", "maus", sid, True),        # Africa
+        (3, 140.0, "val", "tang", "tang", sid, True),
+        (4, -60.0, "train", "both", "tang", sid, True),
+        (5, 10.0, None, "rejected", "none", sid, False),     # rejected by authors
+        (6, 11.0, None, "both", "maus", sid, True),          # no split
+        (7, 12.0, "train", "both", "maus", "not-an-id", True),
+        (8, 13.0, "train", "both", "maus", sid, False),      # empty label
+    ]
+    tiles = gpd.GeoDataFrame({"tile_id": [r[0] for r in rows], "s2_tile_id": [r[5] for r in rows],
+                              "split": [r[2] for r in rows], "source_dataset": [r[3] for r in rows],
+                              "preferred_dataset": [r[4] for r in rows], "minetype1": "Surface",
+                              "minetype2": ["Artisanal", "Industrial"] * 4, "comment": "", "timestamp": "2024-07-04"},
+                             geometry=[box(r[1], 5, r[1] + 0.2, 5.2) for r in rows], crs=4326)
+    tiles.to_file(path, layer="tiles", driver="GPKG")
+    labs = gpd.GeoDataFrame({"tile_id": [r[0] for r in rows]},
+                            geometry=[box(r[1] + .05, 5.05, r[1] + .1, 5.1) if r[6] else None for r in rows], crs=4326)
+    labs.to_file(path, layer="preferred_polygons", driver="GPKG")
+    return path
+
+
+def test_parse_s2_id():
+    from minefoot.datasets import parse_s2_id
+    assert parse_s2_id("S2B_MSIL2A_20191004T074749_R135_T35KQR_20201003T223418") == ("2019-10-04", "35KQR")
+    with pytest.raises(ValueError):
+        parse_s2_id("S2B_T32PMR_20260103T094921_L2A")
+
+
+def test_global_ml_ready_adapter_counts_every_drop(tmp_path):
+    from minefoot.datasets import load_global_ml_ready, write_ingest
+    sites, labels, rep = load_global_ml_ready(_fake_global_ml_ready(tmp_path / "g.gpkg"))
+    assert rep["tiles_in"] == 8 and rep["sites_out"] == 4
+    assert rep["dropped"] == {"rejected_by_dataset_authors": 1, "no_source_split": 1,
+                              "unparseable_scene_id": 1, "no_label_geometry": 1}
+    assert rep["tiles_in"] == rep["sites_out"] + sum(rep["dropped"].values())
+    assert rep["schema_problems"] == []
+    assert set(labels.site_id) == set(sites.site_id)
+    assert (sites.licence == "CC BY-SA 4.0").all() and (sites.dataset_version == "1.0.0").all()
+    assert sites.loc[sites.site_id == "gmlr-1", "acquired"].item() == "2019-10-04"
+    path = write_ingest(sites, labels, rep, tmp_path / "out")
+    assert json.loads((tmp_path / "out" / "ingest_report.json").read_text())["sites_out"] == 4
+    assert path.exists()
+
+
+def test_check_sites_names_problems(tmp_path):
+    from minefoot.datasets import check_sites, load_global_ml_ready
+    sites, _, _ = load_global_ml_ready(_fake_global_ml_ready(tmp_path / "g.gpkg"))
+    dup = sites.copy(); dup.loc[1, "site_id"] = dup.loc[0, "site_id"]
+    assert "duplicate site_id" in check_sites(dup)
+    assert "missing column licence" in check_sites(sites.drop(columns="licence"))
+
+
+def test_select_sites_deterministic_and_africa_weighted(tmp_path):
+    from minefoot.datasets import load_global_ml_ready, select_sites
+    sites, _, _ = load_global_ml_ready(_fake_global_ml_ready(tmp_path / "g.gpkg"))
+    a, b = select_sites(sites, 2, seed=3), select_sites(sites, 2, seed=3)
+    assert a.site_id.tolist() == b.site_id.tolist()
+    assert set(a.site_id) & {"gmlr-1", "gmlr-2"}  # half from Africa
+    assert a.crs.to_epsg() == 4326 and len(a) == 2
+
+
+def test_inspect_dataset_expects_columns_per_layer(tmp_path):
+    from minefoot.labels import inspect_dataset
+    rep = inspect_dataset(_fake_global_ml_ready(tmp_path / "g.gpkg"))
+    assert rep["layers"]["tiles"]["missing_expected"] == []
+    assert rep["layers"]["preferred_polygons"]["missing_expected"] == []
+
+
+def test_mask_rates_inside_vs_outside():
+    from minefoot.quality import mask_rates
+    scl = np.full((10, 10), 4, "uint8"); inside = np.zeros((10, 10), bool); inside[:5] = True
+    scl[:2] = 8  # 20 of 50 labelled pixels flagged as medium cloud
+    r = mask_rates(scl, inside)
+    assert r["inside_cloud"] == pytest.approx(0.4) and r["outside_cloud"] == 0
+    assert r["inside_usable"] == pytest.approx(0.6) and r["outside_usable"] == 1

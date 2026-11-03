@@ -48,6 +48,15 @@ def search(bbox, start: str, end: str, max_cloud: float = 40.0, providers=("plan
     raise RuntimeError(f"all catalogues failed: {errors}")
 
 
+def get_item(provider: str, scene_id: str):
+    """Look up one scene by its exact catalogue ID. Raises LookupError if the catalogue lacks it."""
+    client = _client(provider)
+    items = list(client.search(collections=[PROVIDERS[provider]["collection"]], ids=[scene_id], max_items=1).items())
+    if not items:
+        raise LookupError(f"{provider} has no scene {scene_id}")
+    return items[0]
+
+
 def summarise(item) -> dict:
     x = item.properties
     return {"id": item.id, "datetime": x.get("datetime"), "cloud_pct": x.get("eo:cloud_cover"),
@@ -55,8 +64,11 @@ def summarise(item) -> dict:
             "platform": x.get("platform")}
 
 
-def fetch_scene(item, provider: str, bbox_wgs84, out_dir) -> Path:
-    """Read only the requested window, align to 10 m, and store raw DN with full provenance."""
+def fetch_scene(item, provider: str, bbox_wgs84, out_dir, name: str | None = None) -> Path:
+    """Read only the requested window, align to 10 m, and store raw DN with full provenance.
+
+    Writes to <out_dir>/<name or scene ID>.
+    """
     import rasterio
     from rasterio.transform import from_origin
     from rasterio.warp import transform_bounds
@@ -64,7 +76,7 @@ def fetch_scene(item, provider: str, bbox_wgs84, out_dir) -> Path:
     from .preprocess import align
 
     cfg = PROVIDERS[provider]
-    out = Path(out_dir) / item.id
+    out = Path(out_dir) / (name or item.id)
     out.mkdir(parents=True, exist_ok=True)
     arrays, radiometry, dst = {}, {}, None
     for band in BANDS_10M + tuple(b for b in (*BANDS, "SCL") if b not in BANDS_10M):
