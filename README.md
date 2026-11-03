@@ -9,7 +9,7 @@ pytest
 minefoot demo --out data/demo            # synthetic scenes; open data/demo/view/gallery.html
 minefoot doctor                          # real catalogue check; must be run first
 minefoot search --bbox 8.80,9.70,8.95,9.85 --start 2026-01-01 --end 2026-02-28
-minefoot fetch  --bbox 8.80,9.70,8.95,9.85 --start 2026-01-01 --end 2026-02-28 --out data/raw
+minefoot fetch  --bbox 8.80,9.70,8.95,9.85 --start 2026-01-01 --end 2026-02-28 --out data/raw   # add --provider earth-search to pick a catalogue
 minefoot prepare data/raw/<SCENE_ID> --out data/prepared
 minefoot view data/prepared/<SCENE_ID> --out data/view
 minefoot inspect-dataset path/to/dataset.gpkg

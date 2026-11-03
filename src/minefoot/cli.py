@@ -15,10 +15,14 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="minefoot", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("doctor", help="check catalogue access and band names on this machine")
+    from .catalog import PROVIDERS
+    prov_help = "use only this catalogue (default: try each in order)"
     a = sub.add_parser("search"); a.add_argument("--bbox", type=_bbox, required=True); a.add_argument("--start", required=True)
     a.add_argument("--end", required=True); a.add_argument("--max-cloud", type=float, default=40)
+    a.add_argument("--provider", choices=list(PROVIDERS), help=prov_help)
     a = sub.add_parser("fetch"); a.add_argument("--bbox", type=_bbox, required=True); a.add_argument("--start", required=True)
     a.add_argument("--end", required=True); a.add_argument("--max-cloud", type=float, default=40)
+    a.add_argument("--provider", choices=list(PROVIDERS), help=prov_help)
     a.add_argument("--scenes", type=int, default=1); a.add_argument("--scene-id"); a.add_argument("--out", default="data/raw")
     a = sub.add_parser("prepare"); a.add_argument("raw"); a.add_argument("--out", default="data/prepared")
     a = sub.add_parser("view"); a.add_argument("prepared", nargs="+"); a.add_argument("--labels"); a.add_argument("--out", default="data/view")
@@ -46,7 +50,8 @@ def main(argv=None):
         return 0 if ok else 1
     if x.cmd in ("search", "fetch"):
         from .catalog import search, summarise, fetch_scene
-        prov, items = search(x.bbox, x.start, x.end, x.max_cloud)
+        kw = {"providers": (x.provider,)} if x.provider else {}
+        prov, items = search(x.bbox, x.start, x.end, x.max_cloud, **kw)
         print(f"catalogue: {prov}, scenes: {len(items)}", file=sys.stderr)
         if x.cmd == "search":
             print(json.dumps([summarise(i) for i in items], indent=2)); return 0

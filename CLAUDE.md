@@ -22,17 +22,21 @@ Built:
 
 Verified: 25 tests pass and the gallery was checked visually, all on **synthetic scenes and local fake files**.
 
-**Never run against real catalogues.** The build environment blocked them. Unverified assumptions, to check first:
-1. Provider collection and asset names in `PROVIDERS`.
-2. Offset metadata: `earthsearch:boa_offset_applied`, `raster:bands`, `s2:processing_baseline`. Confirm against a real scene and the gallery histograms.
-3. Scene and pixel access through Planetary Computer signing and Earth Search.
-4. Global ML-ready columns: `tile_id`, `s2_tile_id`, `split` were read from the authors' code, not the released file. Run `minefoot inspect-dataset`.
-5. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
-6. Whether commercial use of each catalogue's terms is acceptable.
+**Real-catalogue check, 2026-11-03** (`minefoot doctor`, Jos bbox 8.80,9.70,8.95,9.85):
+- Verified: collection and asset names in `PROVIDERS` for both providers (no missing assets).
+- Verified: offset resolves to -1000 DN on baselines 05.11/05.12 (Planetary Computer by `processing_baseline`, Earth Search by `raster:bands`). Real scene `S2B_T32PMR_20260103T094921_L2A` (Earth Search) gave plausible reflectance, no negatives, and a gallery that looks right.
+- Verified: STAC search on both, and pixel reads from Earth Search (S3).
+- Not verified: Planetary Computer pixel reads. Its blob host `sentinel2l2a01.blob.core.windows.net` was blocked by the build environment's network policy. Use `fetch --provider earth-search` until it is allowed.
+- `fetch` downloads from whichever provider answered `search`; it does not fall back if the pixel download fails.
+
+Still unverified:
+1. Global ML-ready columns: `tile_id`, `s2_tile_id`, `split` were read from the authors' code, not the released file. Run `minefoot inspect-dataset`.
+2. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
+3. Whether commercial use of each catalogue's terms is acceptable.
 
 ## Next steps (FRD section 15)
-1. Run `pytest`, `minefoot demo`, then `minefoot doctor`. Fix any real-catalogue mismatch.
-2. Fetch one real Nigerian scene and inspect the gallery with the founder.
+1. Done: `pytest`, `minefoot demo`, `minefoot doctor`.
+2. One real Nigerian scene fetched and checked (see above). Inspect the gallery with the founder.
 3. Fill the `NOT VERIFIED` rows in `docs/licence_register.csv` from the source pages.
 4. Add the Global ML-ready adapter, and fetch about 50 sites using the dataset's exact scene IDs (`fetch --scene-id`).
 5. Add overlap detection and site or block splits (FR-072, FR-077).
