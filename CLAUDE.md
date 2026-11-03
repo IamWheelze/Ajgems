@@ -25,9 +25,9 @@ Verified: 25 tests pass and the gallery was checked visually, all on **synthetic
 **Real-catalogue check, 2026-11-03** (`minefoot doctor`, Jos bbox 8.80,9.70,8.95,9.85):
 - Verified: collection and asset names in `PROVIDERS` for both providers (no missing assets).
 - Verified: offset resolves to -1000 DN on baselines 05.11/05.12 (Planetary Computer by `processing_baseline`, Earth Search by `raster:bands`). Real scene `S2B_T32PMR_20260103T094921_L2A` (Earth Search) gave plausible reflectance, no negatives, and a gallery that looks right.
-- Verified: STAC search on both, and pixel reads from Earth Search (S3).
-- Not verified: Planetary Computer pixel reads. Its blob host `sentinel2l2a01.blob.core.windows.net` was blocked by the build environment's network policy. Use `fetch --provider earth-search` until it is allowed.
-- `fetch` downloads from whichever provider answered `search`; it does not fall back if the pixel download fails.
+- Verified: STAC search and pixel reads on both providers (Planetary Computer signing works once `sentinel2l2a01.blob.core.windows.net` is allowed by the network policy).
+- Cross-check: scene of 2026-01-03 fetched from both providers (`S2B_MSIL2A_20260103T094319_R036_T32PMR_20260103T122607`, `S2B_T32PMR_20260103T094921_L2A`) gives identical reflectance in all 10 bands, identical SCL and the same grid, despite the offset being found by different rules.
+- `fetch` downloads from whichever provider answered `search`; it does not fall back if the pixel download fails. `--provider` picks one explicitly.
 
 Still unverified:
 1. Global ML-ready columns: `tile_id`, `s2_tile_id`, `split` were read from the authors' code, not the released file. Run `minefoot inspect-dataset`.
