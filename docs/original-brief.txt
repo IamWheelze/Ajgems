@@ -1,0 +1,278 @@
+Act as a senior software product manager, geospatial software architect, remote-sensing scientist, and machine-learning engineer.
+
+Create a comprehensive, implementation-ready **Functional Requirements Document (FRD)** for software that detects and maps visible mining locations from satellite imagery.
+
+Write the actual FRD, not just an outline. Explain technical concepts clearly enough for a founder to understand while providing sufficient detail for a development team to estimate and build the product.
+
+## 1. Project context and objective
+
+I have experience in geoinformatics, remote sensing, geophysics, geology, mineral mining, and mining business. I want to establish a technology company, initially focusing on Nigeria and later expanding across Africa.
+
+The software should identify candidate surface-mining footprints, map their boundaries, and eventually monitor changes over time.
+
+My longer-term business ambition is to connect African mineral supply with European buyers through better information, verification, and traceability. However, the first software release must focus on mining-location detection.
+
+Clearly distinguish:
+
+- Detection of visible mining-related land disturbance.
+- Detection of changes in mining footprints.
+- Identification of mineral types.
+- Prediction of undiscovered mineral deposits.
+- Assessment of legal status or ownership.
+
+Only the first capability belongs in the core MVP. Change detection may be a subsequent phase. The remaining capabilities must not be implied by mining-footprint detection.
+
+Do not promise perfect performance. Define measurable reliability, uncertainty, known limitations, and circumstances where the system should decline to produce a confident result.
+
+## 2. Candidate datasets
+
+Evaluate these datasets as candidates, verifying their current documentation, availability, contents, licences, and underlying imagery restrictions:
+
+1. MineSegSAT:
+   https://zenodo.org/records/12667829
+   https://github.com/macdonaldezra/MineSegSAT
+
+2. Global ML-ready dataset for mining areas:
+   https://zenodo.org/records/14195737
+
+3. DRC artisanal and small-scale mining dataset:
+   https://zenodo.org/records/15257800
+
+4. Global-scale mining polygons, Maus et al., Version 2:
+   https://doi.pangaea.de/10.1594/PANGAEA.942325
+
+5. MineNetCD:
+   https://github.com/AI4RS/MineNetCD
+
+6. A future locally verified Nigerian dataset collected through field observations, suitable reference imagery, and operator partnerships.
+
+Do not assume all these datasets can be pooled, trained sequentially, or used commercially.
+
+Provide a dataset compatibility matrix covering:
+
+- Task and label definition.
+- Geographic coverage.
+- Sensor, bands, resolution, and observation dates.
+- Imagery included versus imagery that must be retrieved separately.
+- Segmentation masks, bounding boxes, or change labels.
+- Licence and commercial-use status.
+- Preprocessing requirements.
+- Expected relevance to Nigeria.
+- Known duplication or overlapping source labels.
+- Recommended role: baseline, training, validation, external testing, or separate research branch.
+
+Flag unverified information explicitly. Cite primary sources for externally verified claims.
+
+## 3. Training and evaluation strategy
+
+My initial idea is to train on the datasets one after another. Evaluate that idea critically.
+
+Compare:
+
+- Training on one suitable dataset as a baseline.
+- Sequential fine-tuning.
+- Combined or balanced multi-dataset training.
+- Transfer learning from pretrained models.
+- Fine-tuning on Nigerian examples.
+- Separate models for different sensors or tasks where necessary.
+
+Address catastrophic forgetting, domain shift, conflicting label definitions, class imbalance, and differences between industrial and artisanal mining.
+
+Recommend an experiment sequence with clear decision gates. Keep training orchestration separate from the customer-facing detection workflow.
+
+Require:
+
+- A simple baseline and at least one suitable segmentation approach.
+- Consistent preprocessing between training and inference.
+- Geographic/site-level separation of training, validation, and test data.
+- Temporal separation when testing change-monitoring claims.
+- Duplicate and overlapping-scene detection across datasets.
+- Training-only fitting of normalisation parameters.
+- Independent Nigerian testing.
+- Reproducible experiment records.
+- Dataset, code, configuration, and model versioning.
+- Comparison against previous models before promotion.
+- Rollback when a new model performs worse.
+
+Do not equate a model score with a calibrated probability unless calibration has been evaluated.
+
+## 4. Users and workflows
+
+Define appropriate roles, including:
+
+- Administrator.
+- ML/data administrator.
+- GIS analyst.
+- Field reviewer.
+- Customer or read-only viewer.
+
+Describe end-to-end workflows for:
+
+1. Creating a project.
+2. Selecting an area of interest by map, coordinates, or uploaded boundary.
+3. Selecting observation dates.
+4. Retrieving supported imagery or uploading compatible imagery.
+5. Checking imagery quality and coverage.
+6. Running detection.
+7. Viewing candidate footprints, scores, and evidence.
+8. Confirming, rejecting, or editing detections.
+9. Exporting results and reports.
+10. Adding reviewed examples to a controlled annotation pool.
+11. Preparing, training, evaluating, and approving a new model.
+12. Comparing observations across dates in a later release.
+
+Human-reviewed predictions must not automatically become ground truth without quality control.
+
+## 5. Functional requirements
+
+Assign every requirement a unique ID, priority, user role, dependencies, and testable acceptance criteria.
+
+Cover:
+
+- Authentication and role-based access.
+- Project and area-of-interest management.
+- Imagery discovery, ingestion, and metadata tracking.
+- Coordinate-system handling.
+- Band, resolution, and input-schema validation.
+- Cloud, shadow, no-data, and usable-coverage handling.
+- Tiling, mosaicking, and large-area processing.
+- Training-data ingestion and validation.
+- Annotation and review tools.
+- Dataset split management.
+- Training configuration and experiment tracking.
+- Model registry and promotion approval.
+- Batch inference and asynchronous job management.
+- Mining-footprint segmentation.
+- Raster-to-vector conversion and configurable minimum mapping unit.
+- Confidence display and uncertain-result handling.
+- Map visualisation and supporting imagery.
+- Human review and audit history.
+- Search and filtering.
+- Export to GeoJSON, GeoPackage, GeoTIFF, and CSV where appropriate.
+- Report generation.
+- Error handling, retries, cancellation, and resumable jobs.
+- Usage and processing-cost visibility.
+- Optional future change detection.
+
+Distinguish “no mining detected” from “insufficient usable imagery.”
+
+For each exported detection, specify appropriate fields such as project ID, detection ID, geometry, area, imagery dates, sensor, model version, score, review status, reviewer evidence, and processing timestamp.
+
+## 6. Evaluation and acceptance
+
+Specify evaluation at both pixel and site/object levels.
+
+Include:
+
+- Precision.
+- Recall.
+- F1 score.
+- Intersection over Union.
+- Site-level detection performance.
+- False alerts per unit area.
+- Boundary or area-estimation quality where relevant.
+- Performance by geography, site size, mining type, season, and imagery quality.
+- Runtime and processing cost per unit area.
+- Uncertainty in reported metrics.
+
+Avoid overall accuracy as the primary success measure.
+
+Propose provisional performance targets for a pilot, but label them as hypotheses requiring baseline experiments and customer validation. Do not invent achieved results.
+
+Define:
+
+- Minimum usable input conditions.
+- Pilot acceptance criteria.
+- Model release criteria.
+- Reasons to reject or flag results.
+- External field-validation procedures.
+- Evaluation of false negatives as well as false positives.
+
+## 7. Architecture and non-functional requirements
+
+Recommend a practical architecture while distinguishing product requirements from implementation choices.
+
+Consider:
+
+- Web-based map interface.
+- Geospatial backend/API.
+- Spatial database.
+- Imagery and model object storage.
+- Background job queue.
+- Separate training and inference workers.
+- GPU access where justified.
+- Experiment tracking and model registry.
+- Monitoring and audit logging.
+
+Assess a lean open-source stack, explaining trade-offs without overengineering the MVP.
+
+Address:
+
+- Limited internet connectivity and resumable uploads.
+- Security and sensitive site locations.
+- Customer data isolation and access controls.
+- Backup and recovery.
+- Scalability.
+- Maintainability.
+- Observability.
+- Storage lifecycle and cost management.
+- External data-service failures.
+- Commercial imagery and dataset permissions.
+- Hardware options for development, training, and deployment.
+
+Do not assume free imagery means free cloud processing or unrestricted access through every platform.
+
+## 8. Screens, data model, and interfaces
+
+Provide:
+
+- A screen inventory and the purpose of each screen.
+- Main entities and relationships.
+- Required metadata and validation rules.
+- API capability outline.
+- Job states and failure states.
+- Model and dataset lifecycle states.
+
+Include compact diagrams only where they clarify the architecture or workflow.
+
+## 9. Delivery scope and roadmap
+
+Separate:
+
+- MVP.
+- Nigerian pilot.
+- Commercial release.
+- Future research and expansion.
+
+Prioritise one sensor-compatible, single-date mining-footprint detection workflow before adding multiple sensors, change detection, or mineral prospectivity.
+
+For each phase, specify deliverables, dependencies, validation gates, and major risks.
+
+Provide an implementation backlog grouped into epics and user stories, with acceptance criteria.
+
+Estimate effort and costs as explicit ranges with assumptions. Separate data preparation, annotation, engineering, model development, field validation, and operating expenses. Avoid unsupported precision.
+
+## 10. Required final structure
+
+Deliver the FRD with:
+
+1. Executive summary.
+2. Product purpose and measurable objectives.
+3. Assumptions and unresolved decisions.
+4. Scope and exclusions.
+5. Users and workflows.
+6. Dataset assessment and compatibility matrix.
+7. Functional requirements.
+8. ML training, evaluation, and release requirements.
+9. Data model and interfaces.
+10. Screens and map interactions.
+11. Architecture and non-functional requirements.
+12. Acceptance and field-validation plan.
+13. Delivery phases and prioritised backlog.
+14. Risks, dependencies, and cost assumptions.
+15. Recommended first development milestone.
+16. Source references.
+
+Proceed with reasonable, explicitly stated assumptions rather than stopping for a long questionnaire. Finish with no more than five questions whose answers would materially change the design.
+
+The document must make it clear what developers should build, what scientists must validate, and what evidence is required before the software can be sold as reliable.

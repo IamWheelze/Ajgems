@@ -1,0 +1,18 @@
+[project]
+name = "minefoot"
+version = "0.1.0"
+description = "Milestone 1 pipeline: Sentinel-2 retrieval, preprocessing and visual inspection for candidate mining footprints"
+requires-python = ">=3.10"
+dependencies = ["numpy", "rasterio>=1.3", "pystac-client>=0.8", "planetary-computer", "shapely>=2", "pyproj", "geopandas", "pyyaml", "pillow", "pyogrio"]
+[project.optional-dependencies]
+dev = ["pytest"]
+[project.scripts]
+minefoot = "minefoot.cli:main"
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

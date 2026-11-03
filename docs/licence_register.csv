@@ -1,0 +1,12 @@
+item,type,licence_seen,evidence,commercial_status,next_action
+Copernicus Sentinel-2 imagery,imagery,Free full and open under Sentinel legal notice,https://dataspace.copernicus.eu/node/10,Allowed in principle; check legal notice,Read the legal notice; credit "Contains modified Copernicus Sentinel data"
+Global ML-ready dataset (Zenodo 14195737),labels,NOT VERIFIED,https://zenodo.org/records/14195737,Unknown,Read the Zenodo licence field by hand
+mine-segmentation code,code,MIT (LICENSE file read 2026-11-02),https://github.com/SimonJasansky/mine-segmentation,Code only; does not cover the dataset,Keep notice if code is reused
+Maus et al. v2 polygons,labels,CC BY-SA 4.0 (from repository record),https://pure.iiasa.ac.at/18508,Share-alike needs legal review,Get legal advice; confirm on PANGAEA
+Tang and Werner polygons,labels,NOT VERIFIED,https://zenodo.org/records/6806817,Unknown,Read the Zenodo licence; it feeds the Global ML-ready masks
+MineSegSAT dataset (Zenodo 12667829),labels and imagery,NOT VERIFIED,https://zenodo.org/records/12667829,Unknown,Read the Zenodo licence field by hand
+MineSegSAT code,code,No LICENSE file found at repo root on main or master (2026-11-02),https://github.com/macdonaldezra/MineSegSAT,Treat as not licensed for reuse,Check the repository; ask authors if needed
+DRC ASM dataset (Zenodo 15257800),unknown,NOT VERIFIED,https://zenodo.org/records/15257800,Unknown,Confirm what the record contains
+MineNetCD dataset,change labels and imagery,CC BY 4.0 (metadata); imagery rights unresolved,https://rodare.hzdr.de/record/3251,Dataset allowed; imagery unknown,Identify the imagery provider and its terms
+MineNetCD code,code,MIT (LICENSE file read 2026-11-02),https://github.com/AI4RS/MineNetCD,Code only,Keep notice if code is reused
+Planet-NICFI and Google Earth imagery,imagery,NOT VERIFIED,,Do not use commercially until cleared,Get written terms before use

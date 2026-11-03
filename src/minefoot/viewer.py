@@ -1,0 +1,226 @@
+"""Inspection package for any step's output (FR-133, FR-121 to FR-123, FR-128)."""
+from __future__ import annotations
+import base64, html, io, json
+from pathlib import Path
+import numpy as np
+import rasterio
+from PIL import Image
+from .schema import BANDS
+
+# Fixed stretches (FR-122): the same reflectance always looks the same across scenes.
+STRETCH = {"true_colour": (("B04", "B03", "B02"), (0.0, 0.35)),
+           "swir_false_colour": (("B12", "B8A", "B04"), (0.0, 0.50)),
+           "nir_false_colour": (("B08", "B04", "B03"), (0.0, 0.50))}
+SCL_COLOURS = {0: (0, 0, 0), 1: (120, 0, 120), 3: (70, 70, 110), 8: (200, 200, 200), 9: (255, 255, 255),
+               10: (150, 210, 240), 11: (255, 150, 0)}
+LAYER_TEXT = {
+    "true_colour": ("True colour", "B4, B3, B2. Fixed stretch 0 to 0.35."),
+    "swir_false_colour": ("SWIR false colour", "B12, B8A, B4. Bare ground and disturbance stand out from vegetation."),
+    "nir_false_colour": ("NIR false colour", "B8, B4, B3. Healthy vegetation looks red."),
+    "ndvi": ("NDVI", "Dark is low vegetation, light is high. Scale -0.2 to 0.8."),
+    "ndwi": ("NDWI", "Light is water-like. Scale -0.6 to 0.6."),
+    "quality": ("Quality mask", "Unusable pixels (cloud, shadow, no data) and bright pixels classed as snow, in orange."),
+    "labels": ("Labels on imagery", "Label outline on the true-colour view. Check the fit by eye."),
+}
+BADGE = {"pass": "Passes coverage check", "warn": "Warning: low usable coverage", "block": "Blocked: too little usable imagery"}
+
+
+def rgb(arr, names, layers, lo_hi):
+    lo, hi = lo_hi
+    idx = [names.index(b) for b in layers]
+    out = np.clip((arr[idx] - lo) / (hi - lo), 0, 1)
+    nan = ~np.isfinite(out).all(axis=0)
+    out = np.nan_to_num(out, nan=0.0)
+    img = (out.transpose(1, 2, 0) * 255).astype("uint8")
+    img[nan] = (45, 45, 45)   # unusable pixels are never drawn as clean ground
+    return img
+
+
+def ramp(values, lo, hi):
+    v = np.clip((values - lo) / (hi - lo), 0, 1)
+    nan = ~np.isfinite(v)
+    g = (np.nan_to_num(v) * 255).astype("uint8")
+    img = np.stack([g] * 3, axis=2)
+    img[nan] = (120, 30, 90)
+    return img
+
+
+def normdiff(a, b):
+    with np.errstate(invalid="ignore", divide="ignore"):
+        d = a + b
+        return np.where(np.abs(d) > 1e-6, (a - b) / d, np.nan)
+
+
+def outline(mask):
+    m = mask.astype(bool)
+    inner = m[1:-1, 1:-1] & m[:-2, 1:-1] & m[2:, 1:-1] & m[1:-1, :-2] & m[1:-1, 2:]
+    edge = m.copy()
+    edge[1:-1, 1:-1] &= ~inner
+    return edge
+
+
+def build_layers(arr, scl, label=None) -> dict[str, np.ndarray]:
+    names = list(BANDS)
+    out = {k: rgb(arr, names, b, s) for k, (b, s) in STRETCH.items()}
+    g = lambda b: arr[names.index(b)]
+    out["ndvi"] = ramp(normdiff(g("B08"), g("B04")), -0.2, 0.8)
+    out["ndwi"] = ramp(normdiff(g("B03"), g("B08")), -0.6, 0.6)
+    q = out["true_colour"].copy() // 2
+    for k, c in SCL_COLOURS.items():
+        q[scl == k] = c
+    out["quality"] = q
+    if label is not None:
+        l = out["true_colour"].copy()
+        l[outline(label)] = (0, 230, 255)
+        out["labels"] = l
+    return out
+
+
+def png_uri(img, longest=720):
+    im = Image.fromarray(img)
+    if max(im.size) > longest:
+        f = longest / max(im.size)
+        im = im.resize((round(im.width * f), round(im.height * f)), Image.NEAREST)
+    b = io.BytesIO()
+    im.save(b, "PNG", optimize=True)
+    return "data:image/png;base64," + base64.b64encode(b.getvalue()).decode()
+
+
+def band_stats(arr):
+    names = list(BANDS)
+    rows = []
+    for i, b in enumerate(names):
+        v = arr[i][np.isfinite(arr[i])]
+        if v.size == 0:
+            rows.append({"band": b, "n": 0}); continue
+        p = np.percentile(v, [1, 50, 99])
+        rows.append({"band": b, "n": int(v.size), "p1": float(p[0]), "median": float(p[1]), "p99": float(p[2]),
+                     "negative_pct": float((v < 0).mean() * 100), "over1_pct": float((v > 1).mean() * 100)})
+    return rows
+
+
+def checks(stats, cov, meta, label=None) -> list[tuple[str, str]]:
+    """Automatic warnings shown at the top of each scene."""
+    out = []
+    if meta.get("synthetic"):
+        out.append(("info", "Synthetic test scene. Not real imagery. It says nothing about real sites."))
+    if cov["decision"] != "pass":
+        out.append(("warn", f"{BADGE[cov['decision']]} ({cov['usable_fraction']:.0%} usable)."))
+    if any(r.get("negative_pct", 0) > 5 for r in stats):
+        out.append(("warn", "Over 5% negative reflectance in a band. Check the Sentinel-2 offset."))
+    if any(r.get("median", 0) > 0.6 for r in stats):
+        out.append(("warn", "Median reflectance above 0.6 in a band. Check the offset or heavy cloud."))
+    if cov["suspect_bright_fraction"] > 0.001:
+        out.append(("warn", f"{cov['suspect_bright_fraction']:.1%} of pixels classed as snow. In Nigeria this suggests "
+                            "bright ground such as tailings. Those pixels are kept for review."))
+    if label is not None and not label.any():
+        out.append(("warn", "Label file has no polygon inside this image."))
+    return out
+
+
+def histogram_svg(arr) -> str:
+    """Small multiples, one per band, on one shared reflectance axis."""
+    W, H, cells = 148, 74, []
+    edges = np.linspace(-0.1, 0.7, 41)
+    for i, b in enumerate(BANDS):
+        v = arr[i][np.isfinite(arr[i])]
+        counts, _ = np.histogram(v, edges)
+        m = max(int(counts.max()), 1)
+        bars = []
+        for j, c in enumerate(counts):
+            bh = (c / m) * (H - 22)
+            bars.append(f'<rect x="{j * (W / 40) + .3:.1f}" y="{H - 14 - bh:.1f}" width="{W / 40 - .6:.2f}" '
+                        f'height="{bh:.1f}" rx="1"><title>{b}: {edges[j]:.2f} to {edges[j + 1]:.2f}, {int(c):,} pixels</title></rect>')
+        zero = (0.1 / 0.8) * W
+        cells.append(f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="{b} reflectance histogram">'
+                     f'<text x="0" y="9" class="h">{b}</text>'
+                     f'<line x1="{zero:.1f}" x2="{zero:.1f}" y1="10" y2="{H - 14}" class="z"/>'
+                     f'<line x1="0" x2="{W}" y1="{H - 14}" y2="{H - 14}" class="a"/>'
+                     f'<g class="b">{"".join(bars)}</g>'
+                     f'<text x="{zero:.1f}" y="{H - 3}" class="t" text-anchor="middle">0</text>'
+                     f'<text x="{W}" y="{H - 3}" class="t" text-anchor="end">0.7</text></svg>')
+    return '<div class="hist">' + "".join(cells) + "</div>"
+
+
+CSS = """
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--muted:#5d5c57;--line:#d9d7cf;--bar:#2a6f97;--warn:#8a5a00;--warnbg:#fdf3dc;--info:#17557a;--infobg:#e3f0f7}
+@media (prefers-color-scheme:dark){:root{--bg:#191917;--card:#232321;--ink:#eeede8;--muted:#a9a79f;--line:#3b3a36;--bar:#74b3d8;--warn:#f2c572;--warnbg:#3a2e14;--info:#a5d5f0;--infobg:#17303e}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,sans-serif}
+main{max-width:1180px;margin:auto;padding:24px 16px 64px}h1{font-size:24px;margin:0 0 4px}h2{font-size:19px;margin:0 0 4px;overflow-wrap:anywhere}h3{font-size:14px;margin:0}
+.sub{color:var(--muted);margin:0 0 20px}.scene{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:24px}
+.meta{color:var(--muted);font-size:13px;margin:0 0 12px;overflow-wrap:anywhere}.note{border-radius:6px;padding:8px 12px;margin:6px 0;font-size:14px}
+.note.warn{background:var(--warnbg);color:var(--warn)}.note.info{background:var(--infobg);color:var(--info)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px}figure{margin:0}figure img{width:100%;display:block;border-radius:6px;image-rendering:pixelated}
+figcaption{font-size:12.5px;color:var(--muted);padding-top:5px}figcaption b{display:block;color:var(--ink);font-size:14px}
+.hist{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-top:8px}.hist svg{width:100%;height:auto}
+.hist .b{fill:var(--bar)}.hist .a{stroke:var(--line)}.hist .z{stroke:var(--muted);stroke-dasharray:2 2;stroke-width:.6}.hist .h{font-size:9px;font-weight:600;fill:var(--ink)}.hist .t{font-size:7.5px;fill:var(--muted)}
+details{margin-top:14px}summary{cursor:pointer;font-weight:600}.scroll{overflow-x:auto}table{border-collapse:collapse;font-size:13px;margin-top:8px;min-width:520px}th,td{padding:4px 12px 4px 0;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
+"""
+
+
+def render_scene(prepared_dir, labels=None) -> tuple[str, dict]:
+    p = Path(prepared_dir)
+    meta = json.loads((p / "prepared.json").read_text())
+    with rasterio.open(p / "reflectance.tif") as s:
+        arr = s.read()
+    with rasterio.open(p / "scl.tif") as s:
+        scl = s.read(1)
+    label = None
+    if labels is not None:
+        from .labels import read_vectors, rasterize_to
+        label = rasterize_to(p / "reflectance.tif", read_vectors(labels))
+    layers = build_layers(arr, scl, label)
+    cov = meta["coverage"]
+    stats = band_stats(arr)
+    notes = checks(stats, cov, meta, label)
+    figs = "".join(f'<figure><img loading="lazy" alt="{html.escape(LAYER_TEXT[k][0])}" src="{png_uri(v)}">'
+                   f'<figcaption><b>{html.escape(LAYER_TEXT[k][0])}</b>{html.escape(LAYER_TEXT[k][1])}</figcaption></figure>'
+                   for k, v in layers.items())
+    def row(r):
+        if not r["n"]:
+            return f"<tr><td>{r['band']}</td><td colspan=6>no usable pixels</td></tr>"
+        return (f"<tr><td>{r['band']}</td><td>{r['n']:,}</td><td>{r['p1']:.3f}</td><td>{r['median']:.3f}</td>"
+                f"<td>{r['p99']:.3f}</td><td>{r['negative_pct']:.2f}</td><td>{r['over1_pct']:.2f}</td></tr>")
+    rad = meta["radiometry"][BANDS[0]]
+    body = (f'<section class="scene"><h2>{html.escape(meta["scene_id"])}</h2>'
+            f'<p class="meta">Date {html.escape(str(meta.get("datetime")))} · Source {html.escape(str(meta.get("provider")))} · '
+            f'Baseline {html.escape(str(meta.get("processing_baseline")))} · Offset {rad["offset_dn"]} DN ({html.escape(rad["rule"])}) · '
+            f'Usable {cov["usable_fraction"]:.0%} · {html.escape(BADGE[cov["decision"]])}</p>'
+            + "".join(f'<div class="note {k}">{html.escape(t)}</div>' for k, t in notes)
+            + f'<div class="grid">{figs}</div><details open><summary>Reflectance by band</summary>{histogram_svg(arr)}'
+            '<div class="scroll"><table><tr><th>Band</th><th>Usable pixels</th><th>1st pct</th><th>Median</th><th>99th pct</th>'
+            f'<th>Negative %</th><th>Over 1 %</th></tr>{"".join(row(r) for r in stats)}</table></div></details></section>')
+    return body, {"layers": layers, "stats": stats, "checks": notes, "meta": meta}
+
+
+def export_gis(prepared_dir, layers, out_dir, labels=None):
+    """Display-ready GeoTIFFs and a GeoPackage that open directly in QGIS."""
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    with rasterio.open(Path(prepared_dir) / "reflectance.tif") as s:
+        prof = dict(driver="GTiff", height=s.height, width=s.width, crs=s.crs, transform=s.transform, dtype="uint8",
+                    count=3, compress="deflate", tiled=True, photometric="RGB")
+    for k, img in layers.items():
+        with rasterio.open(out / f"{k}.tif", "w", **prof) as d:
+            d.write(img.transpose(2, 0, 1))
+    if labels is not None:
+        from .labels import read_vectors
+        read_vectors(labels).to_file(out / "labels.gpkg", driver="GPKG")
+
+
+def build_gallery(prepared_dirs, out_dir, labels: dict | None = None, title="Scene inspection") -> Path:
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    sections, summary = [], []
+    for d in prepared_dirs:
+        lab = (labels or {}).get(Path(d).name)
+        body, info = render_scene(d, lab)
+        sections.append(body)
+        export_gis(d, info["layers"], out / "gis" / Path(d).name, lab)
+        summary.append({"scene_id": info["meta"]["scene_id"], "coverage": info["meta"]["coverage"],
+                        "bands": info["stats"], "checks": info["checks"]})
+    page = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>{html.escape(title)}</title><style>{CSS}</style></head><body><main><h1>{html.escape(title)}</h1>'
+            f'<p class="sub">{len(sections)} scene(s). Hover a histogram bar for its pixel count. '
+            'Dark grey (or purple in NDVI and NDWI) means no usable data, not clean ground.</p>' + "".join(sections) + "</main></body></html>")
+    (out / "gallery.html").write_text(page)
+    (out / "summary.json").write_text(json.dumps(summary, indent=2))
+    return out / "gallery.html"

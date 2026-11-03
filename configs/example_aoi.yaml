@@ -1,0 +1,6 @@
+# Example only, near Jos in Plateau State. Replace with your own regions.
+# This box says nothing about whether any mining is present.
+bbox: [8.80, 9.70, 8.95, 9.85]  # west, south, east, north (WGS 84)
+start: "2026-01-01"
+end: "2026-02-28"
+max_cloud: 40
