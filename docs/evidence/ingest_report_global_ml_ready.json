@@ -1,0 +1,25 @@
+{
+  "dataset": "global_ml_ready",
+  "version": "1.0.0",
+  "licence": "CC BY-SA 4.0",
+  "source": "https://doi.org/10.5281/zenodo.14195737",
+  "file": "data/external/global_ml_ready/mining_area_data.gpkg",
+  "label_layer": "preferred_polygons",
+  "tiles_in": 1514,
+  "dropped": {
+    "rejected_by_dataset_authors": 236,
+    "no_source_split": 71
+  },
+  "sites_out": 1207,
+  "label_features_out": 1207,
+  "by_source_split": {
+    "train": 890,
+    "val": 201,
+    "test": 116
+  },
+  "by_mine_scale": {
+    "Industrial": 975,
+    "Artisanal": 232
+  },
+  "schema_problems": []
+}

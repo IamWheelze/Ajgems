@@ -29,16 +29,20 @@ Verified: 25 tests pass and the gallery was checked visually, all on **synthetic
 - Cross-check: scene of 2026-01-03 fetched from both providers (`S2B_MSIL2A_20260103T094319_R036_T32PMR_20260103T122607`, `S2B_T32PMR_20260103T094921_L2A`) gives identical reflectance in all 10 bands, identical SCL and the same grid, despite the offset being found by different rules.
 - `fetch` downloads from whichever provider answered `search`; it does not fall back if the pixel download fails. `--provider` picks one explicitly.
 
+**Global ML-ready check, 2026-11-03** (details: `docs/m1_global_ml_ready_check.md`):
+- Verified: columns `tile_id`, `s2_tile_id` and `split` are in layer `tiles`; label layers have `tile_id` only. 1,207 usable sites, none in Nigeria.
+- Exact scene IDs resolve only on Planetary Computer (baseline 02.12, offset 0). 52 sites fetched, prepared and audited; no label shift; artisanal labels are loose.
+- **Open decision:** SCL classes bright tailings and pits as cloud. On 52 sites, 2.35% of labelled pixels are classed cloud versus 0.19% outside; 6 sites lose more than 5%. `quality.NOT_USABLE` drops them. Options are in the findings doc. Ask the founder before changing the mask.
+
 Still unverified:
-1. Global ML-ready columns: `tile_id`, `s2_tile_id`, `split` were read from the authors' code, not the released file. Run `minefoot inspect-dataset`.
-2. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
-3. Legal review of share-alike (CC BY-SA 4.0) labels: Global ML-ready and Maus v2. Licences were read from source records on 2026-11-03, see `docs/licence_register.csv`. Planetary Computer's terms limit it to evaluation and testing, not business-critical use.
+1. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
+2. Legal review of share-alike (CC BY-SA 4.0) labels: Global ML-ready and Maus v2. Licences were read from source records on 2026-11-03, see `docs/licence_register.csv`. Planetary Computer's terms limit it to evaluation and testing, not business-critical use.
 
 ## Next steps (FRD section 15)
 1. Done: `pytest`, `minefoot demo`, `minefoot doctor`.
 2. One real Nigerian scene fetched and checked (see above). Inspect the gallery with the founder.
 3. Done 2026-11-03: licence register filled from source pages. Only Google Earth imagery and the NICFI agreement text remain unread; Global ML-ready and Maus v2 need a lawyer on share-alike.
-4. Add the Global ML-ready adapter, and fetch about 50 sites using the dataset's exact scene IDs (`fetch --scene-id`).
+4. Done 2026-11-03: Global ML-ready adapter (`minefoot ingest`, `fetch-sites`, `label-audit`), 52 sites fetched. Next: decide the cloud-mask issue above.
 5. Add overlap detection and site or block splits (FR-072, FR-077).
 6. Add a saved QGIS project. FR-133 needs one and it is not built yet.
 7. Have the founder digitise and lock 30 to 50 Nigerian sites and hard negatives.
