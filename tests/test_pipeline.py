@@ -135,3 +135,9 @@ def test_fetch_window_alignment_and_prepare(tmp_path):
             ys, xs = np.where(a > .35)
             left = s.transform.c + xs.min() * 10
             assert abs(left - 601000) <= 20, (band, left)
+
+
+def test_copernicus_notice_has_acquisition_year():
+    from minefoot.catalog import copernicus_notice
+    assert copernicus_notice("2026-01-03T09:58:12Z") == "Contains modified Copernicus Sentinel data 2026"
+    assert copernicus_notice(None) == "Contains modified Copernicus Sentinel data"

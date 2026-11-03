@@ -96,10 +96,16 @@ def fetch_scene(item, provider: str, bbox_wgs84, out_dir) -> Path:
             "processing_level": "L2A", "processing_baseline": item.properties.get("s2:processing_baseline"),
             "cloud_pct_scene": item.properties.get("eo:cloud_cover"), "bbox_wgs84": list(bbox_wgs84),
             "retrieved_at": datetime.now(timezone.utc).isoformat(), "radiometry": radiometry,
-            "licence_note": "Contains modified Copernicus Sentinel data", "synthetic": False,
+            "licence_note": copernicus_notice(item.properties.get("datetime")), "synthetic": False,
             "sha256_raw": hashlib.sha256((out / "raw_dn.tif").read_bytes()).hexdigest()}
     (out / "scene.json").write_text(json.dumps(meta, indent=2))
     return out
+
+
+def copernicus_notice(acquired: str | None) -> str:
+    """Credit required by the Sentinel Data Legal Notice for modified data, with the acquisition year."""
+    year = (acquired or "")[:4]
+    return f"Contains modified Copernicus Sentinel data {year}" if year.isdigit() else "Contains modified Copernicus Sentinel data"
 
 
 def _win_bounds(d):

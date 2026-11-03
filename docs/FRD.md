@@ -161,25 +161,25 @@ Five roles cover the product, and a person may hold several. Customers see only 
 
 ## 6. Dataset assessment and compatibility matrix
 
-The recommended starting point is the Global ML-ready dataset as the baseline, with Maus v2 as a label source, MineNetCD held back for change research, and a Nigerian set as the only evidence of Nigerian performance. None of these datasets has been cleared for commercial use yet.
+The recommended starting point is the Global ML-ready dataset as the baseline, with Maus v2 as a label source, MineNetCD held back for change research, and a Nigerian set as the only evidence of Nigerian performance. Their licences were read from the source records on 2026-11-03 (see `docs/licence_register.csv`), but none has been legally cleared for commercial use yet.
 
 ### 6.1 Verification status
 
-This tool could not open the Zenodo record pages or GitHub repositories directly, so some fields rest on secondary records. Treat **Not verified** as unknown, not as permitted.
+The original draft could not open Zenodo or GitHub, so some fields rested on secondary records. The licence fields were then read from the source records on 2026-11-03. Treat anything still marked **Not verified** as unknown, not as permitted.
 
 | Dataset | Source actually read | Still to verify by hand |
 | --- | --- | --- |
-| MineSegSAT | [Paper on arXiv](https://arxiv.org/pdf/2311.01676) | Zenodo record 12667829 contents and licence, GitHub licence |
-| Global ML-ready | [IIASA repository record](https://pure.iiasa.ac.at/20321) | Zenodo licence and file list |
-| DRC ASM | Zenodo record 15257800 could not be opened | **Whole record.** See the warning below |
-| Maus v2 | [IIASA abstract](https://pure.iiasa.ac.at/id/eprint/18508/), [licence note](https://pure.iiasa.ac.at/18508), [paper record](https://pure.iiasa.ac.at/18124) | PANGAEA page terms |
+| MineSegSAT | [Paper on arXiv](https://arxiv.org/pdf/2311.01676), [Zenodo record](https://zenodo.org/records/12667829) (2026-11-03) | GitHub code still has no licence file |
+| Global ML-ready | [IIASA repository record](https://pure.iiasa.ac.at/20321), [Zenodo record](https://zenodo.org/records/14195737) (2026-11-03) | Column names in the released file (`minefoot inspect-dataset`) |
+| DRC ASM | [Zenodo record](https://zenodo.org/records/15257800) (2026-11-03) | Label source, which the record gives only as "[e.g. IPIS]" |
+| Maus v2 | [IIASA abstract](https://pure.iiasa.ac.at/id/eprint/18508/), [licence note](https://pure.iiasa.ac.at/18508), [paper record](https://pure.iiasa.ac.at/18124) | None for the licence: [PANGAEA](https://doi.org/10.1594/PANGAEA.942325) confirms CC BY-SA 4.0 (2026-11-03) |
 | MineNetCD | [Paper](https://arxiv.org/html/2407.03971v1), [RODARE metadata](https://rodare.hzdr.de/record/3251/export/schemaorg_jsonld) | Imagery provider terms, GitHub licence |
 
-**Warning on the DRC dataset.** I could not confirm what Zenodo record 15257800 contains. A closely related study is [Pasanisi et al. 2025](https://www.mdpi.com/2072-4292/17/24/4057), but its data statement points to code on GitHub, not to this record. The DRC column below describes that paper and may not describe your record. Confirm the link before relying on it.
+**DRC dataset confirmed.** Zenodo record 15257800 is the dataset for [Pasanisi et al. 2025](https://www.mdpi.com/2072-4292/17/24/4057): 782 PlanetScope (Planet-NICFI) tiles and 782 Sentinel-1 tiles with binary ASM masks from the eastern DRC. Its licence is split: masks and Sentinel-1 tiles are CC BY 4.0, while the PlanetScope tiles are restricted to non-commercial use under the Planet NICFI licence.
 
 ### 6.2 Compatibility matrix
 
-| Attribute | MineSegSAT | Global ML-ready | DRC ASM (paper, link unconfirmed) | Maus v2 | MineNetCD | Future Nigerian set |
+| Attribute | MineSegSAT | Global ML-ready | DRC ASM | Maus v2 | MineNetCD | Future Nigerian set |
 | --- | --- | --- | --- | --- | --- | --- |
 | **Task** | Binary segmentation | Segmentation, plus bounding boxes | Binary ASM segmentation | Polygon inventory, not imagery | Bi-temporal change detection | Single-date segmentation first |
 | **Label meaning** | Disturbed area: pits, dumps, ponds, tailings, leach pads, plants | Mining area from Maus and Tang, manually checked against dated imagery | Pseudo-labels from field points, clustering, masks and manual edits | Open cuts, tailings, dumps, ponds, plants and related features | Changed pixels, not mining presence | Defined by this project's protocol |
@@ -187,10 +187,10 @@ This tool could not open the Zenodo record pages or GitHub repositories directly
 | **Sensor and bands** | Sentinel-2, 12 bands | Sentinel-2 | Planet-NICFI 4.77 m (B, G, R, NIR) and Sentinel-1 | Digitised on Sentinel-2 cloudless 2019 | 1.2 m imagery via Earth Engine, provider unconfirmed | Sentinel-2 L2A, with VHR used for reference |
 | **Dates** | Apr to Sep 2021 | Specific scene per tile; range not verified | Jan to Jun 2023 composites | 2019 | Pre 2009 to 2018, post 2018 to 2023 | To be collected, spanning seasons |
 | **Size** | 134 tiles of 768 × 768 px at 10 m | 2048 × 2048 px tiles | 782 tiles | 44,929 polygons, 101,583 km² | 70k+ patches of 256 × 256 px | Target in Section 8.2 |
-| **Imagery included?** | Paper links a Google Drive download; Zenodo not verified | **No.** References only; imagery must be fetched | Not verified | **No** | Yes, with its source terms unresolved | Depends on source |
+| **Imagery included?** | Paper links a Google Drive download; Zenodo record also holds Sentinel-2 data and trained models | **No.** References only; imagery must be fetched | Yes: PlanetScope and Sentinel-1 tiles | **No** | Yes, with its source terms unresolved | Depends on source |
 | **Labels** | Masks | Masks and boxes, with type and scale metadata | Masks | Polygons, with control points | Change masks | Masks, with evidence grades |
-| **Licence** | Not verified | Not verified | Not verified | **CC BY-SA 4.0** | **CC BY 4.0** for the dataset; imagery rights unresolved | Project-owned, subject to partner contracts |
-| **Commercial use** | Unknown | Unknown | Unknown; Planet-NICFI terms are a concern | Allowed in principle, share-alike needs legal review | Dataset allowed, imagery unknown and a major concern | Yes, if contracts allow |
+| **Licence** | **CC BY 4.0** (dataset); code unlicensed | **CC BY-SA 4.0** | **CC BY 4.0** for masks and Sentinel-1; PlanetScope tiles non-commercial (NICFI) | **CC BY-SA 4.0** | **CC BY 4.0** for the dataset; imagery rights unresolved | Project-owned, subject to partner contracts |
+| **Commercial use** | Dataset allowed with attribution; do not reuse the code | Allowed in principle, share-alike needs legal review | Masks and Sentinel-1 allowed; PlanetScope tiles not allowed | Allowed in principle, share-alike needs legal review | Dataset allowed, imagery unknown and a major concern | Yes, if contracts allow |
 | **Preprocessing** | Reproject, resample 20 m and 60 m bands to 10 m | Fetch scenes, apply offsets, chip tiles | Different sensors; not reusable as Sentinel-2 input | Rasterise, and match to 2019 imagery | Different resolution and bands; separate pipeline | Full pipeline |
 | **Relevance to Nigeria** | Low: boreal and alpine, mostly regulated large sites | Medium: includes artisanal labels, some African sites | Medium to high for ASM appearance; different climate and sensor | Medium: ASM coverage limited by the mine-coordinate source | Low for MVP: open pits and very high resolution | **Highest** |
 | **Known overlap** | Labels from Tang and Werner | Labels from Maus and Tang | Uses IPIS points; independence to confirm | Source for the ML-ready set and MineNetCD site location | Sites located using global polygons | Must be checked against all others |
@@ -211,6 +211,8 @@ Sources: [MineSegSAT](https://arxiv.org/pdf/2311.01676), [Global ML-ready](https
 | Source | Finding | Consequence |
 | --- | --- | --- |
 | [Copernicus Data Space](https://dataspace.copernicus.eu/node/10) | Sentinel data is free, full and open. Other portal content is intended for non-commercial use, and availability is not guaranteed | Sentinel-2 is a sound base. Design for outages and quotas |
+| [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/terms) | Data under Copernicus terms. The service is a Preview "solely for evaluation and testing" and not for "anything mission critical to you or your business operations" | Fine for research and M1. Do not depend on it for a paid service |
+| [Earth Search](https://earth-search.aws.element84.com/v1/collections/sentinel-2-c1-l2a) on AWS Open Data | Data under the Sentinel legal notice. No separate service terms or SLA found | Usable fallback. Read Element 84 and AWS Open Data terms before production |
 | [Earth Engine non-commercial tiers](https://developers.google.com/earth-engine/guides/noncommercial_tiers) | Monthly quotas of 150 or 1,000 EECU-hours, and projects must reverify non-commercial status yearly | A university project must not power a commercial product |
 | [Earth Engine commercial pricing](https://cloud.google.com/earth-engine/pricing) | Basic plan $500 a month, Professional $2,000, compute from $0.40 per EECU-hour. Limited plan has no SLA and is not meant for enterprises | Treat it as optional. It is not required for the MVP |
 | Planet-NICFI and Google Earth imagery | Terms not verified here | Do not use for commercial training or display until cleared in writing |

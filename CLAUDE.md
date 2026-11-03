@@ -32,12 +32,12 @@ Verified: 25 tests pass and the gallery was checked visually, all on **synthetic
 Still unverified:
 1. Global ML-ready columns: `tile_id`, `s2_tile_id`, `split` were read from the authors' code, not the released file. Run `minefoot inspect-dataset`.
 2. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
-3. Whether commercial use of each catalogue's terms is acceptable.
+3. Legal review of share-alike (CC BY-SA 4.0) labels: Global ML-ready and Maus v2. Licences were read from source records on 2026-11-03, see `docs/licence_register.csv`. Planetary Computer's terms limit it to evaluation and testing, not business-critical use.
 
 ## Next steps (FRD section 15)
 1. Done: `pytest`, `minefoot demo`, `minefoot doctor`.
 2. One real Nigerian scene fetched and checked (see above). Inspect the gallery with the founder.
-3. Fill the `NOT VERIFIED` rows in `docs/licence_register.csv` from the source pages.
+3. Done 2026-11-03: licence register filled from source pages. Only Google Earth imagery and the NICFI agreement text remain unread; Global ML-ready and Maus v2 need a lawyer on share-alike.
 4. Add the Global ML-ready adapter, and fetch about 50 sites using the dataset's exact scene IDs (`fetch --scene-id`).
 5. Add overlap detection and site or block splits (FR-072, FR-077).
 6. Add a saved QGIS project. FR-133 needs one and it is not built yet.
