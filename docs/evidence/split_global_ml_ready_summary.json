@@ -1,0 +1,36 @@
+{
+  "sites": 1207,
+  "units": 795,
+  "blocks": 991,
+  "block_km": 50.0,
+  "buffer_km": 10.0,
+  "seed": 0,
+  "fractions": [
+    0.7,
+    0.15,
+    0.15
+  ],
+  "by_split": {
+    "train": 845,
+    "test": 181,
+    "val": 181
+  },
+  "largest_unit_sites": 19,
+  "locked_test_sites": 0,
+  "stratify": "mine_scale",
+  "by_split_and_stratum": {
+    "test": {
+      "Industrial": 146,
+      "Artisanal": 35
+    },
+    "train": {
+      "Industrial": 683,
+      "Artisanal": 162
+    },
+    "val": {
+      "Industrial": 146,
+      "Artisanal": 35
+    }
+  },
+  "check": true
+}

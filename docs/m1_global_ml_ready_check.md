@@ -53,6 +53,14 @@ Option 3 is cheap and fits FR-052 whichever of 1 or 2 is chosen.
 
 **Decision (2026-11-06): option 3 adopted.** The mask is unchanged. `minefoot mask-report` and the gallery now give each polygon's masked share with a status (`assessed`, `partly_masked` at 5% or more, `mostly_masked` at 50% or more, `outside_image`; thresholds provisional). On gmlr-1270 it reports 28.3% masked (28.1% cloud) and on gmlr-1076 11.4%, matching the audit above. Options 1 and 2 remain open.
 
+## Overlaps and splits (2026-11-06)
+
+`minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.
+
+**The authors' split keeps overlapping tiles together but not nearby ones.** `minefoot check-split --split-column source_split`: no footprint or label overlap crosses their splits, but 21 pairs of sites in different splits are within 10 km of each other, and 94 pairs cut from the same scene sit in different splits. [`evidence/split_authors_vs_project_ghana.png`](evidence/split_authors_vs_project_ghana.png) shows val and test tiles a few kilometres from training tiles in the Ghana cluster.
+
+**Project split, v1.** `minefoot split` with 50 km blocks, a 10 km buffer, sites sharing a scene joined, stratified by mine scale, seed 0: 845 train, 181 val and 181 test, in 795 units (the largest has 19 sites). Artisanal sites are 19% of each split. `check-split` finds no leakage. Assignments: [`evidence/split_global_ml_ready_v1.csv`](evidence/split_global_ml_ready_v1.csv); summary: [`evidence/split_global_ml_ready_summary.json`](evidence/split_global_ml_ready_summary.json). Its test set is **not locked**. Lock it with `minefoot lock-test` once the baseline plan is agreed. This test set is for development only: Nigerian performance can only come from the locked Nigerian set.
+
 ## Attribution
 
 Evidence images contain modified Copernicus Sentinel data 2016 to 2019. Label outlines are from the Global ML-ready dataset (Jasansky, Maus, Popa, Wilbik), CC BY-SA 4.0, derived from Maus et al. v2 and Tang and Werner.

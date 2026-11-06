@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -41,6 +41,19 @@ def main(argv=None):
     a = sub.add_parser("mask-report", help="share of each polygon (candidate, label, area) the quality mask removed")
     a.add_argument("prepared"); a.add_argument("--polygons", required=True)
     a.add_argument("--out", required=True, help="output .gpkg; a .csv is written next to it")
+    a = sub.add_parser("overlaps", help="duplicate scenes and overlapping sites or labels across datasets (FR-072)")
+    a.add_argument("sites", nargs="+", help="one or more sites.gpkg"); a.add_argument("--out", required=True, help=".csv")
+    a = sub.add_parser("split", help="assign train/val/test by site and geographic block with a buffer (FR-077)")
+    a.add_argument("sites", nargs="+"); a.add_argument("--out", required=True, help=".gpkg")
+    a.add_argument("--block-km", type=float, default=50.0); a.add_argument("--buffer-km", type=float, default=10.0)
+    a.add_argument("--fractions", default="0.7,0.15,0.15"); a.add_argument("--seed", type=int, default=0)
+    a.add_argument("--lock", help="existing test lock to respect")
+    a.add_argument("--stratify", default="mine_scale", help="column to balance across splits; 'none' to switch off")
+    a = sub.add_parser("lock-test", help="freeze the test sites of a split; never overwrites")
+    a.add_argument("split"); a.add_argument("--out", required=True); a.add_argument("--note", default="")
+    a = sub.add_parser("check-split", help="leakage test for a split file (ML-03)")
+    a.add_argument("split"); a.add_argument("--buffer-km", type=float, default=10.0)
+    a.add_argument("--split-column", default="split"); a.add_argument("--lock"); a.add_argument("--overlaps")
     a = sub.add_parser("demo"); a.add_argument("--out", default="data/demo")
     x = ap.parse_args(argv)
 
@@ -117,6 +130,48 @@ def main(argv=None):
         r.drop(columns="geometry").assign(geometry_wkt=r.geometry.to_wkt()).to_csv(out.with_suffix(".csv"), index=False)
         print(json.dumps(summarise_mask_report(r), indent=2)); print(out)
         return 0
+    if x.cmd == "overlaps":
+        from .splits import overlap_report, read_sites
+        sites, labels = read_sites(x.sites)
+        r = overlap_report(sites, labels)
+        Path(x.out).parent.mkdir(parents=True, exist_ok=True); r.to_csv(x.out, index=False)
+        print(json.dumps({"sites": len(sites), "pairs": len(r),
+                          "by_kind": {k: int(v) for k, v in r["kind"].value_counts().items()},
+                          "cross_dataset_pairs": int(r["cross_dataset"].sum())}, indent=2))
+        return 0
+    if x.cmd == "split":
+        from .splits import assign_splits, overlap_report, read_lock, read_sites, check_split
+        sites, labels = read_sites(x.sites)
+        ov = overlap_report(sites, labels)
+        lock = read_lock(x.lock) if x.lock else None
+        fr = tuple(float(v) for v in x.fractions.split(","))
+        strat = None if x.stratify.lower() == "none" else x.stratify
+        s, summary = assign_splits(sites, ov, fr, x.block_km, x.buffer_km, x.seed, lock, strat)
+        summary["check"] = check_split(s, x.buffer_km, ov, lock)["ok"]
+        out = Path(x.out); out.parent.mkdir(parents=True, exist_ok=True)
+        s.to_file(out, layer="sites", driver="GPKG")
+        if labels is not None:
+            labels.merge(s[["site_id", "split", "unit_id"]], on="site_id").to_file(out, layer="labels", driver="GPKG")
+        ov.to_csv(out.with_name(out.stem + "_overlaps.csv"), index=False)
+        out.with_name(out.stem + "_summary.json").write_text(json.dumps(summary, indent=2))
+        print(json.dumps(summary, indent=2))
+        return 0 if summary["check"] else 1
+    if x.cmd == "lock-test":
+        import geopandas as gpd
+        from .splits import lock_test
+        lk = lock_test(gpd.read_file(x.split, layer="sites"), x.out, x.note)
+        print(f"locked {lk['count']} test sites, sha256 {lk['sha256']}"); return 0
+    if x.cmd == "check-split":
+        import geopandas as gpd
+        import pandas as pd
+        from .splits import check_split, read_lock
+        s = gpd.read_file(x.split, layer="sites")
+        s = s.assign(split=s[x.split_column])
+        ov = pd.read_csv(x.overlaps) if x.overlaps else None
+        r = check_split(s.drop(columns=[c for c in ("unit_id",) if x.split_column != "split" and c in s]),
+                        x.buffer_km, ov, read_lock(x.lock) if x.lock else None)
+        print(json.dumps({k: (v if isinstance(v, bool) else len(v)) for k, v in r.items()}, indent=2))
+        return 0 if r["ok"] else 1
     if x.cmd == "demo":
         from .preprocess import prepare_scene
         from .synthetic import make_scene

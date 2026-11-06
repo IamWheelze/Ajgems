@@ -44,7 +44,7 @@ Still unverified:
 2. One real Nigerian scene fetched and checked (see above). Inspect the gallery with the founder.
 3. Done 2026-11-03: licence register filled from source pages. Only Google Earth imagery and the NICFI agreement text remain unread; Global ML-ready and Maus v2 need a lawyer on share-alike.
 4. Done 2026-11-03: Global ML-ready adapter (`minefoot ingest`, `fetch-sites`, `label-audit`), 52 sites fetched. Cloud-mask issue: per-polygon masking report built (see above).
-5. Add overlap detection and site or block splits (FR-072, FR-077).
+5. Done 2026-11-06: `splits.py` with `minefoot overlaps`, `split`, `lock-test` and `check-split`. Units join sites by overlap, shared scene, 50 km block and 10 km buffer; each unit goes wholly to one split, stratified by mine scale. A test lock is a hashed site list: locked sites stay in test, new sites next to them are held out, and edits are detected. Global ML-ready split v1 (845/181/181) is in `docs/evidence/`, not locked yet. The authors' own split has 21 cross-split pairs within 10 km, so do not use it.
 6. Add a saved QGIS project. FR-133 needs one and it is not built yet.
 7. Have the founder digitise and lock 30 to 50 Nigerian sites and hard negatives.
 8. Build the G1 baseline: an index threshold and a random forest. Then build the G2 U-Net with tracked runs.

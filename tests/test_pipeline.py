@@ -296,3 +296,108 @@ def test_cli_mask_report(tmp_path):
     assert main(["mask-report", str(d), "--polygons", str(tmp_path / "polys.geojson"),
                  "--out", str(tmp_path / "r" / "mask.gpkg")]) == 0
     assert (tmp_path / "r" / "mask.gpkg").exists() and "mask_status" in (tmp_path / "r" / "mask.csv").read_text()
+
+
+def _site_table(points, dataset="a", scene=None, size_km=2.0):
+    """Square site footprints of size_km around (lon, lat) points, in the common schema."""
+    import geopandas as gpd
+    from shapely.geometry import box
+    d = size_km / 111.32 / 2
+    rows = []
+    for i, (lon, lat) in enumerate(points):
+        dl = d / max(np.cos(np.radians(lat)), 0.1)
+        rows.append({"dataset": dataset, "dataset_version": "1", "licence": "test", "source": "test",
+                     "site_id": f"{dataset}-{i}", "scene_id": scene or f"{dataset}-scene-{i}", "acquired": "2020-01-01",
+                     "mgrs_tile": "32PMR", "source_split": None, "mine_type": "Surface", "mine_scale": "Artisanal",
+                     "label_source": "test", "geometry": box(lon - dl, lat - d, lon + dl, lat + d)})
+    return gpd.GeoDataFrame(rows, crs=4326)
+
+
+def test_overlaps_flag_seeded_duplicates_across_datasets():
+    import geopandas as gpd, pandas as pd
+    from shapely.geometry import box
+    from minefoot.splits import overlap_report
+    a = _site_table([(8.0, 9.0), (20.0, -5.0), (30.0, 10.0)], "a")
+    b = _site_table([(8.0, 9.0), (20.005, -5.0), (100.0, 40.0)], "b")   # b-0 duplicates a-0; b-1 overlaps a-1
+    b.loc[2, "scene_id"] = a.loc[2, "scene_id"]                         # b-2 reuses a-2's scene
+    sites = pd.concat([a, b], ignore_index=True)
+    labels = gpd.GeoDataFrame({"site_id": ["a-1", "b-1", "a-2"]},
+                              geometry=[box(19.99, -5.0, 20.01, -4.99), box(20.0, -5.0, 20.02, -4.99), box(30, 10, 30.01, 10.01)], crs=4326)
+    r = overlap_report(gpd.GeoDataFrame(sites, crs=4326), labels)
+    got = {(x.site_a, x.site_b, x.kind) for x in r.itertuples()}
+    assert ("a-0", "b-0", "footprint_overlap") in got
+    assert ("a-1", "b-1", "footprint_overlap") in got and ("a-1", "b-1", "label_overlap") in got
+    assert ("a-2", "b-2", "same_scene") in got
+    dup = r[(r.site_a == "a-0") & (r.site_b == "b-0")].iloc[0]
+    assert dup.cross_dataset and dup.iou == pytest.approx(1.0, abs=1e-6)
+    assert not any(x.site_a == "a-0" and x.site_b == "a-1" for x in r.itertuples())
+
+
+def _cluster_points(seed=0, n=60):
+    rng = np.random.default_rng(seed)
+    centres = [(-2.0, 6.0), (8.8, 9.8), (30.0, -15.0), (120.0, -25.0), (-70.0, -20.0), (60.0, 55.0)]
+    return [(cx + rng.normal(0, 0.6), cy + rng.normal(0, 0.6)) for cx, cy in centres for _ in range(n // len(centres))]
+
+
+def test_split_has_no_leakage_and_is_deterministic():
+    from minefoot.splits import assign_splits, check_split, overlap_report
+    sites = _site_table(_cluster_points())
+    ov = overlap_report(sites)
+    s1, summ = assign_splits(sites, ov, (0.6, 0.2, 0.2), block_km=50, buffer_km=10, seed=1)
+    s2, _ = assign_splits(sites, ov, (0.6, 0.2, 0.2), block_km=50, buffer_km=10, seed=1)
+    assert s1["split"].tolist() == s2["split"].tolist()
+    assert set(s1["split"]) == {"train", "val", "test"}
+    assert check_split(s1, 10, ov)["ok"]
+    assert summ["sites"] == len(sites) == sum(summ["by_split"].values())
+
+
+def test_check_split_catches_leaks():
+    from minefoot.splits import check_split
+    sites = _site_table([(8.0, 9.0), (8.05, 9.0), (40.0, 9.0)])   # first two about 5.5 km apart
+    sites["split"] = ["train", "test", "val"]
+    r = check_split(sites, buffer_km=10)
+    assert not r["ok"] and len(r["sites_within_buffer_across_splits"]) == 1
+    assert check_split(sites, buffer_km=2)["ok"]
+
+
+def test_block_ids_are_roughly_square():
+    from minefoot.splits import block_id
+    assert block_id(8.80, 9.80, 50) == block_id(8.81, 9.81, 50)
+    assert block_id(8.80, 9.80, 50) != block_id(9.80, 9.80, 50)
+    # At 60 degrees a 50 km block spans about 0.9 degrees of longitude, not 0.45.
+    assert block_id(10.0, 60.1, 50) == block_id(10.8, 60.1, 50) or block_id(10.0, 60.1, 50) == block_id(9.2, 60.1, 50)
+
+
+def test_locked_test_set_cannot_change(tmp_path):
+    from minefoot.splits import assign_splits, check_split, lock_test, read_lock
+    sites = _site_table(_cluster_points())
+    s, _ = assign_splits(sites, None, (0.6, 0.2, 0.2), block_km=50, buffer_km=10, seed=2)
+    lock = lock_test(s, tmp_path / "lock.json")
+    with pytest.raises(FileExistsError):
+        lock_test(s, tmp_path / "lock.json")
+    # New sites arrive, one right next to a locked test site.
+    t0 = s[s.split == "test"].geometry.iloc[0].centroid
+    extra = _site_table([(t0.x + 0.01, t0.y), (150.0, -30.0)], "new")
+    import geopandas as gpd, pandas as pd
+    both = gpd.GeoDataFrame(pd.concat([sites, extra], ignore_index=True), crs=4326)
+    s2, summ = assign_splits(both, None, (0.6, 0.2, 0.2), block_km=50, buffer_km=10, seed=99, lock=read_lock(tmp_path / "lock.json"))
+    assert set(s2.loc[s2.split == "test", "site_id"]) == set(lock["site_ids"])
+    assert s2.loc[s2.site_id == "new-0", "split"].item() == "held_out_near_locked_test"
+    assert s2.loc[s2.site_id == "new-1", "split"].item() in ("train", "val")
+    assert check_split(s2, 10, lock=lock)["ok"]
+    # Editing the lock file is detected.
+    d = json.loads((tmp_path / "lock.json").read_text()); d["site_ids"] = d["site_ids"][1:]
+    (tmp_path / "edited.json").write_text(json.dumps(d))
+    with pytest.raises(ValueError, match="edited"):
+        read_lock(tmp_path / "edited.json")
+
+
+def test_stratified_split_balances_mix():
+    from minefoot.splits import assign_splits, check_split
+    sites = _site_table(_cluster_points(n=120))
+    rng = np.random.default_rng(0)
+    sites["mine_scale"] = np.where(rng.random(len(sites)) < 0.25, "Artisanal", "Industrial")
+    s, summ = assign_splits(sites, None, (0.6, 0.2, 0.2), block_km=50, buffer_km=0, seed=0, stratify="mine_scale")
+    share = s.groupby("split")["mine_scale"].apply(lambda v: (v == "Artisanal").mean())
+    assert share.max() - share.min() < 0.1
+    assert check_split(s, 0)["ok"] and "by_split_and_stratum" in summ
