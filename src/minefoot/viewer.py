@@ -228,28 +228,51 @@ def mask_table(report, limit=15) -> str:
             f'{rows}</table></div></details>')
 
 
+def _to_cog(src_path, dst_path):
+    """Copy a GeoTIFF as a cloud-optimised GeoTIFF (FR-133)."""
+    from rasterio.shutil import copy as rio_copy
+    rio_copy(src_path, dst_path, driver="COG", compress="DEFLATE", overview_resampling="nearest")
+
+
 def export_gis(prepared_dir, layers, out_dir, labels=None, mask_report=None):
-    """Display-ready GeoTIFFs and a GeoPackage that open directly in QGIS."""
+    """Cloud-optimised GeoTIFFs and a GeoPackage that open directly in QGIS.
+
+    Writes the display layers (8-bit RGB, fixed stretches), reflectance.tif (all
+    bands, for the pixel inspector) and scl.tif (scene classes), all as COGs.
+    """
+    import tempfile
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
-    with rasterio.open(Path(prepared_dir) / "reflectance.tif") as s:
+    prepared_dir = Path(prepared_dir)
+    with rasterio.open(prepared_dir / "reflectance.tif") as s:
         prof = dict(driver="GTiff", height=s.height, width=s.width, crs=s.crs, transform=s.transform, dtype="uint8",
                     count=3, compress="deflate", tiled=True, photometric="RGB")
-    for k, img in layers.items():
-        with rasterio.open(out / f"{k}.tif", "w", **prof) as d:
-            d.write(img.transpose(2, 0, 1))
+    with tempfile.TemporaryDirectory() as tmp:
+        for k, img in layers.items():
+            t = Path(tmp) / f"{k}.tif"
+            with rasterio.open(t, "w", **prof) as d:
+                d.write(img.transpose(2, 0, 1))
+            _to_cog(t, out / f"{k}.tif")
+    for name in ("reflectance.tif", "scl.tif"):
+        _to_cog(prepared_dir / name, out / name)
+    # Polygons are written in the scene's CRS, so every layer in the package shares it.
     if mask_report is not None:  # polygons with their masking columns, ready to style by mask_status
-        mask_report.to_file(out / "labels.gpkg", driver="GPKG")
+        mask_report.to_crs(prof["crs"]).to_file(out / "labels.gpkg", driver="GPKG")
     elif labels is not None:
         from .labels import read_vectors
-        read_vectors(labels).to_file(out / "labels.gpkg", driver="GPKG")
+        read_vectors(labels).to_crs(prof["crs"]).to_file(out / "labels.gpkg", driver="GPKG")
 
 
 def build_gallery(prepared_dirs, out_dir, labels: dict | None = None, title="Scene inspection") -> Path:
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
-    sections, summary = [], []
+    sections, summary, project_scenes = [], [], []
     for d in prepared_dirs:
         lab = (labels or {}).get(Path(d).name)
         body, info = render_scene(d, lab)
+        with rasterio.open(Path(d) / "reflectance.tif") as s:
+            epsg = s.crs.to_epsg()
+        project_scenes.append({"name": Path(d).name, "title": f'{info["meta"]["scene_id"]} ({Path(d).name})',
+                               "epsg": epsg, "has_polygons": lab is not None,
+                               "has_mask_status": info["mask_report"] is not None})
         sections.append(body)
         export_gis(d, info["layers"], out / "gis" / Path(d).name, lab, info["mask_report"])
         summary.append({"scene_id": info["meta"]["scene_id"], "coverage": info["meta"]["coverage"],
@@ -260,4 +283,6 @@ def build_gallery(prepared_dirs, out_dir, labels: dict | None = None, title="Sce
             'Dark grey (or purple in NDVI and NDWI) means no usable data, not clean ground.</p>' + "".join(sections) + "</main></body></html>")
     (out / "gallery.html").write_text(page)
     (out / "summary.json").write_text(json.dumps(summary, indent=2))
+    from .qgis_project import write_project
+    write_project(out, project_scenes, title)
     return out / "gallery.html"

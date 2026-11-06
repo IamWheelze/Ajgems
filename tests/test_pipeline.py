@@ -401,3 +401,65 @@ def test_stratified_split_balances_mix():
     share = s.groupby("split")["mine_scale"].apply(lambda v: (v == "Artisanal").mean())
     assert share.max() - share.min() < 0.1
     assert check_split(s, 0)["ok"] and "by_split_and_stratum" in summ
+
+
+def test_view_package_has_cogs_and_qgis_project(tmp_path):
+    import xml.etree.ElementTree as ET
+    from minefoot.cli import main
+    raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
+    lr = tmp_path / "labels"; (lr / raw.name).mkdir(parents=True)
+    (lr / raw.name / "labels.geojson").write_text((raw / "truth.geojson").read_text())
+    out = tmp_path / "pkg"
+    assert main(["view", str(d), "--labels-root", str(lr), "--out", str(out)]) == 0
+    g = out / "gis" / raw.name
+    for f in ("true_colour.tif", "reflectance.tif", "scl.tif", "quality.tif"):
+        with rasterio.open(g / f) as s:
+            assert s.tags(ns="IMAGE_STRUCTURE").get("LAYOUT") == "COG", f
+    root = ET.parse(out / "project.qgs").getroot()
+    sources = [e.text for e in root.iter("datasource")]
+    assert all(not src.startswith("/") for src in sources)          # relative paths only
+    for src in sources:
+        if src.startswith("./"):
+            assert (out / src.split("|")[0]).exists(), src
+    assert any(r.get("attr") == "mask_status" for r in root.iter("renderer-v2"))
+    assert any(r.get("type") == "paletted" for r in root.iter("rasterrenderer"))
+    assert {e.get("id") for e in root.iter("layer-tree-layer")} == {e.text for e in root.iter("id")}
+    for f in ("scl_classes.qml", "polygons_by_mask_status.qml", "reflectance_true_colour.qml"):
+        ET.parse(out / "styles" / f)
+    # Every layer the project declares must be in the CRS its file actually has.
+    import geopandas as gpd
+    assert gpd.read_file(g / "labels.gpkg").crs.to_epsg() == 32632
+    for ml in root.iter("maplayer"):
+        src, auth = ml.find("datasource").text, ml.find("srs/spatialrefsys/authid")
+        if src.startswith("./") and auth is not None:
+            f = out / src.split("|")[0]
+            epsg = gpd.read_file(f).crs.to_epsg() if f.suffix == ".gpkg" else rasterio.open(f).crs.to_epsg()
+            assert auth.text == f"EPSG:{epsg}", src
+    assert root.find("projectCrs/spatialrefsys/wkt").text.startswith("PROJCRS")
+
+
+def _qgis_python():
+    """A Python interpreter with QGIS bindings, or None. Set MINEFOOT_QGIS_PYTHON to choose one."""
+    import os, shutil, subprocess
+    cands = [os.environ.get("MINEFOOT_QGIS_PYTHON"), "python3", "/usr/bin/python3", "/usr/bin/python3.12"]
+    for c in filter(None, cands):
+        exe = shutil.which(c) or (c if os.path.exists(c) else None)
+        if exe and subprocess.run([exe, "-c", "import qgis.core"], capture_output=True,
+                                  env={**os.environ, "QT_QPA_PLATFORM": "offscreen"}).returncode == 0:
+            return exe
+    return None
+
+
+def test_qgis_opens_project(tmp_path):
+    """Loads the generated project in real QGIS when bindings are installed; skipped otherwise."""
+    import os, subprocess
+    from pathlib import Path
+    exe = _qgis_python()
+    if not exe:
+        pytest.skip("no Python with QGIS bindings")
+    raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
+    build_gallery([d], tmp_path / "pkg", {raw.name: raw / "truth.geojson"})
+    script = Path(__file__).parents[1] / "scripts" / "check_qgis_project.py"
+    r = subprocess.run([exe, str(script), str(tmp_path / "pkg" / "project.qgs")], capture_output=True, text=True,
+                       env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
+    assert r.returncode == 0, r.stdout + r.stderr

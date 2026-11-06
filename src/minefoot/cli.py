@@ -25,7 +25,10 @@ def main(argv=None):
     a.add_argument("--provider", choices=list(PROVIDERS), help=prov_help)
     a.add_argument("--scenes", type=int, default=1); a.add_argument("--scene-id"); a.add_argument("--out", default="data/raw")
     a = sub.add_parser("prepare"); a.add_argument("raw"); a.add_argument("--out", default="data/prepared")
-    a = sub.add_parser("view"); a.add_argument("prepared", nargs="+"); a.add_argument("--labels"); a.add_argument("--out", default="data/view")
+    a = sub.add_parser("view", help="inspection package: HTML gallery, COGs, GeoPackage and a QGIS project (FR-133)")
+    a.add_argument("prepared", nargs="+"); a.add_argument("--labels", help="one polygon file used for every scene")
+    a.add_argument("--labels-root", help="folder holding <scene folder>/labels.geojson, as written by fetch-sites")
+    a.add_argument("--title", default="Scene inspection"); a.add_argument("--out", default="data/view")
     a = sub.add_parser("inspect-dataset"); a.add_argument("path")
     a = sub.add_parser("ingest", help="convert an external dataset into the common site schema")
     a.add_argument("dataset", choices=["global-ml-ready"]); a.add_argument("path")
@@ -94,8 +97,16 @@ def main(argv=None):
         print(json.dumps(i["coverage"], indent=2)); return 0
     if x.cmd == "view":
         from .viewer import build_gallery
-        labs = {Path(d).name: x.labels for d in x.prepared} if x.labels else None
-        print(build_gallery(x.prepared, x.out, labs)); return 0
+        if x.labels and x.labels_root:
+            print("use --labels or --labels-root, not both", file=sys.stderr); return 2
+        labs = None
+        if x.labels:
+            labs = {Path(d).name: x.labels for d in x.prepared}
+        elif x.labels_root:
+            labs = {Path(d).name: Path(x.labels_root) / Path(d).name / "labels.geojson" for d in x.prepared}
+            labs = {k: v for k, v in labs.items() if v.exists()}
+        page = build_gallery(x.prepared, x.out, labs, x.title)
+        print(page); print(Path(x.out) / "project.qgs"); return 0
     if x.cmd == "inspect-dataset":
         from .labels import inspect_dataset
         print(json.dumps(inspect_dataset(x.path), indent=2)); return 0
