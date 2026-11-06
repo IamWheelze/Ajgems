@@ -76,3 +76,35 @@ def mask_rates(scl: np.ndarray, inside: np.ndarray) -> dict:
             hit = usable_mask(v) if codes is None else np.isin(v, codes)
             out[f"{where}_{g}"] = float(hit.mean()) if v.size else float("nan")
     return out
+
+
+# Per-polygon masking (candidates, labels or areas of interest). Provisional, like FR-053.
+# Bright mine ground is often classed as cloud (docs/m1_global_ml_ready_check.md), so a
+# scene can pass overall while the pixels inside a polygon were not seen.
+POLYGON_PARTLY_MASKED = 0.05   # masked share at or above this: "partly_masked"
+POLYGON_MOSTLY_MASKED = 0.50   # masked share at or above this: "mostly_masked"
+
+
+class PolygonStatus(str, Enum):
+    ASSESSED = "assessed"
+    PARTLY_MASKED = "partly_masked"
+    MOSTLY_MASKED = "mostly_masked"
+    OUTSIDE_IMAGE = "outside_image"
+
+
+def polygon_coverage(scl_values: np.ndarray, partly=POLYGON_PARTLY_MASKED, mostly=POLYGON_MOSTLY_MASKED) -> dict:
+    """Masking summary for the SCL values of the pixels inside one polygon."""
+    v = np.asarray(scl_values).ravel()
+    n = int(v.size)
+    if n == 0:
+        return {"pixels": 0, "usable_fraction": None, "masked_fraction": None, "cloud_fraction": None,
+                "cloud_medium_fraction": None, "shadow_fraction": None, "nodata_fraction": None,
+                "snow_fraction": None, "mask_status": PolygonStatus.OUTSIDE_IMAGE.value}
+    frac = lambda *c: float(np.isin(v, c).mean())
+    usable = float(usable_mask(v).mean())
+    masked = 1.0 - usable
+    status = (PolygonStatus.MOSTLY_MASKED if masked >= mostly else
+              PolygonStatus.PARTLY_MASKED if masked >= partly else PolygonStatus.ASSESSED)
+    return {"pixels": n, "usable_fraction": usable, "masked_fraction": masked, "cloud_fraction": frac(8, 9, 10),
+            "cloud_medium_fraction": frac(8), "shadow_fraction": frac(3), "nodata_fraction": frac(0, 1),
+            "snow_fraction": frac(*SUSPECT_BRIGHT), "mask_status": status.value}

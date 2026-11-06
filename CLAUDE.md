@@ -32,7 +32,8 @@ Verified: 25 tests pass and the gallery was checked visually, all on **synthetic
 **Global ML-ready check, 2026-11-03** (details: `docs/m1_global_ml_ready_check.md`):
 - Verified: columns `tile_id`, `s2_tile_id` and `split` are in layer `tiles`; label layers have `tile_id` only. 1,207 usable sites, none in Nigeria.
 - Exact scene IDs resolve only on Planetary Computer (baseline 02.12, offset 0). 52 sites fetched, prepared and audited; no label shift; artisanal labels are loose.
-- **Open decision:** SCL classes bright tailings and pits as cloud. On 52 sites, 2.35% of labelled pixels are classed cloud versus 0.19% outside; 6 sites lose more than 5%. `quality.NOT_USABLE` drops them. Options are in the findings doc. Ask the founder before changing the mask.
+- SCL classes bright tailings and pits as cloud. On 52 sites, 2.35% of labelled pixels are classed cloud versus 0.19% outside; 6 sites lose more than 5%. `quality.NOT_USABLE` still drops them.
+- **Founder decision, 2026-11-06:** keep the current mask, and report how much of each polygon (candidate, label or area) it removed. Built: `quality.polygon_coverage`, `labels.polygon_mask_report`, `minefoot mask-report`, gallery warning and per-polygon table, masked pixels in magenta, and mask columns in the exported `labels.gpkg`. Thresholds are provisional: partly masked at 5%, mostly masked at 50%. Candidates from a future model must go through `polygon_mask_report` before they are shown or exported. Changing the mask itself (options 1 and 2 in the findings doc) is still open.
 
 Still unverified:
 1. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
@@ -42,7 +43,7 @@ Still unverified:
 1. Done: `pytest`, `minefoot demo`, `minefoot doctor`.
 2. One real Nigerian scene fetched and checked (see above). Inspect the gallery with the founder.
 3. Done 2026-11-03: licence register filled from source pages. Only Google Earth imagery and the NICFI agreement text remain unread; Global ML-ready and Maus v2 need a lawyer on share-alike.
-4. Done 2026-11-03: Global ML-ready adapter (`minefoot ingest`, `fetch-sites`, `label-audit`), 52 sites fetched. Next: decide the cloud-mask issue above.
+4. Done 2026-11-03: Global ML-ready adapter (`minefoot ingest`, `fetch-sites`, `label-audit`), 52 sites fetched. Cloud-mask issue: per-polygon masking report built (see above).
 5. Add overlap detection and site or block splits (FR-072, FR-077).
 6. Add a saved QGIS project. FR-133 needs one and it is not built yet.
 7. Have the founder digitise and lock 30 to 50 Nigerian sites and hard negatives.

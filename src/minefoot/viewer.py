@@ -19,8 +19,9 @@ LAYER_TEXT = {
     "nir_false_colour": ("NIR false colour", "B8, B4, B3. Healthy vegetation looks red."),
     "ndvi": ("NDVI", "Dark is low vegetation, light is high. Scale -0.2 to 0.8."),
     "ndwi": ("NDWI", "Light is water-like. Scale -0.6 to 0.6."),
-    "quality": ("Quality mask", "Unusable pixels (cloud, shadow, no data) and bright pixels classed as snow, in orange."),
-    "labels": ("Labels on imagery", "Label outline on the true-colour view. Check the fit by eye."),
+    "quality": ("Quality mask", "Unusable pixels: cloud in grey and white, shadow in slate, no data in black. Bright pixels "
+                "classed as snow in orange. Bright mine ground is often classed as cloud, so check grey inside outlines."),
+    "labels": ("Polygons on imagery", "Polygon outlines on the true-colour view; masked pixels inside them in magenta."),
 }
 BADGE = {"pass": "Passes coverage check", "warn": "Warning: low usable coverage", "block": "Blocked: too little usable imagery"}
 
@@ -60,6 +61,7 @@ def outline(mask):
 
 
 def build_layers(arr, scl, label=None) -> dict[str, np.ndarray]:
+    from .quality import usable_mask
     names = list(BANDS)
     out = {k: rgb(arr, names, b, s) for k, (b, s) in STRETCH.items()}
     g = lambda b: arr[names.index(b)]
@@ -71,6 +73,7 @@ def build_layers(arr, scl, label=None) -> dict[str, np.ndarray]:
     out["quality"] = q
     if label is not None:
         l = out["true_colour"].copy()
+        l[label.astype(bool) & ~usable_mask(scl)] = (230, 0, 200)   # inside a polygon but not seen
         l[outline(label)] = (0, 230, 255)
         out["labels"] = l
     return out
@@ -99,7 +102,7 @@ def band_stats(arr):
     return rows
 
 
-def checks(stats, cov, meta, label=None) -> list[tuple[str, str]]:
+def checks(stats, cov, meta, label=None, mask_summary=None) -> list[tuple[str, str]]:
     """Automatic warnings shown at the top of each scene."""
     out = []
     if meta.get("synthetic"):
@@ -113,6 +116,14 @@ def checks(stats, cov, meta, label=None) -> list[tuple[str, str]]:
     if cov["suspect_bright_fraction"] > 0.001:
         out.append(("warn", f"{cov['suspect_bright_fraction']:.1%} of pixels classed as snow. In Nigeria this suggests "
                             "bright ground such as tailings. Those pixels are kept for review."))
+    if mask_summary and mask_summary["pixels"]:
+        st = mask_summary["by_status"]
+        hit = st.get("partly_masked", 0) + st.get("mostly_masked", 0)
+        if hit:
+            out.append(("warn", f"{hit} of {mask_summary['polygons']} polygon(s) partly or mostly masked: "
+                                f"{mask_summary['masked_fraction']:.1%} of pixels inside polygons were not usable "
+                                f"({mask_summary['cloud_fraction']:.1%} classed as cloud), although the scene "
+                                f"{'passes' if cov['decision'] == 'pass' else 'was checked'} overall. Those pixels were not assessed."))
     if label is not None and not label.any():
         out.append(("warn", "Label file has no polygon inside this image."))
     return out
@@ -165,14 +176,17 @@ def render_scene(prepared_dir, labels=None) -> tuple[str, dict]:
         arr = s.read()
     with rasterio.open(p / "scl.tif") as s:
         scl = s.read(1)
-    label = None
+    label = report = summary = None
     if labels is not None:
-        from .labels import read_vectors, rasterize_to
-        label = rasterize_to(p / "reflectance.tif", read_vectors(labels))
+        from .labels import polygon_mask_report, read_vectors, rasterize_to, summarise_mask_report
+        gdf = read_vectors(labels)
+        label = rasterize_to(p / "reflectance.tif", gdf)
+        report = polygon_mask_report(p, gdf)
+        summary = summarise_mask_report(report) if len(report) else None
     layers = build_layers(arr, scl, label)
     cov = meta["coverage"]
     stats = band_stats(arr)
-    notes = checks(stats, cov, meta, label)
+    notes = checks(stats, cov, meta, label, summary)
     figs = "".join(f'<figure><img loading="lazy" alt="{html.escape(LAYER_TEXT[k][0])}" src="{png_uri(v)}">'
                    f'<figcaption><b>{html.escape(LAYER_TEXT[k][0])}</b>{html.escape(LAYER_TEXT[k][1])}</figcaption></figure>'
                    for k, v in layers.items())
@@ -189,11 +203,32 @@ def render_scene(prepared_dir, labels=None) -> tuple[str, dict]:
             + "".join(f'<div class="note {k}">{html.escape(t)}</div>' for k, t in notes)
             + f'<div class="grid">{figs}</div><details open><summary>Reflectance by band</summary>{histogram_svg(arr)}'
             '<div class="scroll"><table><tr><th>Band</th><th>Usable pixels</th><th>1st pct</th><th>Median</th><th>99th pct</th>'
-            f'<th>Negative %</th><th>Over 1 %</th></tr>{"".join(row(r) for r in stats)}</table></div></details></section>')
-    return body, {"layers": layers, "stats": stats, "checks": notes, "meta": meta}
+            f'<th>Negative %</th><th>Over 1 %</th></tr>{"".join(row(r) for r in stats)}</table></div></details>'
+            + mask_table(report) + '</section>')
+    return body, {"layers": layers, "stats": stats, "checks": notes, "meta": meta, "mask_report": report,
+                  "mask_summary": summary}
 
 
-def export_gis(prepared_dir, layers, out_dir, labels=None):
+def mask_table(report, limit=15) -> str:
+    """Per-polygon masking, most masked first."""
+    if report is None or not len(report):
+        return ""
+    r = report[report["pixels"] > 0].sort_values("masked_fraction", ascending=False)
+    pct = lambda v: f"{v:.1%}"
+    rows = "".join(f"<tr><td>{i + 1}</td><td>{int(x.pixels):,}</td><td>{pct(x.masked_fraction)}</td>"
+                   f"<td>{pct(x.cloud_fraction)}</td><td>{pct(x.shadow_fraction)}</td><td>{pct(x.snow_fraction)}</td>"
+                   f"<td>{html.escape(x.mask_status.replace('_', ' '))}</td></tr>"
+                   for i, x in enumerate(r.head(limit).itertuples()))
+    outside = int((report["pixels"] == 0).sum())
+    more = f" Showing {limit} of {len(r)}." if len(r) > limit else ""
+    extra = f" {outside} polygon(s) fall outside this image." if outside else ""
+    return ('<details><summary>Masking inside polygons</summary><p class="meta">Share of each polygon\'s pixels the quality '
+            f'mask removed, most masked first.{more}{extra} Thresholds are provisional.</p><div class="scroll"><table>'
+            '<tr><th>#</th><th>Pixels</th><th>Masked</th><th>Cloud</th><th>Shadow</th><th>Snow</th><th>Status</th></tr>'
+            f'{rows}</table></div></details>')
+
+
+def export_gis(prepared_dir, layers, out_dir, labels=None, mask_report=None):
     """Display-ready GeoTIFFs and a GeoPackage that open directly in QGIS."""
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     with rasterio.open(Path(prepared_dir) / "reflectance.tif") as s:
@@ -202,7 +237,9 @@ def export_gis(prepared_dir, layers, out_dir, labels=None):
     for k, img in layers.items():
         with rasterio.open(out / f"{k}.tif", "w", **prof) as d:
             d.write(img.transpose(2, 0, 1))
-    if labels is not None:
+    if mask_report is not None:  # polygons with their masking columns, ready to style by mask_status
+        mask_report.to_file(out / "labels.gpkg", driver="GPKG")
+    elif labels is not None:
         from .labels import read_vectors
         read_vectors(labels).to_file(out / "labels.gpkg", driver="GPKG")
 
@@ -214,9 +251,9 @@ def build_gallery(prepared_dirs, out_dir, labels: dict | None = None, title="Sce
         lab = (labels or {}).get(Path(d).name)
         body, info = render_scene(d, lab)
         sections.append(body)
-        export_gis(d, info["layers"], out / "gis" / Path(d).name, lab)
+        export_gis(d, info["layers"], out / "gis" / Path(d).name, lab, info["mask_report"])
         summary.append({"scene_id": info["meta"]["scene_id"], "coverage": info["meta"]["coverage"],
-                        "bands": info["stats"], "checks": info["checks"]})
+                        "polygon_masking": info["mask_summary"], "bands": info["stats"], "checks": info["checks"]})
     page = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             f'<title>{html.escape(title)}</title><style>{CSS}</style></head><body><main><h1>{html.escape(title)}</h1>'
             f'<p class="sub">{len(sections)} scene(s). Hover a histogram bar for its pixel count. '

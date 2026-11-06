@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -38,6 +38,9 @@ def main(argv=None):
     a = sub.add_parser("label-audit", help="how much labelled ground the quality mask removes, per scene")
     a.add_argument("prepared", nargs="+"); a.add_argument("--raw-root", required=True,
                    help="folder holding <scene>/labels.geojson"); a.add_argument("--csv")
+    a = sub.add_parser("mask-report", help="share of each polygon (candidate, label, area) the quality mask removed")
+    a.add_argument("prepared"); a.add_argument("--polygons", required=True)
+    a.add_argument("--out", required=True, help="output .gpkg; a .csv is written next to it")
     a = sub.add_parser("demo"); a.add_argument("--out", default="data/demo")
     x = ap.parse_args(argv)
 
@@ -105,6 +108,14 @@ def main(argv=None):
         for r in rows:
             print(f"{r['scene']}: cloud inside {r['inside_cloud']:.1%} vs outside {r['outside_cloud']:.1%}; "
                   f"usable inside {r['inside_usable']:.1%} vs outside {r['outside_usable']:.1%}")
+        return 0
+    if x.cmd == "mask-report":
+        from .labels import polygon_mask_report, summarise_mask_report
+        r = polygon_mask_report(x.prepared, x.polygons)
+        out = Path(x.out); out.parent.mkdir(parents=True, exist_ok=True)
+        r.to_file(out, driver="GPKG")
+        r.drop(columns="geometry").assign(geometry_wkt=r.geometry.to_wkt()).to_csv(out.with_suffix(".csv"), index=False)
+        print(json.dumps(summarise_mask_report(r), indent=2)); print(out)
         return 0
     if x.cmd == "demo":
         from .preprocess import prepare_scene

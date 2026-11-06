@@ -79,7 +79,7 @@ def test_outline_empty_centre():
 def test_gallery_and_gis(tmp_path):
     raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
     page = build_gallery([d], tmp_path / "v", {raw.name: raw / "truth.geojson"})
-    t = page.read_text(); assert "Synthetic test scene" in t and "classed as snow" in t and "Check the fit" in t
+    t = page.read_text(); assert "Synthetic test scene" in t and "classed as snow" in t and "Polygons on imagery" in t
     for f in ("true_colour.tif", "swir_false_colour.tif", "quality.tif", "labels.gpkg"):
         assert (tmp_path / "v/gis" / raw.name / f).exists()
     with rasterio.open(tmp_path / "v/gis" / raw.name / "true_colour.tif") as s: assert s.crs.to_epsg() == 32632
@@ -224,3 +224,75 @@ def test_mask_rates_inside_vs_outside():
     r = mask_rates(scl, inside)
     assert r["inside_cloud"] == pytest.approx(0.4) and r["outside_cloud"] == 0
     assert r["inside_usable"] == pytest.approx(0.6) and r["outside_usable"] == 1
+
+
+def test_polygon_coverage_status_and_fractions():
+    from minefoot.quality import polygon_coverage
+    v = np.array([4] * 90 + [8] * 8 + [3] * 2, "uint8")
+    r = polygon_coverage(v)
+    assert r["pixels"] == 100 and r["masked_fraction"] == pytest.approx(0.10)
+    assert r["cloud_fraction"] == pytest.approx(0.08) and r["cloud_medium_fraction"] == pytest.approx(0.08)
+    assert r["shadow_fraction"] == pytest.approx(0.02) and r["mask_status"] == "partly_masked"
+    assert polygon_coverage(np.full(10, 9, "uint8"))["mask_status"] == "mostly_masked"
+    assert polygon_coverage(np.full(10, 5, "uint8"))["mask_status"] == "assessed"
+    snow = polygon_coverage(np.full(10, 11, "uint8"))  # snow is kept, so it is not masked
+    assert snow["snow_fraction"] == 1 and snow["mask_status"] == "assessed"
+    assert polygon_coverage(np.array([], "uint8"))["mask_status"] == "outside_image"
+
+
+def _scene_polygons(tmp_path):
+    """Prepared synthetic scene plus polygons over cloud, clear ground, outside, and sub-pixel."""
+    import geopandas as gpd
+    from shapely.geometry import box
+    raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
+    with rasterio.open(d / "scl.tif") as s:
+        scl, t, crs = s.read(1), s.transform, s.crs
+    def px_box(r0, c0, r1, c1):
+        x0, y0 = t * (c0, r1); x1, y1 = t * (c1, r0); return box(x0, y0, x1, y1)
+    cloudy = np.isin(scl, (8, 9))
+    rr, cc = np.nonzero(cloudy); r, c = int(np.median(rr)), int(np.median(cc))
+    clear = np.argwhere(~np.isin(scl, (0, 1, 3, 8, 9, 10)))
+    cr, ccl = clear[len(clear) // 2]
+    x, y = t * (int(ccl) + 0.5, int(cr) + 0.5)
+    polys = [px_box(r - 2, c - 2, r + 3, c + 3),                     # over cloud
+             px_box(int(cr), int(ccl), int(cr) + 1, int(ccl) + 1),   # one clear pixel
+             px_box(-50, -50, -40, -40),                             # outside the image
+             box(x - 1, y - 1, x + 1, y + 1)]                        # smaller than a pixel
+    gdf = gpd.GeoDataFrame({"name": ["cloud", "clear", "outside", "tiny"]}, geometry=polys, crs=crs)
+    return raw, d, gdf, cloudy[r - 2:r + 3, c - 2:c + 3].mean()
+
+
+def test_polygon_mask_report_per_polygon(tmp_path):
+    from minefoot.labels import polygon_mask_report, summarise_mask_report
+    _, d, gdf, cloud_share = _scene_polygons(tmp_path)
+    r = polygon_mask_report(d, gdf.to_crs(4326)).set_index("name")
+    assert r.loc["cloud", "pixels"] == 25
+    assert r.loc["cloud", "cloud_fraction"] == pytest.approx(cloud_share)
+    assert r.loc["cloud", "mask_status"] in ("partly_masked", "mostly_masked")
+    assert r.loc["clear", "mask_status"] == "assessed" and r.loc["clear", "masked_fraction"] == 0
+    assert r.loc["outside", "mask_status"] == "outside_image" and r.loc["outside", "pixels"] == 0
+    assert r.loc["tiny", "pixels"] >= 1
+    assert (r["scene_id"] == json.loads((d / "prepared.json").read_text())["scene_id"]).all()
+    sm = summarise_mask_report(r)
+    assert sm["polygons"] == 4 and sm["by_status"]["outside_image"] == 1
+
+
+def test_gallery_warns_when_polygons_masked(tmp_path):
+    import geopandas as gpd
+    raw, d, gdf, _ = _scene_polygons(tmp_path)
+    gdf.to_file(tmp_path / "polys.geojson", driver="GeoJSON")
+    page = build_gallery([d], tmp_path / "v", {d.name: tmp_path / "polys.geojson"}).read_text()
+    assert "were not assessed" in page and "Masking inside polygons" in page
+    g = gpd.read_file(tmp_path / "v/gis" / d.name / "labels.gpkg")
+    assert {"mask_status", "masked_fraction", "cloud_fraction"} <= set(g.columns)
+    s = json.loads((tmp_path / "v/summary.json").read_text())[0]
+    assert s["polygon_masking"]["polygons"] == 4
+
+
+def test_cli_mask_report(tmp_path):
+    from minefoot.cli import main
+    _, d, gdf, _ = _scene_polygons(tmp_path)
+    gdf.to_file(tmp_path / "polys.geojson", driver="GeoJSON")
+    assert main(["mask-report", str(d), "--polygons", str(tmp_path / "polys.geojson"),
+                 "--out", str(tmp_path / "r" / "mask.gpkg")]) == 0
+    assert (tmp_path / "r" / "mask.gpkg").exists() and "mask_status" in (tmp_path / "r" / "mask.csv").read_text()

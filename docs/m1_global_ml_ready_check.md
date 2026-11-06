@@ -51,6 +51,8 @@ Options, none implemented yet:
 
 Option 3 is cheap and fits FR-052 whichever of 1 or 2 is chosen.
 
+**Decision (2026-11-06): option 3 adopted.** The mask is unchanged. `minefoot mask-report` and the gallery now give each polygon's masked share with a status (`assessed`, `partly_masked` at 5% or more, `mostly_masked` at 50% or more, `outside_image`; thresholds provisional). On gmlr-1270 it reports 28.3% masked (28.1% cloud) and on gmlr-1076 11.4%, matching the audit above. Options 1 and 2 remain open.
+
 ## Attribution
 
 Evidence images contain modified Copernicus Sentinel data 2016 to 2019. Label outlines are from the Global ML-ready dataset (Jasansky, Maus, Popa, Wilbik), CC BY-SA 4.0, derived from Maus et al. v2 and Tang and Werner.
