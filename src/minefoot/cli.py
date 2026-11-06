@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -57,6 +57,11 @@ def main(argv=None):
     a = sub.add_parser("check-split", help="leakage test for a split file (ML-03)")
     a.add_argument("split"); a.add_argument("--buffer-km", type=float, default=10.0)
     a.add_argument("--split-column", default="split"); a.add_argument("--lock"); a.add_argument("--overlaps")
+    a = sub.add_parser("g1", help="gate G1 baselines: index threshold and random forest (internal research)")
+    a.add_argument("--sites", required=True, help="JSON {train: [...], val: [...], test: [...]} of site IDs")
+    a.add_argument("--split", required=True, help="split .gpkg the site lists must agree with")
+    a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a.add_argument("--out", required=True); a.add_argument("--seed", type=int, default=0)
     a = sub.add_parser("demo"); a.add_argument("--out", default="data/demo")
     x = ap.parse_args(argv)
 
@@ -183,6 +188,16 @@ def main(argv=None):
                         x.buffer_km, ov, read_lock(x.lock) if x.lock else None)
         print(json.dumps({k: (v if isinstance(v, bool) else len(v)) for k, v in r.items()}, indent=2))
         return 0 if r["ok"] else 1
+    if x.cmd == "g1":
+        from .baseline import run_g1
+        m = run_g1(json.loads(Path(x.sites).read_text()), x.split, x.prepared_root, x.labels_root, x.out, x.seed,
+                   log=lambda t: print(t, file=sys.stderr, flush=True))
+        for name, r in m["models"].items():
+            a = r["test"]["strata"]["all"]
+            print(f"{name}: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
+                  f"footprint recall {a['footprint_recall_any']:.3f}, false candidates/1000 km2 "
+                  f"{a['false_candidates_per_1000km2']:.1f}")
+        return 0
     if x.cmd == "demo":
         from .preprocess import prepare_scene
         from .synthetic import make_scene

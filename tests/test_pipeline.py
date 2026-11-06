@@ -463,3 +463,76 @@ def test_qgis_opens_project(tmp_path):
     r = subprocess.run([exe, str(script), str(tmp_path / "pkg" / "project.qgs")], capture_output=True, text=True,
                        env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_g1_features_and_index_score():
+    from minefoot.baseline import FEATURES, features, index_score
+    refl = np.full((10, 2, 2), 0.1, "float32")
+    refl[BANDS.index("B08")] = 0.4; refl[BANDS.index("B04")] = 0.1
+    f = features(refl)
+    assert f.shape == (len(FEATURES), 2, 2)
+    assert f[FEATURES.index("NDVI")][0, 0] == pytest.approx(0.6)
+    assert index_score(f, "NDVI", -1)[0, 0] == pytest.approx(0.2)   # high NDVI: low disturbance score
+
+
+def test_g1_threshold_and_counts():
+    from minefoot.baseline import best_threshold, counts_at, histograms, prf
+    lv = np.array([[10, 200], [220, 30]], "uint8")
+    valid = np.ones((2, 2), bool); label = np.array([[0, 1], [1, 0]], bool)
+    h = histograms(lv, valid, label)
+    t, f1 = best_threshold([h])
+    assert 31 <= t <= 200 and f1 == 1.0
+    c = counts_at(h, t); assert c == {"tp": 2, "fp": 0, "fn": 0, "tn": 2}
+    assert prf(c)["iou"] == 1.0
+
+
+def test_g1_object_metrics():
+    from minefoot.baseline import object_metrics
+    label = np.zeros((60, 60), bool); label[5:20, 5:20] = True; label[40:55, 40:55] = True   # two 225-px footprints
+    pred = np.zeros_like(label); pred[5:8, 5:8] = True                                       # touches the first only
+    pred[30:45, 5:20] = True                                                                 # 225-px false candidate
+    valid = np.ones_like(label)
+    m = object_metrics(pred, valid, label, mmu=100)
+    assert m["label_footprints"] == 2 and m["found_any_overlap"] == 1 and m["covered_25pct"] == 0
+    assert m["false_candidates"] == 1
+    valid[40:55, 40:55] = False                       # the missed footprint was never seen
+    assert object_metrics(pred, valid, label, mmu=100)["label_footprints"] == 1
+
+
+def test_g1_summary_has_site_bootstrap_interval():
+    from minefoot.baseline import summarise
+    rows = [{"tp": 50 + i, "fp": 10, "fn": 20, "tn": 1000, "label_footprints": 2, "found_any_overlap": 1,
+             "covered_25pct": 1, "false_candidates": 1, "valid_km2": 10.0, "label_pixels": 70,
+             "label_pixels_masked": 5} for i in range(8)]
+    s = summarise(rows, n_boot=200)
+    lo, hi = s["ci95"]["f1"]
+    assert lo <= s["f1"] <= hi and s["sites"] == 8
+    assert s["false_candidates_per_1000km2"] == pytest.approx(100.0)
+    assert s["label_pixels_masked_share"] == pytest.approx(5 / 70)
+
+
+def test_g1_end_to_end_on_synthetic_sites(tmp_path):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.baseline import run_g1
+    ids = {"train": ["s-tr1", "s-tr2"], "val": ["s-va"], "test": ["s-te"]}
+    rows = []
+    for i, (k, sids) in enumerate(ids.items()):
+        for j, sid in enumerate(sids):
+            raw = make_scene(tmp_path / "raw", size=96, seed=10 + 3 * i + j, scene_id=sid)
+            prepare_scene(raw, tmp_path / "prep" / sid)
+            (tmp_path / "labels" / sid).mkdir(parents=True)
+            (tmp_path / "labels" / sid / "labels.geojson").write_text((raw / "truth.geojson").read_text())
+            rows.append({"site_id": sid, "split": k, "mine_scale": "Artisanal", "mine_type": "Surface",
+                         "dataset": "synthetic", "geometry": box(10 * len(rows), 0, 10 * len(rows) + 1, 1)})
+    gpd.GeoDataFrame(rows, crs=4326).to_file(tmp_path / "split.gpkg", layer="sites", driver="GPKG")
+    m = run_g1(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run", log=lambda *_: None)
+    assert set(m["models"]) == {m["best_index"], "random_forest"}
+    t = m["models"]["random_forest"]["test"]["strata"]["all"]
+    assert 0 <= t["f1"] <= 1 and t["sites"] == 1
+    cfg = json.loads((tmp_path / "run" / "config.json").read_text())
+    assert cfg["sites"] == {k: sorted(v) for k, v in ids.items()} and cfg["split_file_sha256"]
+    assert (tmp_path / "run" / "error_maps" / "s-te__random_forest.tif").exists()
+    bad = {**ids, "test": ["s-va"]}                       # a validation site listed as test is refused
+    with pytest.raises(ValueError):
+        run_g1(bad, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run2", log=lambda *_: None)
