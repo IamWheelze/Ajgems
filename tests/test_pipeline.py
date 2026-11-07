@@ -533,6 +533,9 @@ def test_g1_end_to_end_on_synthetic_sites(tmp_path):
     cfg = json.loads((tmp_path / "run" / "config.json").read_text())
     assert cfg["sites"] == {k: sorted(v) for k, v in ids.items()} and cfg["split_file_sha256"]
     assert (tmp_path / "run" / "error_maps" / "s-te__random_forest.tif").exists()
+    from minefoot.viewer import error_gallery
+    g = error_gallery(tmp_path / "run", "random_forest", tmp_path / "prep", tmp_path / "eg.html").read_text()
+    assert "s-te" in g and "false alarm" in g and "data:image/jpeg" in g
     bad = {**ids, "test": ["s-va"]}                       # a validation site listed as test is refused
     with pytest.raises(ValueError):
         run_g1(bad, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run2", log=lambda *_: None)

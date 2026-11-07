@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -74,6 +74,10 @@ def main(argv=None):
     a.add_argument("out")
     a = sub.add_parser("negatives-check", help="counts per type and problems in a digitised hard-negative layer")
     a.add_argument("path")
+    a = sub.add_parser("error-gallery", help="HTML gallery of a run's error maps, worst sites first (FR-129)")
+    a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--prepared-root", required=True)
+    a.add_argument("--split", default="test", choices=["test"]); a.add_argument("--limit", type=int, default=20)
+    a.add_argument("--out", required=True)
     a = sub.add_parser("compare", help="paired site bootstrap of model B minus model A on the same sites")
     a.add_argument("--a", required=True, help="metrics.json:model"); a.add_argument("--b", required=True, help="metrics.json:model")
     a.add_argument("--split", default="val", choices=["val", "test"]); a.add_argument("--n-boot", type=int, default=2000)
@@ -236,6 +240,9 @@ def main(argv=None):
     if x.cmd == "negatives-check":
         from .negatives import check_negatives
         r = check_negatives(x.path); print(json.dumps(r, indent=2)); return 1 if r["problems"] else 0
+    if x.cmd == "error-gallery":
+        from .viewer import error_gallery
+        print(error_gallery(x.run, x.model, x.prepared_root, x.out, x.split, x.limit)); return 0
     if x.cmd == "compare":
         from .baseline import paired_compare
         def rows(spec):

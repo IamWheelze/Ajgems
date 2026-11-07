@@ -286,3 +286,73 @@ def build_gallery(prepared_dirs, out_dir, labels: dict | None = None, title="Sce
     from .qgis_project import write_project
     write_project(out, project_scenes, title)
     return out / "gallery.html"
+
+
+ERROR_COLOURS = {1: (0, 200, 90), 2: (255, 140, 0), 3: (220, 0, 120), 4: (90, 90, 90)}
+
+
+def jpg_uri(img, longest=560, quality=82):
+    """JPEG data URI: much smaller than PNG for imagery views; not for masks or exact colours."""
+    im = Image.fromarray(img)
+    if max(im.size) > longest:
+        f = longest / max(im.size)
+        im = im.resize((round(im.width * f), round(im.height * f)), Image.BILINEAR)
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=quality, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()
+
+
+def error_gallery(run_dir, model, prepared_root, out_path, split="test", limit=20, longest=560) -> Path:
+    """Evaluation error gallery ranked by worst pixel F1 (FR-129). Self-contained HTML.
+
+    Uses the run's stored error maps (written for test sites) and the prepared
+    reflectance for the true-colour view.
+    """
+    run_dir, out_path = Path(run_dir), Path(out_path)
+    m = json.loads((run_dir / "metrics.json").read_text())["models"][model]
+    rows = m[split]["per_site"]
+    def f1(r):
+        d = 2 * r["tp"] + r["fp"] + r["fn"]
+        return 2 * r["tp"] / d if d else float("nan")
+    rows = sorted(rows, key=lambda r: (f1(r) if f1(r) == f1(r) else -1))
+    cards = []
+    for r in rows[:limit]:
+        sid = r["site_id"]
+        emap = run_dir / "error_maps" / f"{sid}__{model}.tif"
+        if not emap.exists():
+            continue
+        with rasterio.open(Path(prepared_root) / sid / "reflectance.tif") as s:
+            arr = s.read()
+        tc = rgb(arr, list(BANDS), *STRETCH["true_colour"])
+        with rasterio.open(emap) as s:
+            e = s.read(1)
+        ov = tc.copy()
+        for k, c in ERROR_COLOURS.items():
+            sel = e == k
+            ov[sel] = (0.45 * ov[sel] + 0.55 * np.array(c)).astype("uint8")
+        p = r["tp"] / (r["tp"] + r["fp"]) if r["tp"] + r["fp"] else float("nan")
+        rc = r["tp"] / (r["tp"] + r["fn"]) if r["tp"] + r["fn"] else float("nan")
+        cards.append(
+            f'<section class="scene"><h2>{html.escape(sid)} · F1 {f1(r):.2f}</h2>'
+            f'<p class="meta">{html.escape(str(r.get("mine_scale")))} · {html.escape(str(r.get("mine_type")))} · '
+            f'{html.escape(str(r.get("region")))} · precision {p:.2f} · recall {rc:.2f} · '
+            f'labelled footprints {r["label_footprints"]}, covered ≥25%: {r["covered_25pct"]} · '
+            f'false candidates: {r["false_candidates"]} · labelled pixels not assessed: '
+            f'{(r["label_pixels_masked"] / r["label_pixels"] if r["label_pixels"] else 0):.1%}</p>'
+            f'<div class="grid"><figure><img alt="True colour" src="{jpg_uri(tc, longest)}"><figcaption><b>True colour</b>'
+            f'B4, B3, B2, fixed stretch.</figcaption></figure><figure><img alt="Errors" src="{jpg_uri(ov, longest)}">'
+            f'<figcaption><b>Errors</b>Green hit, orange false alarm, magenta missed, grey not assessed.</figcaption>'
+            f'</figure></div></section>')
+    legend = "".join(f'<span class="key" style="background:rgb{c}"></span>{t} '
+                     for c, t in ((ERROR_COLOURS[1], "hit"), (ERROR_COLOURS[2], "false alarm"),
+                                  (ERROR_COLOURS[3], "missed"), (ERROR_COLOURS[4], "not assessed")))
+    title = f"Error gallery: {model}, {split}"
+    page = (f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+            f'<title>{html.escape(title)}</title><style>{CSS}.key{{display:inline-block;width:12px;height:12px;border-radius:2px;'
+            f'margin:0 4px 0 10px;vertical-align:-1px}}</style></head><body><main><h1>{html.escape(title)}</h1>'
+            f'<p class="sub">Run {html.escape(run_dir.name)}. Internal research on Global ML-ready labels, which are not '
+            f'Nigerian and miss some mining. Model score threshold {m["threshold_score"]:.2f}, chosen on validation. '
+            f'Worst {len(cards)} of {len(rows)} sites by pixel F1.<br>{legend}</p>' + "".join(cards) + "</main></body></html>")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(page)
+    return out_path
