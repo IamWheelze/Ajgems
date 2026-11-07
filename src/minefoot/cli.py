@@ -66,6 +66,8 @@ def main(argv=None):
     a.add_argument("--hard-negatives-per-type", type=int, default=0,
                    help="add this many WorldCover-typed negative pixels per type per training site (needs --worldcover-root)")
     a.add_argument("--hard-negative-buffer-px", type=int, default=50)
+    a.add_argument("--hard-negative-types", default="farmland,settlement,riverbank,bare_ground",
+                   help="comma-separated proxy types to add")
     a = sub.add_parser("false-alerts", help="per-type false-alert rates for a stored run (ML-08, WorldCover proxy types)")
     a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--split", default="val", choices=["val", "test"])
     a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
@@ -210,10 +212,13 @@ def main(argv=None):
         return 0 if r["ok"] else 1
     if x.cmd == "g1":
         from .baseline import run_g1
+        from .negatives import PROXY_TYPES
         if x.hard_negatives_per_type and not x.worldcover_root:
             print("--hard-negatives-per-type needs --worldcover-root", file=sys.stderr); return 2
         hn = ({"worldcover_root": x.worldcover_root, "per_type": x.hard_negatives_per_type,
-               "buffer_px": x.hard_negative_buffer_px} if x.hard_negatives_per_type else None)
+               "buffer_px": x.hard_negative_buffer_px,
+               "types": [code for code, name in PROXY_TYPES.items() if name in x.hard_negative_types.split(",")]}
+              if x.hard_negatives_per_type else None)
         m = run_g1(json.loads(Path(x.sites).read_text()), x.split, x.prepared_root, x.labels_root, x.out, x.seed,
                    log=lambda t: print(t, file=sys.stderr, flush=True), hard_negatives=hn,
                    worldcover_root=x.worldcover_root)

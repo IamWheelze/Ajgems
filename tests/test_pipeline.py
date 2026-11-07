@@ -613,3 +613,6 @@ def test_training_sample_adds_typed_negatives(tmp_path):
     assert n[("s1", "farmland")] == 50 and n[("s1", "settlement")] == 50 and n[("s1", "riverbank")] == 0
     assert len(y1) == len(y0) + 100 and y1.sum() == y0.sum()
     assert np.array_equal(X1[:len(X0)], X0)            # same base sample, negatives added on top
+    _, y2, n2 = sample_training_pixels(site, per_class=200, hard_negatives={"worldcover_root": tmp_path / "wc",
+                                       "per_type": 50, "buffer_px": 2, "types": [1]})
+    assert n2[("s1", "farmland")] == 50 and ("s1", "settlement") not in n2 and len(y2) == len(y0) + 50

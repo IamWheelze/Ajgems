@@ -76,8 +76,9 @@ def index_score(feats: np.ndarray, name: str, sign: int) -> np.ndarray:
 def sample_training_pixels(sites, seed=0, per_class=PER_SITE_SAMPLE, hard_negatives=None):
     """Balanced pixel sample: up to per_class mining and per_class other valid pixels per site.
 
-    With `hard_negatives` = {"worldcover_root": ..., "per_type": n, "buffer_px": b}, also adds up
-    to n pixels of each proxy negative type (negatives.PROXY_TYPES 1 to 4) per site, labelled 0.
+    With `hard_negatives` = {"worldcover_root": ..., "per_type": n, "buffer_px": b, "types": codes}, also
+    adds up to n pixels of each listed proxy negative type (negatives.PROXY_TYPES codes, default 1 to 4)
+    per site, labelled 0.
     The random negatives are drawn first, as without hard negatives, so the two samples share them.
     """
     rng = np.random.default_rng(seed)
@@ -99,7 +100,7 @@ def sample_training_pixels(sites, seed=0, per_class=PER_SITE_SAMPLE, hard_negati
             with rasterio.open(wc_path) as s:
                 types = proxy_type_map(s.read(1), label, hard_negatives.get("buffer_px", 50)).ravel()
             hrng = np.random.default_rng([seed, int(hashlib.sha256(sid.encode()).hexdigest()[:8], 16)])
-            for code in (1, 2, 3, 4):
+            for code in hard_negatives.get("types", (1, 2, 3, 4)):
                 idx = np.flatnonzero((types == code) & ok)
                 take = hrng.choice(idx, size=min(hard_negatives["per_type"], idx.size), replace=False) if idx.size else idx
                 X.append(flat[:, take].T)
