@@ -85,6 +85,7 @@ def main(argv=None):
                  ("lr", float), ("encoder", str), ("encoder-weights", str)):
         a.add_argument(f"--{k}", type=t)
     a.add_argument("--no-amp", action="store_true")
+    a.add_argument("--resume", action="store_true", help="continue an interrupted run in --out from its last epoch")
     a = sub.add_parser("false-alerts", help="per-type false-alert rates for a stored run (ML-08, WorldCover proxy types)")
     a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--split", default="val", choices=["val", "test"])
     a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
@@ -267,7 +268,7 @@ def main(argv=None):
                    log=lambda t: print(t, file=sys.stderr, flush=True), worldcover_root=x.worldcover_root,
                    device=x.device, epochs=x.epochs, batch=x.batch, chips_per_site=x.chips_per_site, chip=x.chip,
                    workers=x.workers, lr=x.lr, encoder=x.encoder, encoder_weights=x.encoder_weights,
-                   amp=False if x.no_amp else None)
+                   amp=False if x.no_amp else None, resume=x.resume)
         a = m["models"]["unet"]["test"]["strata"]["all"]
         print(f"unet: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
               f"false candidates/1000 km2 {a['false_candidates_per_1000km2']:.1f}. Compare with the G1 random forest: "

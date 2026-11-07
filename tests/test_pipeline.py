@@ -661,6 +661,23 @@ def test_g2_end_to_end_on_synthetic_sites(tmp_path):
         assert (tmp_path / "run" / f).exists(), f
     cfg = json.loads((tmp_path / "run" / "config.json").read_text())
     assert cfg["gate"] == "G2" and cfg["params"]["epochs"] == 2
+    kw = dict(log=lambda *_: None, device="cpu", chip=64, batch=4, chips_per_site=4, workers=0,
+              encoder="resnet18", encoder_weights="none")
+    with pytest.raises(FileExistsError):                  # never silently overwrite a run
+        run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run", epochs=2, **kw)
+    with pytest.raises(ValueError, match="cannot resume"):  # resuming with other settings is refused
+        run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run", epochs=3,
+               resume=True, **kw)
+    # Interrupted after epoch 1 of 2: resuming finishes the remaining epoch only.
+    r1 = run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "r1", epochs=2, **kw)
+    import torch
+    ck = torch.load(tmp_path / "r1" / "last.pt", weights_only=False)
+    ck["epoch"], ck["history"] = 1, ck["history"][:1]
+    torch.save(ck, tmp_path / "r1" / "last.pt")
+    r2 = run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "r1", epochs=2,
+                resume=True, **kw)
+    assert r2["epochs"] == 2 and len(json.loads((tmp_path / "r1" / "config.json").read_text())["resumed"]) == 1
+    assert sum(1 for _ in open(tmp_path / "r1" / "history.csv")) == 3   # header + 2 epochs
     assert "training sites" in json.loads((tmp_path / "run" / "normalisation.json").read_text())["source"]
 
 

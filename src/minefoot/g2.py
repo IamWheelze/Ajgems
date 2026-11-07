@@ -177,8 +177,12 @@ def predict_tile(model, refl, norm, device, chip=256, overlap=64, batch=8) -> np
 # ---------- run ----------
 
 def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print,
-           worldcover_root=None, device=None, **overrides) -> dict:
-    """Train, choose and score a U-Net on the same sites and evaluation as G1. Writes a lineage record."""
+           worldcover_root=None, device=None, resume=False, **overrides) -> dict:
+    """Train, choose and score a U-Net on the same sites and evaluation as G1. Writes a lineage record.
+
+    State is saved after every epoch (last.pt). With resume=True an interrupted run carries on from
+    its last finished epoch; it refuses if the parameters or site lists differ from the saved run.
+    """
     import torch
     cfg = {**G2_DEFAULTS, **{k: v for k, v in overrides.items() if v is not None}}
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
@@ -194,6 +198,16 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     import segmentation_models_pytorch as smp
     config["environment"].update(torch=torch.__version__, smp=smp.__version__,
                                  gpu=torch.cuda.get_device_name(0) if dev.type == "cuda" else None)
+    resuming = resume and (out / "last.pt").exists()
+    if resuming:
+        old = json.loads((out / "config.json").read_text())
+        if old["params"] != json.loads(json.dumps(cfg)) or old["sites"] != config["sites"] or old["seed"] != seed:
+            raise ValueError("cannot resume: parameters, sites or seed differ from the saved run")
+        old.setdefault("resumed", []).append({"at": config["created_at"], "code_commit": config["code_commit"],
+                                              "environment": config["environment"]})
+        config = old
+    elif (out / "last.pt").exists():
+        raise FileExistsError(f"{out} already holds a run; pass resume=True (--resume) or use a new --out")
     (out / "config.json").write_text(json.dumps(config, indent=2))
 
     t0 = time.time()
@@ -201,8 +215,11 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     tr, va = paths(sites_by_split["train"]), paths(sites_by_split["val"])
     tr_labels = [cache_site(p, l, cache) for _, p, l in tr]
     va_labels = [cache_site(p, l, cache) for _, p, l in va]
-    norm = fit_normalisation(tr, seed=seed)
-    (out / "normalisation.json").write_text(json.dumps(norm, indent=2))
+    if resuming:
+        norm = json.loads((out / "normalisation.json").read_text())
+    else:
+        norm = fit_normalisation(tr, seed=seed)
+        (out / "normalisation.json").write_text(json.dumps(norm, indent=2))
     log(f"normalisation fitted on {norm['source']}")
 
     train_ds = ChipDataset([p for _, p, _ in tr], tr_labels, norm, cfg["chip"], cfg["chips_per_site"],
@@ -217,8 +234,13 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg["epochs"])
     use_amp = bool(cfg["amp"]) and dev.type == "cuda"
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
-    best, history = float("inf"), []
-    for epoch in range(cfg["epochs"]):
+    best, history, start = float("inf"), [], 0
+    if resuming:
+        ck = torch.load(out / "last.pt", map_location=dev, weights_only=False)
+        model.load_state_dict(ck["model"]); opt.load_state_dict(ck["opt"]); sched.load_state_dict(ck["sched"])
+        scaler.load_state_dict(ck["scaler"]); best, history, start = ck["best"], ck["history"], ck["epoch"]
+        log(f"resuming after epoch {start} of {cfg['epochs']}")
+    for epoch in range(start, cfg["epochs"]):
         train_ds.epoch = epoch
         model.train(); tl, tn = 0.0, 0
         g = torch.Generator(); g.manual_seed(seed * 1000 + epoch)
@@ -246,6 +268,10 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
         with open(out / "history.csv", "w", newline="") as f:
             wr = csv.DictWriter(f, fieldnames=["epoch", "train_loss", "val_chip_loss", "lr", "elapsed_s", "checkpoint"])
             wr.writeheader(); wr.writerows(history)
+        torch.save({"model": model.state_dict(), "opt": opt.state_dict(), "sched": sched.state_dict(),
+                    "scaler": scaler.state_dict(), "best": best, "history": history, "epoch": epoch + 1},
+                   out / "last.pt.tmp")
+        (out / "last.pt.tmp").replace(out / "last.pt")
 
     model.load_state_dict(torch.load(out / "unet_best.pt", map_location=dev))
     best_epoch = min(history, key=lambda r: r["val_chip_loss"])["epoch"]
