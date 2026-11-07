@@ -233,6 +233,12 @@ def paired_compare(rows_a: list[dict], rows_b: list[dict], metrics=COMPARE_METRI
         raise ValueError(f"models were scored on different sites: {sorted(set(ka) ^ set(kb))[:5]}")
     ids = sorted(ka)
     A = [ka[i] for i in ids]; B = [kb[i] for i in ids]
+    diff = [i for i in ids if "label_pixels" in ka[i] and "label_pixels" in kb[i]
+            and (ka[i]["label_pixels"], ka[i]["tp"] + ka[i]["fn"], ka[i]["fp"] + ka[i]["tn"])
+            != (kb[i]["label_pixels"], kb[i]["tp"] + kb[i]["fn"], kb[i]["fp"] + kb[i]["tn"])]
+    if diff:
+        raise ValueError(f"{len(diff)} site(s) differ in labelled or usable pixels between the two runs, "
+                         f"so they were not scored on the same data, e.g. {diff[:3]}")
     rng = np.random.default_rng(seed)
     point_a, point_b = summarise(A, n_boot=0), summarise(B, n_boot=0)
     draws = {m: [] for m in metrics}
@@ -289,15 +295,14 @@ def write_error_map(pred, valid, label, profile, path):
                              3: (220, 0, 120, 255), 4: (90, 90, 90, 255)})
 
 
-def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print,
-           hard_negatives: dict | None = None, worldcover_root=None) -> dict:
-    """Run both G1 baselines end to end and write a lineage record (FR-101, ML-09)."""
+def check_inputs(sites_by_split: dict, split_gpkg, prepared_root, labels_root):
+    """Refuse a run whose site lists disagree with the split file or whose sites are not prepared.
+
+    Returns (meta indexed by site_id, region by site_id, paths function).
+    """
     import geopandas as gpd
-    import joblib
     from .datasets import _region
     from .splits import check_split
-
-    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     split = gpd.read_file(split_gpkg, layer="sites")
     leak = check_split(split, buffer_km=0)
     if not leak["ok"]:
@@ -315,25 +320,109 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
         missing = [i for i, p, l in paths(ids) if not (p / "prepared.json").exists() or not l.exists()]
         if missing:
             raise FileNotFoundError(f"{len(missing)} {k} site(s) not prepared, e.g. {missing[:3]}")
+    return meta, region, paths
 
-    config = {"gate": "G1", "purpose": "internal research baseline; not for release",
-              "created_at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(),
-              "dataset": {"name": "global_ml_ready", "version": "1.0.0", "licence": "CC BY-SA 4.0",
-                          "label_layer": "preferred_polygons"},
-              "split_file": str(split_gpkg), "split_file_sha256": _sha256(split_gpkg),
-              "sites": {k: sorted(v) for k, v in sites_by_split.items()},
-              "input_schema": SCHEMA_VERSION, "preprocessing_version": PREPROCESSING_VERSION,
-              "features": list(FEATURES), "normalisation": "none (threshold and tree models are scale-invariant)",
-              "index_candidates": [list(x) for x in INDEX_CANDIDATES], "rf_params": RF_PARAMS,
-              "per_site_sample_per_class": PER_SITE_SAMPLE, "seed": seed, "mmu_pixels": MMU_PIXELS,
-              "threshold_rule": "pooled pixel F1 on validation sites",
-              "hard_negatives": ({**{k: str(v) for k, v in hard_negatives.items()},
-                                  "source": "ESA WorldCover v200 (2021) proxy, CC BY 4.0"} if hard_negatives else None),
-              "environment": {
-                  "python": sys.version.split()[0], "platform": platform.platform()}}
+
+def base_config(gate, sites_by_split, split_gpkg, seed) -> dict:
+    return {"gate": gate, "purpose": "internal research; not for release",
+            "created_at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(),
+            "dataset": {"name": "global_ml_ready", "version": "1.0.0", "licence": "CC BY-SA 4.0",
+                        "label_layer": "preferred_polygons"},
+            "split_file": str(split_gpkg), "split_file_sha256": _sha256(split_gpkg),
+            "sites": {k: sorted(v) for k, v in sites_by_split.items()},
+            "input_schema": SCHEMA_VERSION, "preprocessing_version": PREPROCESSING_VERSION, "seed": seed,
+            "mmu_pixels": MMU_PIXELS, "threshold_rule": "pooled pixel F1 on validation sites",
+            "environment": {"python": sys.version.split()[0], "platform": platform.platform(),
+                            "numpy": np.__version__}}
+
+
+def score_held_out(out, scorers: dict, sites_by_split, prepared_root, labels_root, log=print, t0=None) -> dict:
+    """Score every validation and test site with each scorer(feats, valid) -> score in [0, 1].
+
+    Writes uint8 score maps to out/scores and returns the state evaluate_scores needs.
+    """
+    t0 = t0 or time.time()
+    hists = {m: {} for m in scorers}
+    masks, profiles, masked = {}, {}, {}
+    maps_dir = Path(out) / "scores"; maps_dir.mkdir(parents=True, exist_ok=True)
+    held = [("val", i) for i in sites_by_split["val"]] + [("test", i) for i in sites_by_split["test"]]
+    for n, (k, sid) in enumerate(held, 1):
+        feats, valid, label, profile = load_site(Path(prepared_root) / sid, Path(labels_root) / sid / "labels.geojson")
+        for m, fn in scorers.items():
+            lv = to_levels(np.where(valid, fn(feats, valid), 0))
+            hists[m][sid] = histograms(lv, valid, label)
+            write_score_map(lv, profile, maps_dir / f"{sid}__{m}.tif")
+        masks[sid] = (np.packbits(valid), np.packbits(label), valid.shape)
+        profiles[sid] = profile
+        masked[sid] = (int(label.sum()), int((label & ~valid).sum()))
+        log(f"scored {n}/{len(held)} {k} {sid} ({time.time() - t0:.0f}s)")
+    return {"hists": hists, "masks": masks, "profiles": profiles, "masked": masked}
+
+
+def choose_thresholds(state, sites_by_split) -> dict:
+    """Threshold per model, chosen on validation only."""
+    return {m: best_threshold([h[i] for i in sites_by_split["val"]]) for m, h in state["hists"].items()}
+
+
+def evaluate_scores(out, report_models, chosen, state, sites_by_split, meta, region, seed=0) -> dict:
+    """Metrics on validation and test at the validation-chosen thresholds; error maps for test."""
+    import rasterio
+    out = Path(out)
+    err_dir = out / "error_maps"; err_dir.mkdir(exist_ok=True)
+    results = {}
+    for m in report_models:
+        t = chosen[m][0]
+        per_split = {}
+        for k in ("val", "test"):
+            rows = []
+            for sid in sites_by_split[k]:
+                pv, pl, shape = state["masks"][sid]
+                n_px = shape[0] * shape[1]
+                valid = np.unpackbits(pv)[:n_px].reshape(shape).astype(bool)
+                label = np.unpackbits(pl)[:n_px].reshape(shape).astype(bool)
+                with rasterio.open(out / "scores" / f"{sid}__{m}.tif") as src:
+                    pred = (src.read(1) >= t) & valid
+                obj = object_metrics(pred, valid, label)
+                lp, lm = state["masked"][sid]
+                rows.append({"site_id": sid, **counts_at(state["hists"][m][sid], t), **obj, "label_pixels": lp,
+                             "label_pixels_masked": lm, "mine_scale": meta.loc[sid, "mine_scale"],
+                             "mine_type": meta.loc[sid, "mine_type"], "region": region[sid]})
+                if k == "test":
+                    write_error_map(pred, valid, label, state["profiles"][sid], err_dir / f"{sid}__{m}.tif")
+            strata = {"all": summarise(rows, seed=seed)}
+            for col in ("mine_scale", "region", "mine_type"):
+                for v in sorted({r[col] for r in rows}):
+                    strata[f"{col}={v}"] = summarise([r for r in rows if r[col] == v], seed=seed)
+            per_split[k] = {"strata": strata, "per_site": rows}
+        results[m] = {"threshold_level": t, "threshold_score": t / (SCORE_LEVELS - 1),
+                      "validation_f1_at_choice": chosen[m][1], **per_split}
+    return results
+
+
+def add_type_breakdown(out, metrics, results, prepared_root, labels_root, worldcover_root):
+    """ML-08: per-type false-alert rates (WorldCover proxy types) for every reported model."""
+    from .negatives import evaluate_run_by_type
+    by_type = {f"{m}/{k}": evaluate_run_by_type(out, m, k, prepared_root, labels_root, worldcover_root)
+               for m in results for k in ("val", "test")}
+    (Path(out) / "false_alerts_by_type.json").write_text(json.dumps(by_type, indent=2))
+    metrics["false_alerts_by_type"] = {k: v["by_type"] for k, v in by_type.items()}
+
+
+def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print,
+           hard_negatives: dict | None = None, worldcover_root=None) -> dict:
+    """Run both G1 baselines end to end and write a lineage record (FR-101, ML-09)."""
+    import joblib
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    meta, region, paths = check_inputs(sites_by_split, split_gpkg, prepared_root, labels_root)
+    config = base_config("G1", sites_by_split, split_gpkg, seed)
+    config.update({"features": list(FEATURES), "normalisation": "none (threshold and tree models are scale-invariant)",
+                   "index_candidates": [list(x) for x in INDEX_CANDIDATES], "rf_params": RF_PARAMS,
+                   "per_site_sample_per_class": PER_SITE_SAMPLE,
+                   "hard_negatives": ({**{k: str(v) for k, v in hard_negatives.items()},
+                                       "source": "ESA WorldCover v200 (2021) proxy, CC BY 4.0"} if hard_negatives else None)})
     try:
         import sklearn, rasterio as rio
-        config["environment"].update(sklearn=sklearn.__version__, numpy=np.__version__, rasterio=rio.__version__)
+        config["environment"].update(sklearn=sklearn.__version__, rasterio=rio.__version__)
     except Exception:
         pass
     (out / "config.json").write_text(json.dumps(config, indent=2))
@@ -350,69 +439,20 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     joblib.dump(rf, out / "rf.joblib", compress=3)
     importance = dict(sorted(zip(FEATURES, map(float, rf.feature_importances_)), key=lambda t: -t[1]))
 
-    models = {f"index_{n}{'_neg' if s < 0 else ''}": ("index", n, s) for n, s in INDEX_CANDIDATES}
-    models["random_forest"] = ("rf", None, None)
-    hists = {m: {} for m in models}
-    masks, profiles, masked = {}, {}, {}
-    maps_dir = out / "scores"; maps_dir.mkdir(exist_ok=True)
-    held = [("val", i) for i in sites_by_split["val"]] + [("test", i) for i in sites_by_split["test"]]
-    for n, (k, sid) in enumerate(held, 1):
-        feats, valid, label, profile = load_site(Path(prepared_root) / sid, Path(labels_root) / sid / "labels.geojson")
-        for m, (kind, name, sign) in models.items():
-            score = index_score(feats, name, sign) if kind == "index" else rf_score(rf, feats, valid)
-            lv = to_levels(np.where(valid, score, 0))
-            hists[m][sid] = histograms(lv, valid, label)
-            write_score_map(lv, profile, maps_dir / f"{sid}__{m}.tif")
-        masks[sid] = (np.packbits(valid), np.packbits(label), valid.shape)
-        profiles[sid] = profile
-        masked[sid] = (int(label.sum()), int((label & ~valid).sum()))
-        log(f"scored {n}/{len(held)} {k} {sid} ({time.time() - t0:.0f}s)")
+    scorers = {f"index_{n}{'_neg' if s < 0 else ''}": (lambda f, v, n=n, s=s: index_score(f, n, s))
+               for n, s in INDEX_CANDIDATES}
+    scorers["random_forest"] = lambda f, v: rf_score(rf, f, v)
+    state = score_held_out(out, scorers, sites_by_split, prepared_root, labels_root, log, t0)
 
-    # Choose on validation only; test is scored at the chosen settings.
-    val_ids = sites_by_split["val"]
-    chosen = {m: best_threshold([hists[m][i] for i in val_ids]) for m in models}
-    idx_models = [m for m in models if m.startswith("index_")]
-    best_index = max(idx_models, key=lambda m: chosen[m][1])
-    log("validation F1: " + ", ".join(f"{m} {chosen[m][1]:.3f} at level {chosen[m][0]}" for m in models))
-
-    import rasterio
-    err_dir = out / "error_maps"; err_dir.mkdir(exist_ok=True)
-    results = {}
-    for m in (best_index, "random_forest"):
-        t = chosen[m][0]
-        per_split = {}
-        for k in ("val", "test"):
-            rows = []
-            for sid in sites_by_split[k]:
-                pv, pl, shape = masks[sid]
-                n_px = shape[0] * shape[1]
-                valid = np.unpackbits(pv)[:n_px].reshape(shape).astype(bool)
-                label = np.unpackbits(pl)[:n_px].reshape(shape).astype(bool)
-                with rasterio.open(maps_dir / f"{sid}__{m}.tif") as src:
-                    pred = (src.read(1) >= t) & valid
-                obj = object_metrics(pred, valid, label)
-                lp, lm = masked[sid]
-                rows.append({"site_id": sid, **counts_at(hists[m][sid], t), **obj, "label_pixels": lp,
-                             "label_pixels_masked": lm, "mine_scale": meta.loc[sid, "mine_scale"],
-                             "mine_type": meta.loc[sid, "mine_type"], "region": region[sid]})
-                if k == "test":
-                    write_error_map(pred, valid, label, profiles[sid], err_dir / f"{sid}__{m}.tif")
-            strata = {"all": summarise(rows, seed=seed)}
-            for col in ("mine_scale", "region", "mine_type"):
-                for v in sorted({r[col] for r in rows}):
-                    strata[f"{col}={v}"] = summarise([r for r in rows if r[col] == v], seed=seed)
-            per_split[k] = {"strata": strata, "per_site": rows}
-        results[m] = {"threshold_level": t, "threshold_score": t / (SCORE_LEVELS - 1),
-                      "validation_f1_at_choice": chosen[m][1], **per_split}
-    metrics = {"models": results, "validation_choice": {m: {"level": chosen[m][0], "f1": chosen[m][1]} for m in models},
+    chosen = choose_thresholds(state, sites_by_split)
+    best_index = max((m for m in scorers if m.startswith("index_")), key=lambda m: chosen[m][1])
+    log("validation F1: " + ", ".join(f"{m} {chosen[m][1]:.3f} at level {chosen[m][0]}" for m in scorers))
+    results = evaluate_scores(out, (best_index, "random_forest"), chosen, state, sites_by_split, meta, region, seed)
+    metrics = {"models": results, "validation_choice": {m: {"level": chosen[m][0], "f1": chosen[m][1]} for m in scorers},
                "best_index": best_index, "rf_feature_importance": importance,
                "training_pixels": int(len(y)), "training_mining_pixels": int(y.sum()),
                "training_hard_negative_pixels": hn_counts, "runtime_s": round(time.time() - t0, 1)}
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2, default=float))
-    if worldcover_root:  # ML-08: per-type false-alert rates (proxy types)
-        from .negatives import evaluate_run_by_type
-        by_type = {f"{m}/{k}": evaluate_run_by_type(out, m, k, prepared_root, labels_root, worldcover_root)
-                   for m in results for k in ("val", "test")}
-        (out / "false_alerts_by_type.json").write_text(json.dumps(by_type, indent=2))
-        metrics["false_alerts_by_type"] = {k: v["by_type"] for k, v in by_type.items()}
+    if worldcover_root:
+        add_type_breakdown(out, metrics, results, prepared_root, labels_root, worldcover_root)
     return metrics

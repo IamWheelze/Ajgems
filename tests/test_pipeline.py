@@ -542,7 +542,7 @@ def test_g1_end_to_end_on_synthetic_sites(tmp_path):
 
 
 def _rows(tp_list, fp=10):
-    return [{"site_id": f"s{i}", "tp": tp, "fp": fp, "fn": 30, "tn": 1000, "label_footprints": 2,
+    return [{"site_id": f"s{i}", "tp": tp, "fp": fp, "fn": 100 - tp, "tn": 1000 - fp, "label_footprints": 2,
              "found_any_overlap": 1, "covered_25pct": 1, "false_candidates": 1, "valid_km2": 10.0,
              "label_pixels": 60, "label_pixels_masked": 0} for i, tp in enumerate(tp_list)]
 
@@ -616,3 +616,60 @@ def test_training_sample_adds_typed_negatives(tmp_path):
     _, y2, n2 = sample_training_pixels(site, per_class=200, hard_negatives={"worldcover_root": tmp_path / "wc",
                                        "per_type": 50, "buffer_px": 2, "types": [1]})
     assert n2[("s1", "farmland")] == 50 and ("s1", "settlement") not in n2 and len(y2) == len(y0) + 50
+
+
+def test_paired_compare_refuses_different_data():
+    from minefoot.baseline import paired_compare
+    a = _rows([30, 40, 50]); b = _rows([30, 40, 50]); b[1]["label_pixels"] = 61
+    with pytest.raises(ValueError, match="not scored on the same data"):
+        paired_compare(a, b, n_boot=10)
+
+
+def test_g2_predict_tile_blends_and_respects_mask():
+    torch = pytest.importorskip("torch"); pytest.importorskip("segmentation_models_pytorch")
+    from minefoot.g2 import build_model, predict_tile
+    refl = np.random.default_rng(0).random((10, 100, 90)).astype("float32") * 0.3
+    refl[:, :5, :] = np.nan
+    norm = {"mean": [0.15] * 10, "std": [0.1] * 10}
+    m = build_model("resnet18", "none")
+    s = predict_tile(m, refl, norm, torch.device("cpu"), chip=64, overlap=16, batch=4)
+    assert s.shape == (100, 90) and (s[:5] == 0).all() and ((s >= 0) & (s <= 1)).all()
+
+
+def test_g2_end_to_end_on_synthetic_sites(tmp_path):
+    pytest.importorskip("torch"); pytest.importorskip("segmentation_models_pytorch")
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.g2 import run_g2
+    ids = {"train": ["s-tr1", "s-tr2"], "val": ["s-va"], "test": ["s-te"]}
+    rows = []
+    for i, (k, sids) in enumerate(ids.items()):
+        for j, sid in enumerate(sids):
+            raw = make_scene(tmp_path / "raw", size=128, seed=10 + 3 * i + j, scene_id=sid)
+            prepare_scene(raw, tmp_path / "prep" / sid)
+            (tmp_path / "labels" / sid).mkdir(parents=True)
+            (tmp_path / "labels" / sid / "labels.geojson").write_text((raw / "truth.geojson").read_text())
+            rows.append({"site_id": sid, "split": k, "mine_scale": "Artisanal", "mine_type": "Surface",
+                         "dataset": "synthetic", "geometry": box(10 * len(rows), 0, 10 * len(rows) + 1, 1)})
+    gpd.GeoDataFrame(rows, crs=4326).to_file(tmp_path / "split.gpkg", layer="sites", driver="GPKG")
+    m = run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run",
+               log=lambda *_: None, device="cpu", epochs=2, chip=64, batch=4, chips_per_site=4, workers=0,
+               encoder="resnet18", encoder_weights="none")
+    t = m["models"]["unet"]["test"]["strata"]["all"]
+    assert 0 <= t["f1"] <= 1 and t["sites"] == 1
+    for f in ("config.json", "normalisation.json", "history.csv", "unet_best.pt", "metrics.json"):
+        assert (tmp_path / "run" / f).exists(), f
+    cfg = json.loads((tmp_path / "run" / "config.json").read_text())
+    assert cfg["gate"] == "G2" and cfg["params"]["epochs"] == 2
+    assert "training sites" in json.loads((tmp_path / "run" / "normalisation.json").read_text())["source"]
+
+
+def test_compare_to_expected_split(tmp_path):
+    import pandas as pd
+    from minefoot.splits import compare_to_expected
+    pd.DataFrame({"site_id": ["a", "b", "c"], "split": ["train", "val", "test"]}).to_csv(tmp_path / "e.csv", index=False)
+    same = pd.DataFrame({"site_id": ["a", "b", "c"], "split": ["train", "val", "test"]})
+    assert compare_to_expected(same, tmp_path / "e.csv") == []
+    moved = pd.DataFrame({"site_id": ["a", "b", "d"], "split": ["train", "test", "val"]})
+    d = compare_to_expected(moved, tmp_path / "e.csv")
+    assert "missing site c" in d and "extra site d" in d and "b: test here, val expected" in d

@@ -314,3 +314,14 @@ def read_sites(paths):
     s = gpd.GeoDataFrame(pd.concat(sites, ignore_index=True), crs=4326)
     lab = gpd.GeoDataFrame(pd.concat(labels, ignore_index=True), crs=4326) if labels else None
     return s, lab
+
+
+def compare_to_expected(split_sites, expected_csv) -> list[str]:
+    """Differences between a split and a committed assignment CSV (site_id, split). Empty when identical."""
+    import pandas as pd
+    exp = pd.read_csv(expected_csv)
+    want = dict(zip(exp["site_id"], exp["split"])); got = dict(zip(split_sites["site_id"], split_sites["split"]))
+    out = [f"missing site {i}" for i in sorted(set(want) - set(got))]
+    out += [f"extra site {i}" for i in sorted(set(got) - set(want))]
+    out += [f"{i}: {got[i]} here, {want[i]} expected" for i in sorted(set(want) & set(got)) if got[i] != want[i]]
+    return out

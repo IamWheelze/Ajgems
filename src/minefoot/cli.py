@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -52,6 +52,14 @@ def main(argv=None):
     a.add_argument("--fractions", default="0.7,0.15,0.15"); a.add_argument("--seed", type=int, default=0)
     a.add_argument("--lock", help="existing test lock to respect")
     a.add_argument("--stratify", default="mine_scale", help="column to balance across splits; 'none' to switch off")
+    a.add_argument("--expect", help="committed split CSV this split must reproduce exactly")
+    a = sub.add_parser("download-global-ml-ready", help="download and checksum the Global ML-ready zip from Zenodo")
+    a.add_argument("--out", default="data/external/global_ml_ready")
+    a = sub.add_parser("get-sites", help="fetch and prepare every site in a {split: [site_id]} JSON, resuming")
+    a.add_argument("sites_json"); a.add_argument("--sites-gpkg", default="data/datasets/global_ml_ready/sites.gpkg")
+    a.add_argument("--raw-root", default="data/raw/global_ml_ready")
+    a.add_argument("--prepared-root", default="data/prepared/global_ml_ready")
+    a.add_argument("--keep-raw", action="store_true")
     a = sub.add_parser("lock-test", help="freeze the test sites of a split; never overwrites")
     a.add_argument("split"); a.add_argument("--out", required=True); a.add_argument("--note", default="")
     a = sub.add_parser("check-split", help="leakage test for a split file (ML-03)")
@@ -68,6 +76,15 @@ def main(argv=None):
     a.add_argument("--hard-negative-buffer-px", type=int, default=50)
     a.add_argument("--hard-negative-types", default="farmland,settlement,riverbank,bare_ground",
                    help="comma-separated proxy types to add")
+    a = sub.add_parser("g2", help="gate G2: U-Net on the same sites and evaluation as G1 (needs .[g2])")
+    a.add_argument("--sites", required=True); a.add_argument("--split", required=True)
+    a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a.add_argument("--out", required=True); a.add_argument("--seed", type=int, default=0)
+    a.add_argument("--worldcover-root"); a.add_argument("--device", help="cuda, mps or cpu (default: best available)")
+    for k, t in (("epochs", int), ("batch", int), ("chips-per-site", int), ("chip", int), ("workers", int),
+                 ("lr", float), ("encoder", str), ("encoder-weights", str)):
+        a.add_argument(f"--{k}", type=t)
+    a.add_argument("--no-amp", action="store_true")
     a = sub.add_parser("false-alerts", help="per-type false-alert rates for a stored run (ML-08, WorldCover proxy types)")
     a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--split", default="val", choices=["val", "test"])
     a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
@@ -186,6 +203,14 @@ def main(argv=None):
         strat = None if x.stratify.lower() == "none" else x.stratify
         s, summary = assign_splits(sites, ov, fr, x.block_km, x.buffer_km, x.seed, lock, strat)
         summary["check"] = check_split(s, x.buffer_km, ov, lock)["ok"]
+        if x.expect:
+            from .splits import compare_to_expected
+            diffs = compare_to_expected(s, x.expect)
+            summary["matches_expected"] = not diffs
+            if diffs:
+                print(json.dumps(summary, indent=2))
+                print(f"split differs from {x.expect} in {len(diffs)} place(s), e.g. {diffs[:3]}", file=sys.stderr)
+                return 1
         out = Path(x.out); out.parent.mkdir(parents=True, exist_ok=True)
         s.to_file(out, layer="sites", driver="GPKG")
         if labels is not None:
@@ -194,6 +219,14 @@ def main(argv=None):
         out.with_name(out.stem + "_summary.json").write_text(json.dumps(summary, indent=2))
         print(json.dumps(summary, indent=2))
         return 0 if summary["check"] else 1
+    if x.cmd == "download-global-ml-ready":
+        from .datasets import download_global_ml_ready
+        print(download_global_ml_ready(x.out)); return 0
+    if x.cmd == "get-sites":
+        from .datasets import get_sites
+        r = get_sites(x.sites_json, x.sites_gpkg, x.raw_root, x.prepared_root, drop_raw=not x.keep_raw,
+                      log=lambda t: print(t, file=sys.stderr, flush=True))
+        print(json.dumps(r, indent=2)); return 1 if r["failed"] else 0
     if x.cmd == "lock-test":
         import geopandas as gpd
         from .splits import lock_test
@@ -227,6 +260,18 @@ def main(argv=None):
             print(f"{name}: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
                   f"footprint recall {a['footprint_recall_any']:.3f}, false candidates/1000 km2 "
                   f"{a['false_candidates_per_1000km2']:.1f}")
+        return 0
+    if x.cmd == "g2":
+        from .g2 import run_g2
+        m = run_g2(json.loads(Path(x.sites).read_text()), x.split, x.prepared_root, x.labels_root, x.out, x.seed,
+                   log=lambda t: print(t, file=sys.stderr, flush=True), worldcover_root=x.worldcover_root,
+                   device=x.device, epochs=x.epochs, batch=x.batch, chips_per_site=x.chips_per_site, chip=x.chip,
+                   workers=x.workers, lr=x.lr, encoder=x.encoder, encoder_weights=x.encoder_weights,
+                   amp=False if x.no_amp else None)
+        a = m["models"]["unet"]["test"]["strata"]["all"]
+        print(f"unet: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
+              f"false candidates/1000 km2 {a['false_candidates_per_1000km2']:.1f}. Compare with the G1 random forest: "
+              f"minefoot compare --a <g1>/metrics.json:random_forest --b {x.out}/metrics.json:unet --split val")
         return 0
     if x.cmd == "false-alerts":
         from .negatives import evaluate_run_by_type

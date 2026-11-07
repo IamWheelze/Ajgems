@@ -214,3 +214,51 @@ def fetch_sites(sites_gpkg, out_dir, n: int | None = None, site_ids=None, seed: 
             print(f"FAILED {sid}: {type(exc).__name__}: {exc}", flush=True)
     (out / "fetch_report.json").write_text(json.dumps(report, indent=2))
     return report
+
+
+GLOBAL_ML_READY_ZIP = {"url": "https://zenodo.org/records/14195737/files/mining_area_data.zip?download=1",
+                       "md5": "1259ad8045ae648c547ef3db1fccab3b", "member": "mining_area_data.gpkg"}
+
+
+def download_global_ml_ready(out_dir) -> Path:
+    """Download the Zenodo zip, check its MD5 against the record, and extract the GeoPackage."""
+    import hashlib
+    import urllib.request
+    import zipfile
+    out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
+    z = out / "mining_area_data.zip"
+    if not z.exists():
+        urllib.request.urlretrieve(GLOBAL_ML_READY_ZIP["url"], z)
+    md5 = hashlib.md5(z.read_bytes()).hexdigest()
+    if md5 != GLOBAL_ML_READY_ZIP["md5"]:
+        raise ValueError(f"checksum mismatch for {z}: {md5}, expected {GLOBAL_ML_READY_ZIP['md5']}")
+    gpkg = out / GLOBAL_ML_READY_ZIP["member"]
+    if not gpkg.exists():
+        with zipfile.ZipFile(z) as f:
+            f.extract(GLOBAL_ML_READY_ZIP["member"], out)
+    return gpkg
+
+
+def get_sites(sites_json, sites_gpkg, raw_root, prepared_root, drop_raw=True, log=print) -> dict:
+    """Fetch and prepare every site in a {split: [site_id]} file, resuming where it stopped.
+
+    The raw download is deleted after preparing when drop_raw is set; labels.geojson,
+    scene.json and site.json stay in the raw folder.
+    """
+    from .preprocess import prepare_scene
+    lists = json.loads(Path(sites_json).read_text())
+    ids = [i for k in ("train", "val", "test") for i in lists.get(k, [])]
+    done, failed = [], {}
+    for n, sid in enumerate(ids, 1):
+        prep = Path(prepared_root) / sid
+        if (prep / "prepared.json").exists() and (Path(raw_root) / sid / "labels.geojson").exists():
+            done.append(sid); continue
+        r = fetch_sites(sites_gpkg, raw_root, site_ids=[sid])
+        if r["failed"]:
+            failed[sid] = r["failed"][sid]; log(f"FAILED {sid}: {failed[sid]}"); continue
+        prepare_scene(Path(raw_root) / sid, prep)
+        if drop_raw:
+            (Path(raw_root) / sid / "raw_dn.tif").unlink(missing_ok=True)
+        done.append(sid)
+        log(f"{n}/{len(ids)} {sid}")
+    return {"requested": len(ids), "ready": len(done), "failed": failed}
