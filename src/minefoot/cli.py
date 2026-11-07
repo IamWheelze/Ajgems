@@ -1,4 +1,4 @@
-"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, demo."""
+"""Command line: doctor, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -62,6 +62,22 @@ def main(argv=None):
     a.add_argument("--split", required=True, help="split .gpkg the site lists must agree with")
     a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
     a.add_argument("--out", required=True); a.add_argument("--seed", type=int, default=0)
+    a.add_argument("--worldcover-root", help="cache folder for WorldCover; enables per-type false-alert rates")
+    a.add_argument("--hard-negatives-per-type", type=int, default=0,
+                   help="add this many WorldCover-typed negative pixels per type per training site (needs --worldcover-root)")
+    a.add_argument("--hard-negative-buffer-px", type=int, default=50)
+    a = sub.add_parser("false-alerts", help="per-type false-alert rates for a stored run (ML-08, WorldCover proxy types)")
+    a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--split", default="val", choices=["val", "test"])
+    a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a.add_argument("--worldcover-root", required=True); a.add_argument("--out")
+    a = sub.add_parser("negatives-template", help="empty typed hard-negative GeoPackage and QGIS form style (FR-074)")
+    a.add_argument("out")
+    a = sub.add_parser("negatives-check", help="counts per type and problems in a digitised hard-negative layer")
+    a.add_argument("path")
+    a = sub.add_parser("compare", help="paired site bootstrap of model B minus model A on the same sites")
+    a.add_argument("--a", required=True, help="metrics.json:model"); a.add_argument("--b", required=True, help="metrics.json:model")
+    a.add_argument("--split", default="val", choices=["val", "test"]); a.add_argument("--n-boot", type=int, default=2000)
+    a.add_argument("--stratum", help="column=value, e.g. mine_scale=Artisanal"); a.add_argument("--out", help=".json")
     a = sub.add_parser("demo"); a.add_argument("--out", default="data/demo")
     x = ap.parse_args(argv)
 
@@ -190,13 +206,53 @@ def main(argv=None):
         return 0 if r["ok"] else 1
     if x.cmd == "g1":
         from .baseline import run_g1
+        if x.hard_negatives_per_type and not x.worldcover_root:
+            print("--hard-negatives-per-type needs --worldcover-root", file=sys.stderr); return 2
+        hn = ({"worldcover_root": x.worldcover_root, "per_type": x.hard_negatives_per_type,
+               "buffer_px": x.hard_negative_buffer_px} if x.hard_negatives_per_type else None)
         m = run_g1(json.loads(Path(x.sites).read_text()), x.split, x.prepared_root, x.labels_root, x.out, x.seed,
-                   log=lambda t: print(t, file=sys.stderr, flush=True))
+                   log=lambda t: print(t, file=sys.stderr, flush=True), hard_negatives=hn,
+                   worldcover_root=x.worldcover_root)
         for name, r in m["models"].items():
             a = r["test"]["strata"]["all"]
             print(f"{name}: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
                   f"footprint recall {a['footprint_recall_any']:.3f}, false candidates/1000 km2 "
                   f"{a['false_candidates_per_1000km2']:.1f}")
+        return 0
+    if x.cmd == "false-alerts":
+        from .negatives import evaluate_run_by_type
+        r = evaluate_run_by_type(x.run, x.model, x.split, x.prepared_root, x.labels_root, x.worldcover_root)
+        if x.out:
+            Path(x.out).write_text(json.dumps(r, indent=2))
+        for t, v in r["by_type"].items():
+            if v["rate"] is None:
+                print(f"  {t:12s} no pixels"); continue
+            print(f"  {t:12s} false-alert rate {v['rate']:.3%} (95% CI {v['ci95'][0]:.3%} to {v['ci95'][1]:.3%}), "
+                  f"{v['pixels']:,} px on {v['sites_with_type']} sites")
+        return 0
+    if x.cmd == "negatives-template":
+        from .negatives import write_template
+        p = write_template(x.out); print(p); print(p.with_suffix(".qml")); return 0
+    if x.cmd == "negatives-check":
+        from .negatives import check_negatives
+        r = check_negatives(x.path); print(json.dumps(r, indent=2)); return 1 if r["problems"] else 0
+    if x.cmd == "compare":
+        from .baseline import paired_compare
+        def rows(spec):
+            path, model = spec.rsplit(":", 1)
+            r = json.loads(Path(path).read_text())["models"][model][x.split]["per_site"]
+            if x.stratum:
+                col, val = x.stratum.split("=", 1)
+                r = [row for row in r if str(row.get(col)) == val]
+            return r
+        res = paired_compare(rows(x.a), rows(x.b), n_boot=x.n_boot)
+        res.update(a=x.a, b=x.b, split=x.split, stratum=x.stratum)
+        if x.out:
+            Path(x.out).write_text(json.dumps(res, indent=2))
+        print(f"B = {x.b}\nA = {x.a}\n{x.split}, {res['sites']} sites, paired site bootstrap ({x.n_boot})")
+        for m, v in res["metrics"].items():
+            print(f"  {m:30s} A {v['a']:8.3f}  B {v['b']:8.3f}  B-A {v['b_minus_a']:+8.3f} "
+                  f"(95% CI {v['ci95'][0]:+.3f} to {v['ci95'][1]:+.3f})  {v['verdict']}")
         return 0
     if x.cmd == "demo":
         from .preprocess import prepare_scene

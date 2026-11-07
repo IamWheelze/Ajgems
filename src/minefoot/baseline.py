@@ -73,8 +73,13 @@ def index_score(feats: np.ndarray, name: str, sign: int) -> np.ndarray:
     return np.clip((sign * v + 1) / 2, 0, 1)
 
 
-def sample_training_pixels(sites, seed=0, per_class=PER_SITE_SAMPLE):
-    """Balanced pixel sample: up to per_class mining and per_class other valid pixels per site."""
+def sample_training_pixels(sites, seed=0, per_class=PER_SITE_SAMPLE, hard_negatives=None):
+    """Balanced pixel sample: up to per_class mining and per_class other valid pixels per site.
+
+    With `hard_negatives` = {"worldcover_root": ..., "per_type": n, "buffer_px": b}, also adds up
+    to n pixels of each proxy negative type (negatives.PROXY_TYPES 1 to 4) per site, labelled 0.
+    The random negatives are drawn first, as without hard negatives, so the two samples share them.
+    """
     rng = np.random.default_rng(seed)
     X, y, n_from = [], [], {}
     for sid, prep, lab in sites:
@@ -87,6 +92,19 @@ def sample_training_pixels(sites, seed=0, per_class=PER_SITE_SAMPLE):
             X.append(flat[:, take].T)
             y.append(np.full(take.size, cls, "uint8"))
             n_from[(sid, cls)] = int(take.size)
+        if hard_negatives:
+            import rasterio
+            from .negatives import PROXY_TYPES, fetch_worldcover, proxy_type_map
+            wc_path = fetch_worldcover(prep, Path(hard_negatives["worldcover_root"]) / f"{sid}.tif")
+            with rasterio.open(wc_path) as s:
+                types = proxy_type_map(s.read(1), label, hard_negatives.get("buffer_px", 50)).ravel()
+            hrng = np.random.default_rng([seed, int(hashlib.sha256(sid.encode()).hexdigest()[:8], 16)])
+            for code in (1, 2, 3, 4):
+                idx = np.flatnonzero((types == code) & ok)
+                take = hrng.choice(idx, size=min(hard_negatives["per_type"], idx.size), replace=False) if idx.size else idx
+                X.append(flat[:, take].T)
+                y.append(np.zeros(take.size, "uint8"))
+                n_from[(sid, PROXY_TYPES[code])] = int(take.size)
     return np.concatenate(X), np.concatenate(y), n_from
 
 
@@ -186,6 +204,8 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
         return m
 
     point = stats(M.sum(0))
+    if n_boot == 0:
+        return {"sites": len(rows), **{k: float(v) for k, v in point.items()}}
     rng = np.random.default_rng(seed)
     boots = [stats(M[rng.integers(0, len(M), len(M))].sum(0)) for _ in range(n_boot)]
     ci = {k: [float(np.nanpercentile([b[k] for b in boots], 2.5)), float(np.nanpercentile([b[k] for b in boots], 97.5))]
@@ -193,6 +213,42 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
     tot = dict(zip(keys, M.sum(0)))
     return {"sites": len(rows), **{k: float(v) for k, v in point.items()}, "ci95": ci,
             "totals": {k: float(v) for k, v in tot.items()}}
+
+
+# Higher is better for all of these except false candidates.
+COMPARE_METRICS = ("f1", "precision", "recall", "iou", "footprint_recall_25pct", "false_candidates_per_1000km2")
+LOWER_IS_BETTER = {"false_candidates_per_1000km2"}
+
+
+def paired_compare(rows_a: list[dict], rows_b: list[dict], metrics=COMPARE_METRICS, n_boot=2000, seed=0) -> dict:
+    """Paired site bootstrap of B minus A on the same sites (FRD 8.3 G2, FR-103).
+
+    Each resample draws the same sites for both models, so the interval is for the
+    difference itself. B "beats" A on a metric when the 95% interval of the
+    difference lies wholly on the better side of zero.
+    """
+    ka = {r["site_id"]: r for r in rows_a}; kb = {r["site_id"]: r for r in rows_b}
+    if set(ka) != set(kb):
+        raise ValueError(f"models were scored on different sites: {sorted(set(ka) ^ set(kb))[:5]}")
+    ids = sorted(ka)
+    A = [ka[i] for i in ids]; B = [kb[i] for i in ids]
+    rng = np.random.default_rng(seed)
+    point_a, point_b = summarise(A, n_boot=0), summarise(B, n_boot=0)
+    draws = {m: [] for m in metrics}
+    for _ in range(n_boot):
+        idx = rng.integers(0, len(ids), len(ids))
+        sa = summarise([A[i] for i in idx], n_boot=0); sb = summarise([B[i] for i in idx], n_boot=0)
+        for m in metrics:
+            draws[m].append(sb[m] - sa[m])
+    out = {"sites": len(ids), "n_boot": n_boot, "metrics": {}}
+    for m in metrics:
+        d = np.array(draws[m], dtype="float64")
+        lo, hi = float(np.nanpercentile(d, 2.5)), float(np.nanpercentile(d, 97.5))
+        better = (hi < 0) if m in LOWER_IS_BETTER else (lo > 0)
+        worse = (lo > 0) if m in LOWER_IS_BETTER else (hi < 0)
+        out["metrics"][m] = {"a": point_a[m], "b": point_b[m], "b_minus_a": point_b[m] - point_a[m],
+                             "ci95": [lo, hi], "verdict": "b better" if better else "b worse" if worse else "no clear difference"}
+    return out
 
 
 # ---------- run ----------
@@ -232,7 +288,8 @@ def write_error_map(pred, valid, label, profile, path):
                              3: (220, 0, 120, 255), 4: (90, 90, 90, 255)})
 
 
-def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print) -> dict:
+def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print,
+           hard_negatives: dict | None = None, worldcover_root=None) -> dict:
     """Run both G1 baselines end to end and write a lineage record (FR-101, ML-09)."""
     import geopandas as gpd
     import joblib
@@ -268,7 +325,10 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
               "features": list(FEATURES), "normalisation": "none (threshold and tree models are scale-invariant)",
               "index_candidates": [list(x) for x in INDEX_CANDIDATES], "rf_params": RF_PARAMS,
               "per_site_sample_per_class": PER_SITE_SAMPLE, "seed": seed, "mmu_pixels": MMU_PIXELS,
-              "threshold_rule": "pooled pixel F1 on validation sites", "environment": {
+              "threshold_rule": "pooled pixel F1 on validation sites",
+              "hard_negatives": ({**{k: str(v) for k, v in hard_negatives.items()},
+                                  "source": "ESA WorldCover v200 (2021) proxy, CC BY 4.0"} if hard_negatives else None),
+              "environment": {
                   "python": sys.version.split()[0], "platform": platform.platform()}}
     try:
         import sklearn, rasterio as rio
@@ -279,7 +339,11 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
 
     t0 = time.time()
     log(f"sampling training pixels from {len(sites_by_split['train'])} sites")
-    X, y, _ = sample_training_pixels(paths(sites_by_split["train"]), seed)
+    X, y, n_from = sample_training_pixels(paths(sites_by_split["train"]), seed, hard_negatives=hard_negatives)
+    hn_counts = {}
+    for (sid, kind), n in n_from.items():
+        if isinstance(kind, str):
+            hn_counts[kind] = hn_counts.get(kind, 0) + n
     log(f"training random forest on {len(y):,} pixels ({int(y.sum()):,} mining)")
     rf = fit_rf(X, y, seed)
     joblib.dump(rf, out / "rf.joblib", compress=3)
@@ -342,6 +406,12 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     metrics = {"models": results, "validation_choice": {m: {"level": chosen[m][0], "f1": chosen[m][1]} for m in models},
                "best_index": best_index, "rf_feature_importance": importance,
                "training_pixels": int(len(y)), "training_mining_pixels": int(y.sum()),
-               "runtime_s": round(time.time() - t0, 1)}
+               "training_hard_negative_pixels": hn_counts, "runtime_s": round(time.time() - t0, 1)}
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2, default=float))
+    if worldcover_root:  # ML-08: per-type false-alert rates (proxy types)
+        from .negatives import evaluate_run_by_type
+        by_type = {f"{m}/{k}": evaluate_run_by_type(out, m, k, prepared_root, labels_root, worldcover_root)
+                   for m in results for k in ("val", "test")}
+        (out / "false_alerts_by_type.json").write_text(json.dumps(by_type, indent=2))
+        metrics["false_alerts_by_type"] = {k: v["by_type"] for k, v in by_type.items()}
     return metrics

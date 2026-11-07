@@ -536,3 +536,77 @@ def test_g1_end_to_end_on_synthetic_sites(tmp_path):
     bad = {**ids, "test": ["s-va"]}                       # a validation site listed as test is refused
     with pytest.raises(ValueError):
         run_g1(bad, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run2", log=lambda *_: None)
+
+
+def _rows(tp_list, fp=10):
+    return [{"site_id": f"s{i}", "tp": tp, "fp": fp, "fn": 30, "tn": 1000, "label_footprints": 2,
+             "found_any_overlap": 1, "covered_25pct": 1, "false_candidates": 1, "valid_km2": 10.0,
+             "label_pixels": 60, "label_pixels_masked": 0} for i, tp in enumerate(tp_list)]
+
+
+def test_paired_compare_detects_consistent_gain_and_rejects_mismatch():
+    from minefoot.baseline import paired_compare
+    rng = np.random.default_rng(0)
+    base = list(rng.integers(20, 60, 20))
+    a = _rows(base); b = _rows([t + 15 for t in base])                     # B better on every site
+    r = paired_compare(a, b, n_boot=300)
+    assert r["metrics"]["f1"]["verdict"] == "b better" and r["metrics"]["f1"]["ci95"][0] > 0
+    same = paired_compare(a, _rows(base), n_boot=300)
+    assert same["metrics"]["f1"]["verdict"] == "no clear difference"
+    fewer_fc = _rows(base); [x.update(false_candidates=0) for x in fewer_fc]
+    assert paired_compare(a, fewer_fc, n_boot=300)["metrics"]["false_candidates_per_1000km2"]["verdict"] == "b better"
+    with pytest.raises(ValueError):
+        paired_compare(a, a[:-1], n_boot=10)
+
+
+def test_proxy_type_map_excludes_near_labels_and_finds_banks():
+    from minefoot.negatives import WC, proxy_type_map, false_alerts_by_type, pooled_rates
+    wc = np.full((40, 40), WC["crop"], "uint8"); wc[:, 20:] = WC["bare"]; wc[30:, :] = WC["water"]
+    label = np.zeros((40, 40), bool); label[0:3, 0:3] = True
+    t = proxy_type_map(wc, label, buffer_px=5, bank_px=2)
+    assert t[2, 2] == 0 and t[7, 2] == 0                # inside and near the label: excluded
+    assert t[15, 10] == 1 and t[15, 30] == 4            # farmland, bare ground
+    assert t[28, 10] == 3 and t[35, 10] == 0            # bank above the water; water itself excluded
+    pred = np.zeros_like(label); pred[10:20, 25:35] = True
+    r = false_alerts_by_type(pred, np.ones_like(label), t)
+    assert r["bare_ground"]["predicted"] == 100 and r["farmland"]["predicted"] == 0
+    p = pooled_rates([r, r], n_boot=50)
+    assert p["farmland"]["rate"] == 0 and p["bare_ground"]["rate"] > 0 and p["settlement"]["rate"] is None
+
+
+def test_negatives_template_and_check(tmp_path):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.negatives import check_negatives, write_template
+    p = write_template(tmp_path / "neg.gpkg")
+    assert p.with_suffix(".qml").exists() and "ValueMap" in p.with_suffix(".qml").read_text()
+    assert check_negatives(p) == {"features": 0, "by_type": {t: 0 for t in check_negatives(p)["by_type"]}, "problems": []}
+    rows = [{"neg_type": "farmland", "protocol_version": "0.1", "scene_id": "S2", "image_date": "2026-01-03",
+             "annotator": "A", "evidence_grade": "E1", "notes": "", "geometry": box(8.80, 9.70, 8.81, 9.71)},
+            {"neg_type": "tin mine", "protocol_version": "0.1", "scene_id": "S2", "image_date": "2026-01-03",
+             "annotator": "", "evidence_grade": "E9", "notes": "", "geometry": box(8.82, 9.70, 8.8201, 9.7001)}]
+    gpd.GeoDataFrame(rows, crs=4326).to_file(p, layer="hard_negatives", driver="GPKG")
+    r = check_negatives(p)
+    assert r["by_type"]["farmland"] == 1
+    joined = " ".join(r["problems"])
+    assert "tin mine" in joined and "annotator" in joined and "evidence_grade" in joined and "smaller than" in joined
+
+
+def test_training_sample_adds_typed_negatives(tmp_path):
+    import rasterio
+    from minefoot.baseline import sample_training_pixels
+    from minefoot.negatives import WC
+    raw = make_scene(tmp_path / "raw", size=128, scene_id="s1"); prepare_scene(raw, tmp_path / "prep" / "s1")
+    with rasterio.open(tmp_path / "prep" / "s1" / "scl.tif") as s:
+        prof = {**s.profile, "dtype": "uint8", "nodata": 0}
+    wc = np.full((128, 128), WC["crop"], "uint8"); wc[:, 64:] = WC["built"]
+    (tmp_path / "wc").mkdir()
+    with rasterio.open(tmp_path / "wc" / "s1.tif", "w", **prof) as d:
+        d.write(wc, 1)
+    site = [("s1", tmp_path / "prep" / "s1", raw / "truth.geojson")]
+    X0, y0, _ = sample_training_pixels(site, per_class=200)
+    X1, y1, n = sample_training_pixels(site, per_class=200,
+                                       hard_negatives={"worldcover_root": tmp_path / "wc", "per_type": 50, "buffer_px": 2})
+    assert n[("s1", "farmland")] == 50 and n[("s1", "settlement")] == 50 and n[("s1", "riverbank")] == 0
+    assert len(y1) == len(y0) + 100 and y1.sum() == y0.sum()
+    assert np.array_equal(X1[:len(X0)], X0)            # same base sample, negatives added on top
