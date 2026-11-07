@@ -53,10 +53,59 @@ All strata for both models: [`evidence/g1_v1/metrics_summary.json`](evidence/g1_
 4. **Artisanal recall is very low (0.12) while precision is high (0.59).** This matches the loose artisanal outlines seen earlier: they enclose forest between workings, so much of the "missed" area is vegetation the model correctly leaves alone. Artisanal recall here understates true detection. It needs tighter labels to measure.
 5. **Label omission inflates false candidates somewhat.** Maus v2 reports producer's accuracy of 78.9% for mines, so some orange patches near mines may be real disturbance. The fields and stream beds in the figure are not.
 
+## Paired comparison (2026-11-07)
+
+`minefoot compare` resamples the same sites for both models, so its interval is for the difference itself. Random forest minus negative-NDVI threshold ([val](evidence/g1_v1/paired_rf_vs_ndvi_val.json), [test](evidence/g1_v1/paired_rf_vs_ndvi_test.json)):
+
+| Difference (RF − index) | Validation | Test |
+| --- | --- | --- |
+| Pixel F1 | +0.089 (+0.025 to +0.154), better | +0.048 (+0.003 to +0.093), better |
+| Recall | −0.042 (−0.087 to +0.003), unclear | +0.053 (+0.016 to +0.100), better |
+| Footprints covered ≥25% | +0.025 (−0.042 to +0.081), unclear | +0.055 (−0.003 to +0.112), unclear |
+| False candidates per 1,000 km² | +71 (+18 to +130), worse | +117 (+43 to +207), worse |
+
+The unpaired intervals above overlapped. Paired, the random forest is better on pixel F1 but clearly worse on false candidates. G2 must be compared this way, against the random forest.
+
+## Typed hard negatives (2026-11-07)
+
+Typed negatives came from ESA WorldCover 2021 (CC BY 4.0) as a proxy: farmland (cropland), settlement (built-up), riverbank (land within 30 m of permanent water) and bare ground (bare or sparse). They were taken only beyond 500 m of any mining label, and 1,500 pixels per type per training site were added to the same base sample. Two runs, same sites and seed, decided on validation:
+
+| Run | Added | Validation pixel F1 | RF − G1 RF on validation (paired) |
+| --- | --- | --- | --- |
+| `g1_v1` (G1 baseline) | none | 0.319 | — |
+| `g1_hn` | all four types (261,000 px) | 0.246 | −0.073 (−0.124 to −0.035), worse |
+| `g1_hn2` | farmland, settlement, riverbank (183,000 px) | 0.271 | −0.047 (−0.087 to −0.016), worse |
+
+**Decision: keep `g1_v1`'s random forest as the G1 baseline.** Both hard-negative runs were also scored on test for the record. They are worse there too (F1 −0.040 and −0.043, both intervals below zero), but the decision was made on validation.
+
+Per-type false-alert rate: the share of usable pixels of each type predicted as disturbance at each model's validation-chosen threshold, validation sites, site-bootstrap intervals in the linked files.
+
+| Validation | Farmland | Settlement | Riverbank | Bare ground | Other land |
+| --- | --- | --- | --- | --- | --- |
+| NDVI threshold (`g1_v1`) | 0.1% | 10.9% | 13.4% | 70.0% | 0.3% |
+| Random forest (`g1_v1`) | 0.7% | 14.2% | 15.8% | 27.2% | 0.6% |
+| RF + four types (`g1_hn`) | 0.7% | 4.0% | 6.5% | 17.0% | 2.0% |
+| RF + three types (`g1_hn2`) | 0.3% | 3.9% | 4.8% | 28.7% | 0.5% |
+
+Files: [`g1_v1`](evidence/g1_v1/false_alerts_by_type.json), [`g1_hn`](evidence/g1_hn/false_alerts_by_type.json), [`g1_hn2`](evidence/g1_hn2/false_alerts_by_type.json).
+
+Why typed negatives cost more recall than they saved:
+
+- **Mine surfaces share these classes.** In the 60 training sites, WorldCover puts 23.7% of labelled mining pixels in "bare" (5.3% elsewhere), 7.2% in water (0.9%) and 1.6% in built-up. Bare-ground negatives therefore look like pits and dumps. Riverbank and settlement negatives look like mine-pond edges and plant buildings. The model lowered its scores on real mine ground.
+- **The typed negatives did reduce false alerts on their own types** (settlement 14% to 4%, riverbank 16% to 5%). They did not lower false candidates overall, because recall fell and, in `g1_hn`, the threshold dropped.
+- **33.1% of labelled mining pixels are WorldCover "tree".** This confirms the loose outlines and caps what any pixel model can score against these labels.
+- **WorldCover cropland is not where the errors are.** Only 0.1% to 0.7% of it is flagged. The bare fields in the false-candidate figure are mostly classed as grass or bare by WorldCover.
+
+What this means:
+
+1. **Per-pixel spectra cannot separate mine ponds and mine bare ground from riverbanks and bare land.** Spatial context (G2) and digitised negatives with a clear definition are needed. WorldCover proxies should stay an evaluation breakdown (ML-08), not training labels.
+2. **Every model report should carry the per-type breakdown** (`--worldcover-root` on `minefoot g1`, or `minefoot false-alerts`).
+3. **Real hard negatives.** Founder-digitised negatives (`minefoot negatives-template`, then `negatives-check`) should focus on bare fallow fields, bare slopes and dry stream beds, the types seen in the error gallery. The protocol now has a `bare_ground` type for them.
+
 ## For G2 (U-Net)
 
-- **The bar.** G2 must beat this random forest at site level by more than the confidence interval (FRD 8.3). Compare on the same 60 test sites using a **paired** site bootstrap, which `summarise` does not do yet.
-- **Hard negatives.** Add typed hard negatives (farmland, riverbanks, bare slopes) before or with G2. Spatial context should help here, but only labelled negatives will show it.
+- **The bar.** G2 must beat the `g1_v1` random forest at site level by more than the confidence interval (FRD 8.3). Compare on the same test sites with `minefoot compare`, which is paired, and choose on validation first.
+- **Hard negatives.** WorldCover proxy negatives hurt the pixel random forest (above). For G2, report per-type false alerts, and add digitised hard negatives when they exist.
 - **Artisanal labels.** Report artisanal sites separately, and do not tune on their recall until the labels are tightened.
 
 ## Reproduce
