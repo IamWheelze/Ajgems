@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -111,6 +111,14 @@ def main(argv=None):
     a.add_argument("--out", required=True)
     a = sub.add_parser("rescore", help="recompute footprint metrics of a stored run with the current definition")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a = sub.add_parser("labelling-kit", help="Nigerian labelling kit: imagery per region and a QGIS project to digitise in")
+    a.add_argument("config", help="regions YAML, e.g. configs/nigeria_aois.yaml"); a.add_argument("--out", required=True)
+    a = sub.add_parser("labels-check", help="problems and per-site counts in a mining-label layer")
+    a.add_argument("path"); a.add_argument("--kit", help="kit.json, to check scene IDs")
+    a = sub.add_parser("lock-labels", help="freeze labelled Nigerian sites as the locked test set; never overwrites")
+    a.add_argument("path"); a.add_argument("--out", required=True); a.add_argument("--kit"); a.add_argument("--note", default="")
+    a = sub.add_parser("verify-lock", help="detect edits to locked Nigerian sites")
+    a.add_argument("path"); a.add_argument("--lock", required=True)
     a = sub.add_parser("compare", help="paired site bootstrap of model B minus model A on the same sites")
     a.add_argument("--a", required=True, help="metrics.json:model"); a.add_argument("--b", required=True, help="metrics.json:model")
     a.add_argument("--split", default="val", choices=["val", "test"]); a.add_argument("--n-boot", type=int, default=2000)
@@ -328,6 +336,20 @@ def main(argv=None):
                       f"(touching no label: {a['false_candidates_detached_per_1000km2']:.1f}), "
                       f"false-candidate area {a['false_candidate_ha_per_1000km2']:.0f} ha/1000 km2")
         return 0
+    if x.cmd == "labelling-kit":
+        from .labelling_kit import build_kit
+        r = build_kit(x.config, x.out, log=lambda t: print(t, file=sys.stderr, flush=True))
+        print(json.dumps(r, indent=2)); print(Path(x.out) / "project.qgs"); return 0
+    if x.cmd == "labels-check":
+        from .labelling_kit import check_labels
+        r = check_labels(x.path, x.kit); print(json.dumps(r, indent=2)); return 1 if r["problems"] else 0
+    if x.cmd == "lock-labels":
+        from .labelling_kit import lock_labels
+        lk = lock_labels(x.path, x.out, x.kit, x.note)
+        print(f"locked {lk['count']} Nigerian sites, sha256 {lk['sha256']}"); return 0
+    if x.cmd == "verify-lock":
+        from .labelling_kit import verify_lock
+        r = verify_lock(x.path, x.lock); print(json.dumps(r, indent=2)); return 0 if r["intact"] else 1
     if x.cmd == "compare":
         from .baseline import paired_compare
         def rows(spec):

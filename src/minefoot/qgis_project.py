@@ -118,16 +118,34 @@ def write_styles(out_dir) -> list[Path]:
     return [out / n for n in files]
 
 
-def write_project(package_dir, scenes, title="minefoot inspection") -> Path:
+def write_project(package_dir, scenes, title="minefoot inspection", editable=None) -> Path:
     """Write <package_dir>/project.qgs.
 
     `scenes` is a list of dicts with keys: name (folder under gis/), title, epsg,
     has_polygons (bool), has_mask_status (bool). Files are expected under
     gis/<name>/ as written by viewer.export_gis.
+
+    `editable` is an optional list of vector layers to digitise into, shown at the top: dicts with
+    name, source (relative path, e.g. "./labels/x.gpkg|layername=y"), epsg, colour (r, g, b) and
+    form (QGIS <fieldConfiguration>/<defaults> XML, e.g. from a template's .qml).
     """
     pkg = Path(package_dir)
     write_styles(pkg)
     layers, tree = [], []
+    for ed in editable or []:
+        lid = f"edit_{uuid.uuid5(uuid.NAMESPACE_URL, ed['source']).hex[:12]}"
+        c = ed.get("colour", (255, 0, 0))
+        renderer = ('<renderer-v2 type="singleSymbol" forceraster="0" symbollevels="0" enableorderby="0"><symbols>'
+                    '<symbol type="fill" name="0" alpha="1" clip_to_extent="1" force_rhr="0">'
+                    '<layer class="SimpleFill" enabled="1" locked="0" pass="0"><Option type="Map">'
+                    f'<Option name="color" type="QString" value="{_rgba(c, 50)}"/>'
+                    f'<Option name="outline_color" type="QString" value="{_rgba(c)}"/>'
+                    '<Option name="outline_width" type="QString" value="0.6"/>'
+                    '<Option name="style" type="QString" value="solid"/></Option></layer></symbol></symbols></renderer-v2>')
+        layers.append(_layer("vector", lid, ed["name"], ed["source"], "ogr", ed.get("epsg", 4326),
+                             renderer + ed.get("form", ""), "Polygon"))
+        tree.append(f'<layer-tree-layer id="{lid}" name="{html.escape(ed["name"])}" source="{html.escape(ed["source"])}" '
+                    'providerKey="ogr" checked="Qt::Checked" expanded="1"/>')
     for sc in scenes:
         d = f"./gis/{sc['name']}"
         group = []

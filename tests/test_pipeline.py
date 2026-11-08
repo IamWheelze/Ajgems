@@ -745,3 +745,83 @@ def test_compare_to_expected_split(tmp_path):
     moved = pd.DataFrame({"site_id": ["a", "b", "d"], "split": ["train", "test", "val"]})
     d = compare_to_expected(moved, tmp_path / "e.csv")
     assert "missing site c" in d and "extra site d" in d and "b: test here, val expected" in d
+
+
+def _ng_labels(path, rows):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.labelling_kit import LABEL_LAYER, write_label_template
+    write_label_template(path)
+    base = {"label_class": "mining_disturbance", "mine_scale": "artisanal", "protocol_version": "0.1",
+            "scene_id": "S2B_TEST", "image_date": "2026-01-03", "annotator": "A", "evidence_grade": "E1", "notes": ""}
+    recs = [{**base, **r, "geometry": box(*r.pop("bbox"))} for r in rows]
+    gpd.GeoDataFrame(recs, crs=4326).to_file(path, layer=LABEL_LAYER, driver="GPKG")
+    return path
+
+
+def test_label_template_check_lock_and_verify(tmp_path):
+    from minefoot.labelling_kit import check_labels, lock_labels, verify_lock, write_label_template
+    p = write_label_template(tmp_path / "empty.gpkg")
+    assert "ValueMap" in p.with_suffix(".qml").read_text() and check_labels(p)["problems"] == []
+    good = _ng_labels(tmp_path / "l.gpkg", [{"site_id": "ng-jos-001", "bbox": (8.80, 9.70, 8.81, 9.71)},
+                                            {"site_id": "ng-jos-002", "bbox": (8.90, 9.70, 8.91, 9.71)},
+                                            {"site_id": "ng-jos-002", "bbox": (8.92, 9.70, 8.93, 9.71),
+                                             "label_class": "ignore"}])
+    r = check_labels(good)
+    assert r["problems"] == [] and r["sites"] == 2 and r["by_scale"] == {"artisanal": 2}
+    bad = _ng_labels(tmp_path / "b.gpkg", [{"site_id": "jos1", "bbox": (8.8, 9.7, 8.8001, 9.7001), "mine_scale": "tin",
+                                            "annotator": ""}])
+    joined = " ".join(check_labels(bad)["problems"])
+    assert "site_id must look like" in joined and "mine_scale" in joined and "annotator" in joined and "smaller" in joined
+    with pytest.raises(ValueError):
+        lock_labels(bad, tmp_path / "bad_lock.json")
+    lk = lock_labels(good, tmp_path / "lock.json", note="test")
+    assert lk["count"] == 2 and verify_lock(good, tmp_path / "lock.json")["intact"]
+    with pytest.raises(FileExistsError):
+        lock_labels(good, tmp_path / "lock.json")
+    # Moving one polygon of site 002 is detected; adding a new site is reported but does not break the lock.
+    moved = _ng_labels(tmp_path / "l.gpkg", [{"site_id": "ng-jos-001", "bbox": (8.80, 9.70, 8.81, 9.71)},
+                                             {"site_id": "ng-jos-002", "bbox": (8.90, 9.70, 8.912, 9.71)},
+                                             {"site_id": "ng-jos-002", "bbox": (8.92, 9.70, 8.93, 9.71), "label_class": "ignore"},
+                                             {"site_id": "ng-jos-003", "bbox": (8.95, 9.70, 8.96, 9.71)}])
+    v = verify_lock(moved, tmp_path / "lock.json")
+    assert v["edited"] == ["ng-jos-002"] and v["added"] == ["ng-jos-003"] and not v["intact"]
+
+
+def test_choose_scene_prefers_full_cover_then_cloud():
+    import types
+    from shapely.geometry import box, mapping
+    from minefoot.labelling_kit import _choose_scene
+    bb = (8.7, 9.45, 9.1, 9.85)
+    mk = lambda i, g, c: types.SimpleNamespace(id=i, geometry=mapping(g), properties={"eo:cloud_cover": c})
+    part = mk("part", box(8.9, 9.0, 10, 10), 0.0)          # clearer but covers half
+    full_cloudy = mk("full_cloudy", box(8, 9, 10, 10), 5.0)
+    full_clear = mk("full_clear", box(8, 9, 10, 10), 1.0)
+    it, cover = _choose_scene([part, full_cloudy, full_clear], bb)
+    assert it.id == "full_clear" and cover == 1.0
+    it, cover = _choose_scene([part], bb)
+    assert it.id == "part" and 0.4 < cover < 0.6
+
+
+def test_project_with_editable_layers(tmp_path):
+    import os, subprocess, xml.etree.ElementTree as ET
+    from pathlib import Path
+    from minefoot.labelling_kit import label_form, write_label_template
+    raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
+    build_gallery([d], tmp_path / "pkg")
+    write_label_template(tmp_path / "pkg" / "labels" / "m.gpkg")
+    from minefoot.qgis_project import write_project
+    with rasterio.open(d / "reflectance.tif") as s:
+        epsg = s.crs.to_epsg()
+    write_project(tmp_path / "pkg", [{"name": raw.name, "title": "t", "epsg": epsg}], "kit",
+                  editable=[{"name": "Mining labels", "source": "./labels/m.gpkg|layername=mining_labels",
+                             "epsg": 4326, "form": label_form()}])
+    root = ET.parse(tmp_path / "pkg" / "project.qgs").getroot()
+    ml = [m for m in root.iter("maplayer") if m.find("layername").text == "Mining labels"][0]
+    assert ml.find("fieldConfiguration") is not None and ml.get("geometry") == "Polygon"
+    exe = _qgis_python()
+    if exe:
+        script = Path(__file__).parents[1] / "scripts" / "check_qgis_project.py"
+        r = subprocess.run([exe, str(script), str(tmp_path / "pkg" / "project.qgs")], capture_output=True, text=True,
+                           env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
+        assert r.returncode == 0, r.stdout + r.stderr

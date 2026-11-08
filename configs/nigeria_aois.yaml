@@ -1,0 +1,15 @@
+# Nigerian labelling regions, kit v1 (founder choice 2026-11-08: Jos Plateau and Kogi/Kwara).
+# Boxes are areas to label, chosen by region. They say nothing about where mining is.
+# Edit or add regions freely; keep each box under about 0.5 degrees so one Sentinel-2 tile covers it.
+# Dry season (December to February) gives the clearest imagery.
+regions:
+  - name: jos_plateau
+    bbox: [8.70, 9.45, 9.10, 9.85]      # west, south, east, north (WGS 84)
+    start: "2025-12-01"
+    end: "2026-02-28"
+    max_cloud: 10
+  - name: kogi_kwara
+    bbox: [5.70, 7.90, 6.10, 8.30]
+    start: "2025-12-01"
+    end: "2026-02-28"
+    max_cloud: 10

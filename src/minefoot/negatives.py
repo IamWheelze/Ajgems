@@ -34,6 +34,17 @@ WORLDCOVER = {"collection": "esa-worldcover", "version": "v200 (2021)", "licence
 
 # ---------- digitised negatives ----------
 
+def write_empty_polygon_layer(path, layer, fields):
+    """Empty GeoPackage layer with an explicit Polygon type and EPSG:4326, so QGIS can digitise into it.
+
+    An empty GeoDataFrame written the usual way has no geometry type or CRS recorded.
+    """
+    import pyogrio
+    import geopandas as gpd
+    import pandas as pd
+    df = gpd.GeoDataFrame({f: pd.Series(dtype="object") for f in fields}, geometry=gpd.GeoSeries([], crs=4326), crs=4326)
+    pyogrio.write_dataframe(df, path, layer=layer, driver="GPKG", geometry_type="Polygon")
+
 def write_template(path, protocol_version="0.1") -> Path:
     """Empty polygon GeoPackage with the protocol's fields, plus a QGIS style whose neg_type is a drop-down."""
     import geopandas as gpd
@@ -41,8 +52,7 @@ def write_template(path, protocol_version="0.1") -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     cols = {k: pd.Series(dtype="object") for k in TEMPLATE_FIELDS}
-    gpd.GeoDataFrame(cols, geometry=gpd.GeoSeries([], crs=4326), crs=4326).to_file(path, layer="hard_negatives",
-                                                                                     driver="GPKG")
+    write_empty_polygon_layer(path, "hard_negatives", list(TEMPLATE_FIELDS))
     opts = "".join(f'<Option type="Map"><Option name="{t}" type="QString" value="{t}"/></Option>' for t in PROTOCOL_TYPES)
     grades = "".join(f'<Option type="Map"><Option name="{g}" type="QString" value="{g}"/></Option>' for g in EVIDENCE_GRADES)
     qml = ("<!DOCTYPE qgis PUBLIC 'http://mrcc.com/qgis.dtd' 'SYSTEM'>\n<qgis version=\"3.34.0\"><fieldConfiguration>"
