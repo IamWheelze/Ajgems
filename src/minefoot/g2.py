@@ -12,6 +12,7 @@ Needs PyTorch and segmentation-models-pytorch (`pip install -e ".[g2]"`).
 """
 from __future__ import annotations
 import csv
+import hashlib
 import json
 import time
 from pathlib import Path
@@ -25,7 +26,7 @@ from .schema import BANDS
 
 G2_DEFAULTS = {"encoder": "resnet34", "encoder_weights": "imagenet", "chip": 256, "batch": 16, "epochs": 40,
                "chips_per_site": 32, "positive_fraction": 0.5, "lr": 1e-3, "weight_decay": 1e-4,
-               "val_chips_per_site": 8, "infer_overlap": None, "workers": 4, "amp": True}
+               "val_chips_per_site": 8, "infer_overlap": None, "negative_fraction": 0.25, "workers": 4, "amp": True}
 
 
 def pick_device(prefer: str | None = None):
@@ -82,13 +83,16 @@ def normalise(refl: np.ndarray, norm: dict) -> tuple[np.ndarray, np.ndarray]:
 
 
 class ChipDataset:
-    """Random chips per epoch: a share centred on mining pixels, the rest anywhere. Read on demand."""
+    """Random chips per epoch: a share centred on mining pixels, an optional share centred on hard
+    negatives (label 0), the rest anywhere. Read on demand."""
 
-    def __init__(self, sites, label_paths, norm, chip, per_site, positive_fraction, seed, augment=True, fixed=False):
+    def __init__(self, sites, label_paths, norm, chip, per_site, positive_fraction, seed, augment=True, fixed=False,
+                 negative_paths=None, negative_fraction=0.0):
         self.sites, self.labels, self.norm = sites, label_paths, norm
         self.chip, self.per_site, self.pos = chip, per_site, positive_fraction
         self.seed, self.augment, self.fixed, self.epoch = seed, augment, fixed, 0
-        self._pos_index = {}
+        self.negatives, self.neg = negative_paths or [None] * len(sites), negative_fraction
+        self._pos_index, self._neg_index = {}, {}
 
     def __len__(self):
         return len(self.sites) * self.per_site
@@ -101,15 +105,34 @@ class ChipDataset:
                 self._pos_index[i] = (np.argwhere(lab > 0) * 8, (s.height, s.width))
         return self._pos_index[i]
 
+    def _negatives(self, i):
+        if i not in self._neg_index:
+            path = self.negatives[i]
+            if path is None or not Path(path).exists():
+                self._neg_index[i] = np.zeros((0, 2), int)
+            else:
+                import rasterio
+                with rasterio.open(path) as s:
+                    m = s.read(1, out_shape=(s.height // 8, s.width // 8))
+                self._neg_index[i] = np.argwhere(m > 0) * 8
+        return self._neg_index[i]
+
     def __getitem__(self, k):
         import rasterio
         from rasterio.windows import Window
         i = k // self.per_site
         rng = np.random.default_rng([self.seed, 0 if self.fixed else self.epoch, k])
         pos, (h, w) = self._positives(i)
+        neg = self._negatives(i) if self.neg > 0 else np.zeros((0, 2), int)
         c = self.chip
-        if pos.size and rng.random() < self.pos:
-            cy, cx = pos[rng.integers(len(pos))] + rng.integers(-c // 4, c // 4 + 1, 2)
+        r = rng.random()
+        centre = None
+        if pos.size and r < self.pos:
+            centre = pos[rng.integers(len(pos))]
+        elif neg.size and r < self.pos + self.neg:
+            centre = neg[rng.integers(len(neg))]
+        if centre is not None:
+            cy, cx = centre + rng.integers(-c // 4, c // 4 + 1, 2)
             r0, c0 = int(np.clip(cy - c // 2, 0, h - c)), int(np.clip(cx - c // 2, 0, w - c))
         else:
             r0, c0 = int(rng.integers(0, h - c + 1)), int(rng.integers(0, w - c + 1))
@@ -177,7 +200,8 @@ def predict_tile(model, refl, norm, device, chip=256, overlap=64, batch=8) -> np
 # ---------- run ----------
 
 def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir, seed=0, log=print,
-           worldcover_root=None, device=None, resume=False, **overrides) -> dict:
+           worldcover_root=None, device=None, resume=False, negatives_root=None, init_from=None,
+           **overrides) -> dict:
     """Train, choose and score a U-Net on the same sites and evaluation as G1. Writes a lineage record.
 
     State is saved after every epoch (last.pt). With resume=True an interrupted run carries on from
@@ -190,6 +214,12 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     torch.manual_seed(seed); np.random.seed(seed)
     dev = pick_device(device)
     config = base_config("G2", sites_by_split, split_gpkg, seed)
+    config.update({"hard_negatives": ({"root": str(negatives_root), "fraction": cfg["negative_fraction"],
+                                       "source": json.loads((Path(negatives_root) / "summary.json").read_text()).get("source")
+                                       if (Path(negatives_root) / "summary.json").exists() else None}
+                                      if negatives_root else None),
+                   "init_from": ({"path": str(init_from), "sha256": hashlib.sha256(Path(init_from).read_bytes()).hexdigest()}
+                                 if init_from else None)})
     config.update({"model": "U-Net (segmentation_models_pytorch)", "params": cfg, "device": str(dev),
                    "loss": "masked binary cross-entropy + soft Dice; masked pixels excluded",
                    "checkpoint_rule": "lowest loss on fixed validation chips",
@@ -217,19 +247,30 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     va_labels = [cache_site(p, l, cache) for _, p, l in va]
     if resuming:
         norm = json.loads((out / "normalisation.json").read_text())
+    elif init_from:  # fine-tuning keeps the normalisation the checkpoint was trained with
+        norm = json.loads((Path(init_from).parent / "normalisation.json").read_text())
+        (out / "normalisation.json").write_text(json.dumps(norm, indent=2))
     else:
         norm = fit_normalisation(tr, seed=seed)
         (out / "normalisation.json").write_text(json.dumps(norm, indent=2))
     log(f"normalisation fitted on {norm['source']}")
 
+    neg_paths = [Path(negatives_root) / f"{sid}_neg.tif" for sid, _, _ in tr] if negatives_root else None
+    if neg_paths:
+        log(f"hard negatives for {sum(p.exists() for p in neg_paths)} of {len(neg_paths)} training sites, "
+            f"{cfg['negative_fraction']:.0%} of chips")
     train_ds = ChipDataset([p for _, p, _ in tr], tr_labels, norm, cfg["chip"], cfg["chips_per_site"],
-                           cfg["positive_fraction"], seed)
+                           cfg["positive_fraction"], seed, negative_paths=neg_paths,
+                           negative_fraction=cfg["negative_fraction"] if negatives_root else 0.0)
     val_ds = ChipDataset([p for _, p, _ in va], va_labels, norm, cfg["chip"], cfg["val_chips_per_site"],
                          cfg["positive_fraction"], seed + 1, augment=False, fixed=True)
     loader_kw = dict(batch_size=cfg["batch"], num_workers=cfg["workers"], pin_memory=dev.type == "cuda",
                      persistent_workers=False)
     from torch.utils.data import DataLoader
-    model = build_model(cfg["encoder"], cfg["encoder_weights"]).to(dev)
+    model = build_model(cfg["encoder"], cfg["encoder_weights"] if not init_from else "none").to(dev)
+    if init_from and not resuming:
+        model.load_state_dict(torch.load(init_from, map_location=dev))
+        log(f"initialised from {init_from}")
     opt = torch.optim.AdamW(model.parameters(), lr=cfg["lr"], weight_decay=cfg["weight_decay"])
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, T_max=cfg["epochs"])
     use_amp = bool(cfg["amp"]) and dev.type == "cuda"
@@ -287,3 +328,98 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     if worldcover_root:
         add_type_breakdown(out, metrics, results, prepared_root, labels_root, worldcover_root)
     return metrics
+
+
+def load_run_model(run_dir, device=None):
+    """Model, normalisation, chosen threshold level and params of a finished G2 run."""
+    import torch
+    run_dir = Path(run_dir)
+    cfg = json.loads((run_dir / "config.json").read_text())["params"]
+    dev = pick_device(device)
+    model = build_model(cfg["encoder"], "none").to(dev)
+    model.load_state_dict(torch.load(run_dir / "unet_best.pt", map_location=dev))
+    norm = json.loads((run_dir / "normalisation.json").read_text())
+    level = json.loads((run_dir / "metrics.json").read_text())["models"]["unet"]["threshold_level"]
+    return model, norm, level, cfg, dev
+
+
+def mine_negatives(run_dir, site_ids, prepared_root, labels_root, out_root, worldcover_root=None,
+                   buffer_px=50, mmu=100, log=print) -> dict:
+    """Hard-negative mining on TRAINING sites: patches the model flags beyond `buffer_px` of any label.
+
+    Writes <out_root>/<site>_neg.tif (1 = hard negative) and summary.json. Patches must be at least
+    `mmu` pixels. Each patch is tagged with its most common WorldCover class, for reporting only.
+    Use only training sites, never validation or test sites.
+    """
+    import rasterio
+    from scipy import ndimage
+    from .baseline import load_site, to_levels
+    from .negatives import WC, fetch_worldcover
+    model, norm, level, cfg, dev = load_run_model(run_dir)
+    out = Path(out_root); out.mkdir(parents=True, exist_ok=True)
+    wc_names = {v: k for k, v in WC.items()}
+    summary = {"source": f"model-mined from run {Path(run_dir).name} at threshold level {level}",
+               "buffer_px": buffer_px, "mmu_pixels": mmu, "sites": {}}
+    for n, sid in enumerate(site_ids, 1):
+        feats, valid, label, profile = load_site(Path(prepared_root) / sid, Path(labels_root) / sid / "labels.geojson")
+        score = predict_tile(model, feats[:len(BANDS)], norm, dev, cfg["chip"], cfg.get("infer_overlap") or cfg["chip"] // 4)
+        pred = (to_levels(score) >= level) & valid
+        near = ndimage.binary_dilation(label, iterations=buffer_px) if label.any() else np.zeros_like(label)
+        cand = pred & ~near
+        cc, k = ndimage.label(cand, structure=np.ones((3, 3), bool))
+        sizes = np.bincount(cc.ravel(), minlength=k + 1)
+        keep = np.flatnonzero(sizes >= mmu); keep = keep[keep > 0]
+        mask = np.isin(cc, keep)
+        types = {}
+        if worldcover_root and keep.size:
+            with rasterio.open(fetch_worldcover(Path(prepared_root) / sid, Path(worldcover_root) / f"{sid}.tif")) as s:
+                wc = s.read(1)
+            for lab_id in keep:
+                vals = wc[cc == lab_id]
+                t = wc_names.get(int(np.bincount(vals).argmax()), "unknown")
+                types[t] = types.get(t, 0) + 1
+        p = {**profile, "count": 1, "dtype": "uint8", "nodata": None, "compress": "deflate"}
+        with rasterio.open(out / f"{sid}_neg.tif", "w", **p) as d:
+            d.write(mask.astype("uint8"), 1)
+        summary["sites"][sid] = {"patches": int(keep.size), "ha": float(mask.sum() * 0.01), "by_worldcover": types}
+        log(f"mined {n}/{len(site_ids)} {sid}: {keep.size} patches, {mask.sum() * 0.01:.0f} ha")
+    tot = summary["sites"].values()
+    summary["total"] = {"patches": sum(v["patches"] for v in tot), "ha": sum(v["ha"] for v in tot)}
+    by = {}
+    for v in tot:
+        for t, c in v["by_worldcover"].items():
+            by[t] = by.get(t, 0) + c
+    summary["total"]["by_worldcover"] = by
+    (out / "summary.json").write_text(json.dumps(summary, indent=2))
+    return summary
+
+
+def rasterize_negatives(negatives_gpkg, site_ids, prepared_root, out_root, layer="hard_negatives") -> dict:
+    """Digitised hard-negative polygons (negatives.write_template format) to <site>_neg.tif masks.
+
+    Adds to existing masks in out_root, so digitised and model-mined negatives can be combined.
+    """
+    import rasterio
+    from .labels import rasterize_to
+    from .negatives import check_negatives, read_vectors_layer
+    rep = check_negatives(negatives_gpkg, layer)
+    if rep["problems"]:
+        raise ValueError(f"fix the hard-negative layer first: {rep['problems']}")
+    g = read_vectors_layer(negatives_gpkg, layer)
+    out = Path(out_root); out.mkdir(parents=True, exist_ok=True)
+    counts = {}
+    for sid in site_ids:
+        ref = Path(prepared_root) / sid / "reflectance.tif"
+        m = rasterize_to(ref, g)
+        if not m.any():
+            continue
+        path = out / f"{sid}_neg.tif"
+        if path.exists():
+            with rasterio.open(path) as s:
+                m = np.maximum(m, s.read(1))
+        with rasterio.open(ref) as s:
+            p = {**s.profile, "count": 1, "dtype": "uint8", "nodata": None, "compress": "deflate"}
+        with rasterio.open(path, "w", **p) as d:
+            d.write(m.astype("uint8"), 1)
+        counts[sid] = int(m.sum())
+    return {"sites_with_negatives": len(counts), "pixels": counts, "by_type": rep["by_type"]}

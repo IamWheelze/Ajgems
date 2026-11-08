@@ -198,3 +198,8 @@ def evaluate_run_by_type(run_dir, model: str, split: str, prepared_root, labels_
     return {"model": model, "split": split, "threshold_level": t, "buffer_px": buffer_px,
             "source": f"ESA WorldCover {WORLDCOVER['version']} proxy types", "by_type": pooled_rates(rows),
             "per_site": rows}
+
+
+def read_vectors_layer(path, layer="hard_negatives"):
+    import geopandas as gpd
+    return gpd.read_file(path, layer=layer)

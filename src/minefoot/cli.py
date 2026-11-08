@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -86,6 +86,17 @@ def main(argv=None):
         a.add_argument(f"--{k}", type=t)
     a.add_argument("--no-amp", action="store_true")
     a.add_argument("--resume", action="store_true", help="continue an interrupted run in --out from its last epoch")
+    a.add_argument("--negatives-root", help="folder of <site>_neg.tif hard-negative masks (mine-negatives, rasterize-negatives)")
+    a.add_argument("--negative-fraction", type=float, help="share of training chips centred on hard negatives (default 0.25)")
+    a.add_argument("--init-from", help="checkpoint to fine-tune from (its run's normalisation is reused)")
+    a = sub.add_parser("mine-negatives", help="hard-negative mining on TRAINING sites with a finished G2 run")
+    a.add_argument("run"); a.add_argument("--sites", required=True, help="sites JSON; only its train list is used")
+    a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a.add_argument("--out", required=True); a.add_argument("--worldcover-root")
+    a.add_argument("--buffer-px", type=int, default=50)
+    a = sub.add_parser("rasterize-negatives", help="digitised hard-negative polygons to per-site masks")
+    a.add_argument("gpkg"); a.add_argument("--sites", required=True, help="sites JSON; only its train list is used")
+    a.add_argument("--prepared-root", required=True); a.add_argument("--out", required=True)
     a = sub.add_parser("false-alerts", help="per-type false-alert rates for a stored run (ML-08, WorldCover proxy types)")
     a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--split", default="val", choices=["val", "test"])
     a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
@@ -270,12 +281,23 @@ def main(argv=None):
                    log=lambda t: print(t, file=sys.stderr, flush=True), worldcover_root=x.worldcover_root,
                    device=x.device, epochs=x.epochs, batch=x.batch, chips_per_site=x.chips_per_site, chip=x.chip,
                    workers=x.workers, lr=x.lr, encoder=x.encoder, encoder_weights=x.encoder_weights,
-                   amp=False if x.no_amp else None, resume=x.resume)
+                   amp=False if x.no_amp else None, resume=x.resume, negatives_root=x.negatives_root,
+                   init_from=x.init_from, negative_fraction=x.negative_fraction)
         a = m["models"]["unet"]["test"]["strata"]["all"]
         print(f"unet: test pixel F1 {a['f1']:.3f} (95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}), "
               f"false candidates/1000 km2 {a['false_candidates_per_1000km2']:.1f}. Compare with the G1 random forest: "
               f"minefoot compare --a <g1>/metrics.json:random_forest --b {x.out}/metrics.json:unet --split val")
         return 0
+    if x.cmd == "mine-negatives":
+        from .g2 import mine_negatives
+        ids = json.loads(Path(x.sites).read_text())["train"]
+        r = mine_negatives(x.run, ids, x.prepared_root, x.labels_root, x.out, x.worldcover_root, x.buffer_px,
+                           log=lambda t: print(t, file=sys.stderr, flush=True))
+        print(json.dumps(r["total"], indent=2)); return 0
+    if x.cmd == "rasterize-negatives":
+        from .g2 import rasterize_negatives
+        ids = json.loads(Path(x.sites).read_text())["train"]
+        print(json.dumps(rasterize_negatives(x.gpkg, ids, x.prepared_root, x.out), indent=2)); return 0
     if x.cmd == "false-alerts":
         from .negatives import evaluate_run_by_type
         r = evaluate_run_by_type(x.run, x.model, x.split, x.prepared_root, x.labels_root, x.worldcover_root)

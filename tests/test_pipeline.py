@@ -687,6 +687,54 @@ def test_g2_end_to_end_on_synthetic_sites(tmp_path):
     assert sum(1 for _ in open(tmp_path / "r1" / "history.csv")) == 3   # header + 2 epochs
     assert "training sites" in json.loads((tmp_path / "run" / "normalisation.json").read_text())["source"]
 
+    # Hard-negative mining on training sites, then fine-tuning from the checkpoint with those negatives.
+    from minefoot.g2 import mine_negatives, rasterize_negatives
+    summ = mine_negatives(tmp_path / "run", ids["train"], tmp_path / "prep", tmp_path / "labels", tmp_path / "neg",
+                          buffer_px=2, mmu=4, log=lambda *_: None)
+    assert set(summ["sites"]) == set(ids["train"]) and (tmp_path / "neg" / "summary.json").exists()
+    assert all((tmp_path / "neg" / f"{i}_neg.tif").exists() for i in ids["train"])
+    import geopandas as gpd, rasterio
+    from shapely.geometry import box
+    from minefoot.negatives import write_template
+    with rasterio.open(tmp_path / "prep" / "s-tr1" / "reflectance.tif") as src:
+        b = src.bounds; crs = src.crs
+    gpkg = write_template(tmp_path / "hn.gpkg")
+    gpd.GeoDataFrame([{"neg_type": "riverbank", "protocol_version": "0.1", "scene_id": "S", "image_date": "2020-01-01",
+                       "annotator": "A", "evidence_grade": "E1", "notes": "",
+                       "geometry": box(b.left, b.bottom, b.left + 300, b.bottom + 300)}], crs=crs).to_file(
+        gpkg, layer="hard_negatives", driver="GPKG")
+    rr = rasterize_negatives(gpkg, ids["train"], tmp_path / "prep", tmp_path / "neg")
+    assert rr["sites_with_negatives"] >= 1 and rr["by_type"]["riverbank"] == 1
+    ft = run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "ft", epochs=1,
+                negatives_root=tmp_path / "neg", init_from=tmp_path / "run" / "unet_best.pt", **kw)
+    fcfg = json.loads((tmp_path / "ft" / "config.json").read_text())
+    assert fcfg["hard_negatives"]["fraction"] == 0.25 and fcfg["init_from"]["sha256"]
+    assert json.loads((tmp_path / "ft" / "normalisation.json").read_text()) == \
+        json.loads((tmp_path / "run" / "normalisation.json").read_text())
+    assert "unet" in ft["models"]
+
+
+def test_chips_centre_on_hard_negatives(tmp_path):
+    import rasterio
+    from minefoot.g2 import ChipDataset
+    raw = make_scene(tmp_path / "raw", size=128, scene_id="s1"); prepare_scene(raw, tmp_path / "p" / "s1")
+    with rasterio.open(tmp_path / "p" / "s1" / "scl.tif") as s:
+        prof = {**s.profile, "dtype": "uint8", "nodata": None}
+    lab = np.zeros((128, 128), "uint8"); lab[:16, :16] = 1
+    neg = np.zeros((128, 128), "uint8"); neg[100:120, 100:120] = 1
+    for name, arr in (("lab.tif", lab), ("neg.tif", neg)):
+        with rasterio.open(tmp_path / name, "w", **prof) as d:
+            d.write(arr, 1)
+    norm = {"mean": [0.1] * 10, "std": [0.1] * 10}
+    ds = ChipDataset([tmp_path / "p" / "s1"], [tmp_path / "lab.tif"], norm, 32, 400, 0.0, 0, augment=False,
+                     negative_paths=[tmp_path / "neg.tif"], negative_fraction=1.0)
+    x, y, v = ds[0]
+    assert x.shape == (10, 32, 32) and y.sum() == 0
+    assert ds._negatives(0).size > 0
+    assert all(ds[k][1].sum() == 0 for k in range(20))   # chips centred on the negative patch hold no mining label
+    pos = ChipDataset([tmp_path / "p" / "s1"], [tmp_path / "lab.tif"], norm, 32, 400, 1.0, 0, augment=False)
+    assert all(pos[k][1].sum() > 0 for k in range(20))   # chips centred on mining hold mining label
+
 
 def test_compare_to_expected_split(tmp_path):
     import pandas as pd
