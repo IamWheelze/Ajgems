@@ -14,7 +14,10 @@
             "iou": 0.3580997509684225,
             "footprint_recall_any": 0.6333973128598849,
             "footprint_recall_25pct": 0.5297504798464492,
-            "false_candidates_per_1000km2": 26.991993726708415,
+            "false_candidates_per_1000km2": 29.097752102550913,
+            "false_candidates_detached_per_1000km2": 26.991993726708415,
+            "false_candidate_ha_per_1000km2": 2900.389270876221,
+            "false_alarm_km2_per_1000km2": 33.270810048989844,
             "label_pixels_masked_share": 0.022024893371664682,
             "ci95": {
               "precision": [
@@ -42,8 +45,20 @@
                 0.692923946580085
               ],
               "false_candidates_per_1000km2": [
+                22.49658053018723,
+                37.47523491532303
+              ],
+              "false_candidates_detached_per_1000km2": [
                 20.582094817252177,
                 34.97200015528082
+              ],
+              "false_candidate_ha_per_1000km2": [
+                1328.3045475282197,
+                4826.541225215691
+              ],
+              "false_alarm_km2_per_1000km2": [
+                17.430487647319097,
+                52.705169947406034
               ]
             },
             "totals": {
@@ -54,7 +69,9 @@
               "label_footprints": 521.0,
               "found_any_overlap": 330.0,
               "covered_25pct": 276.0,
-              "false_candidates": 705.0,
+              "false_candidates": 760.0,
+              "false_candidates_detached": 705.0,
+              "false_candidate_ha": 75754.84999999996,
               "valid_km2": 26118.856100000008,
               "label_pixels": 12239242.0,
               "label_pixels_masked": 269568.0
@@ -68,7 +85,10 @@
             "iou": 0.2940696007617374,
             "footprint_recall_any": 0.42857142857142855,
             "footprint_recall_25pct": 0.27040816326530615,
-            "false_candidates_per_1000km2": 22.875011376852246,
+            "false_candidates_per_1000km2": 24.145845342232928,
+            "false_candidates_detached_per_1000km2": 22.875011376852246,
+            "false_candidate_ha_per_1000km2": 1329.397460416237,
+            "false_alarm_km2_per_1000km2": 15.720181492650871,
             "label_pixels_masked_share": 0.010152038072790743,
             "ci95": {
               "precision": [
@@ -96,8 +116,20 @@
                 0.5643518518518517
               ],
               "false_candidates_per_1000km2": [
+                14.738583906558077,
+                34.97547832793483
+              ],
+              "false_candidates_detached_per_1000km2": [
                 13.75402320626191,
                 33.584380023322346
+              ],
+              "false_candidate_ha_per_1000km2": [
+                453.62495748371293,
+                2729.2264507300265
+              ],
+              "false_alarm_km2_per_1000km2": [
+                6.48881343466715,
+                29.859479246916592
               ]
             },
             "totals": {
@@ -108,7 +140,9 @@
               "label_footprints": 196.0,
               "found_any_overlap": 84.0,
               "covered_25pct": 53.0,
-              "false_candidates": 198.0,
+              "false_candidates": 209.0,
+              "false_candidates_detached": 198.0,
+              "false_candidate_ha": 11506.910000000002,
               "valid_km2": 8655.733400000001,
               "label_pixels": 3587654.0,
               "label_pixels_masked": 36422.0
@@ -122,7 +156,10 @@
             "iou": 0.37807165490833583,
             "footprint_recall_any": 0.7569230769230769,
             "footprint_recall_25pct": 0.6861538461538461,
-            "false_candidates_per_1000km2": 29.032608240220405,
+            "false_candidates_per_1000km2": 31.552203432665568,
+            "false_candidates_detached_per_1000km2": 29.032608240220405,
+            "false_candidate_ha_per_1000km2": 3679.0636533751194,
+            "false_alarm_km2_per_1000km2": 41.96991641134149,
             "label_pixels_masked_share": 0.02694834751724192,
             "ci95": {
               "precision": [
@@ -150,8 +187,20 @@
                 0.810078101114539
               ],
               "false_candidates_per_1000km2": [
+                23.03947017361386,
+                41.79525304890934
+              ],
+              "false_candidates_detached_per_1000km2": [
                 20.984093491566856,
                 38.505370474871555
+              ],
+              "false_candidate_ha_per_1000km2": [
+                1482.1967057953545,
+                6761.779637142524
+              ],
+              "false_alarm_km2_per_1000km2": [
+                19.55912690148527,
+                72.28739087953255
               ]
             },
             "totals": {
@@ -162,7 +211,9 @@
               "label_footprints": 325.0,
               "found_any_overlap": 246.0,
               "covered_25pct": 223.0,
-              "false_candidates": 507.0,
+              "false_candidates": 551.0,
+              "false_candidates_detached": 507.0,
+              "false_candidate_ha": 64247.93999999998,
               "valid_km2": 17463.1227,
               "label_pixels": 8651588.0,
               "label_pixels_masked": 233146.0
@@ -176,7 +227,10 @@
             "iou": 0.31157222488539266,
             "footprint_recall_any": 0.5522388059701493,
             "footprint_recall_25pct": 0.4537313432835821,
-            "false_candidates_per_1000km2": 21.618663453927383,
+            "false_candidates_per_1000km2": 23.934948823991032,
+            "false_candidates_detached_per_1000km2": 21.618663453927383,
+            "false_candidate_ha_per_1000km2": 4431.2357842274805,
+            "false_alarm_km2_per_1000km2": 49.479269880771696,
             "label_pixels_masked_share": 0.03021164718438601,
             "ci95": {
               "precision": [
@@ -204,8 +258,20 @@
                 0.6989126394052044
               ],
               "false_candidates_per_1000km2": [
+                18.007900616968303,
+                30.521278414156896
+              ],
+              "false_candidates_detached_per_1000km2": [
                 16.348997303464138,
                 27.528789905077147
+              ],
+              "false_candidate_ha_per_1000km2": [
+                1222.4223931947158,
+                8844.32124623416
+              ],
+              "false_alarm_km2_per_1000km2": [
+                16.101828407231892,
+                92.47538635210985
               ]
             },
             "totals": {
@@ -216,7 +282,9 @@
               "label_footprints": 335.0,
               "found_any_overlap": 185.0,
               "covered_25pct": 152.0,
-              "false_candidates": 252.0,
+              "false_candidates": 279.0,
+              "false_candidates_detached": 252.0,
+              "false_candidate_ha": 51653.11999999998,
               "valid_km2": 11656.5948,
               "label_pixels": 6229849.0,
               "label_pixels_masked": 188214.0
@@ -230,7 +298,10 @@
             "iou": 0.44101136391124884,
             "footprint_recall_any": 0.7333333333333333,
             "footprint_recall_25pct": 0.5666666666666667,
-            "false_candidates_per_1000km2": 29.09156017765712,
+            "false_candidates_per_1000km2": 31.03099752283426,
+            "false_candidates_detached_per_1000km2": 29.09156017765712,
+            "false_candidate_ha_per_1000km2": 1831.843179578749,
+            "false_alarm_km2_per_1000km2": 20.65954600952427,
             "label_pixels_masked_share": 0.008570274330230814,
             "ci95": {
               "precision": [
@@ -258,8 +329,20 @@
                 0.9286330049261083
               ],
               "false_candidates_per_1000km2": [
+                18.750049199383714,
+                45.52248988871268
+              ],
+              "false_candidates_detached_per_1000km2": [
                 16.890789680909155,
                 43.467386190942015
+              ],
+              "false_candidate_ha_per_1000km2": [
+                490.5667175431586,
+                4115.917496964239
+              ],
+              "false_alarm_km2_per_1000km2": [
+                6.92400283294573,
+                43.4632022734203
               ]
             },
             "totals": {
@@ -270,7 +353,9 @@
               "label_footprints": 60.0,
               "found_any_overlap": 44.0,
               "covered_25pct": 34.0,
-              "false_candidates": 150.0,
+              "false_candidates": 160.0,
+              "false_candidates_detached": 150.0,
+              "false_candidate_ha": 9445.23,
               "valid_km2": 5156.134599999999,
               "label_pixels": 2136221.0,
               "label_pixels_masked": 18308.0
@@ -284,7 +369,10 @@
             "iou": 0.35844199439759705,
             "footprint_recall_any": 0.7555555555555555,
             "footprint_recall_25pct": 0.6555555555555556,
-            "false_candidates_per_1000km2": 35.859359217657676,
+            "false_candidates_per_1000km2": 38.30004858849301,
+            "false_candidates_detached_per_1000km2": 35.859359217657676,
+            "false_candidate_ha_per_1000km2": 1992.7177338987724,
+            "false_alarm_km2_per_1000km2": 23.450105925918695,
             "label_pixels_masked_share": 0.013309939903359071,
             "ci95": {
               "precision": [
@@ -312,8 +400,20 @@
                 0.9272727272727272
               ],
               "false_candidates_per_1000km2": [
+                13.564958521421897,
+                68.92936395326518
+              ],
+              "false_candidates_detached_per_1000km2": [
                 12.356807413887703,
                 64.89900145314508
+              ],
+              "false_candidate_ha_per_1000km2": [
+                541.4141282782833,
+                3836.7910243347087
+              ],
+              "false_alarm_km2_per_1000km2": [
+                10.489375466114144,
+                39.957134537556264
               ]
             },
             "totals": {
@@ -324,7 +424,9 @@
               "label_footprints": 90.0,
               "found_any_overlap": 68.0,
               "covered_25pct": 59.0,
-              "false_candidates": 191.0,
+              "false_candidates": 204.0,
+              "false_candidates_detached": 191.0,
+              "false_candidate_ha": 10613.94,
               "valid_km2": 5326.364,
               "label_pixels": 2097455.0,
               "label_pixels_masked": 27917.0
@@ -338,7 +440,10 @@
             "iou": 0.4791888866606803,
             "footprint_recall_any": 0.9166666666666666,
             "footprint_recall_25pct": 0.8611111111111112,
-            "false_candidates_per_1000km2": 28.14238145405001,
+            "false_candidates_per_1000km2": 29.398737768962956,
+            "false_candidates_detached_per_1000km2": 28.14238145405001,
+            "false_candidate_ha_per_1000km2": 1015.7791568828966,
+            "false_alarm_km2_per_1000km2": 15.279428595076785,
             "label_pixels_masked_share": 0.019782994700169,
             "ci95": {
               "precision": [
@@ -366,8 +471,20 @@
                 0.9834745762711861
               ],
               "false_candidates_per_1000km2": [
+                18.317306064619757,
+                40.58804704496571
+              ],
+              "false_candidates_detached_per_1000km2": [
                 17.583739809476864,
                 38.44827277134464
+              ],
+              "false_candidate_ha_per_1000km2": [
+                451.2168940950062,
+                1666.3018380883882
+              ],
+              "false_alarm_km2_per_1000km2": [
+                6.5439792369623095,
+                26.792709589251306
               ]
             },
             "totals": {
@@ -378,7 +495,9 @@
               "label_footprints": 36.0,
               "found_any_overlap": 33.0,
               "covered_25pct": 31.0,
-              "false_candidates": 112.0,
+              "false_candidates": 117.0,
+              "false_candidates_detached": 112.0,
+              "false_candidate_ha": 4042.5600000000004,
               "valid_km2": 3979.7627,
               "label_pixels": 1775717.0,
               "label_pixels_masked": 35129.0
@@ -392,7 +511,10 @@
             "iou": 0.2799285584113091,
             "footprint_recall_any": 0.631578947368421,
             "footprint_recall_25pct": 0.45614035087719296,
-            "false_candidates_per_1000km2": 18.371790644214904,
+            "false_candidates_per_1000km2": 19.49202178105728,
+            "false_candidates_detached_per_1000km2": 18.371790644214904,
+            "false_candidate_ha_per_1000km2": 1819.6676112903706,
+            "false_alarm_km2_per_1000km2": 18.82317657849417,
             "label_pixels_masked_share": 0.010042626467931345,
             "ci95": {
               "precision": [
@@ -420,8 +542,20 @@
                 0.8214810924369748
               ],
               "false_candidates_per_1000km2": [
+                8.634140529683677,
+                32.1234719182297
+              ],
+              "false_candidates_detached_per_1000km2": [
                 8.106222425255382,
                 30.11724969783201
+              ],
+              "false_candidate_ha_per_1000km2": [
+                191.27103182620792,
+                4383.692792204602
+              ],
+              "false_alarm_km2_per_1000km2": [
+                2.8217673037659723,
+                44.567388557072974
               ]
             },
             "totals": {
@@ -432,7 +566,9 @@
               "label_footprints": 57.0,
               "found_any_overlap": 36.0,
               "covered_25pct": 26.0,
-              "false_candidates": 82.0,
+              "false_candidates": 87.0,
+              "false_candidates_detached": 82.0,
+              "false_candidate_ha": 8121.84,
               "valid_km2": 4463.3646,
               "label_pixels": 1983744.0,
               "label_pixels_masked": 19922.0
@@ -446,7 +582,10 @@
             "iou": 0.3703753879722172,
             "footprint_recall_any": 0.6336206896551724,
             "footprint_recall_25pct": 0.5387931034482759,
-            "false_candidates_per_1000km2": 28.76868437735527,
+            "false_candidates_per_1000km2": 31.077567553708022,
+            "false_candidates_detached_per_1000km2": 28.76868437735527,
+            "false_candidate_ha_per_1000km2": 3123.1343791019463,
+            "false_alarm_km2_per_1000km2": 36.248579257598465,
             "label_pixels_masked_share": 0.024342650157018215,
             "ci95": {
               "precision": [
@@ -474,8 +613,20 @@
                 0.7270531457574458
               ],
               "false_candidates_per_1000km2": [
+                23.562720978574898,
+                40.15896637449997
+              ],
+              "false_candidates_detached_per_1000km2": [
                 21.618649503530634,
                 37.311562702042345
+              ],
+              "false_candidate_ha_per_1000km2": [
+                1419.289422167307,
+                5511.097518726067
+              ],
+              "false_alarm_km2_per_1000km2": [
+                18.352095483381134,
+                59.45125659838976
               ]
             },
             "totals": {
@@ -486,7 +637,9 @@
               "label_footprints": 464.0,
               "found_any_overlap": 294.0,
               "covered_25pct": 250.0,
-              "false_candidates": 623.0,
+              "false_candidates": 673.0,
+              "false_candidates_detached": 623.0,
+              "false_candidate_ha": 67633.00999999998,
               "valid_km2": 21655.491500000004,
               "label_pixels": 10255498.0,
               "label_pixels_masked": 249646.0
@@ -510,7 +663,9 @@
             "label_pixels_masked": 3326,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 10,
+            "false_candidate_ha": 90.22
           },
           {
             "site_id": "gmlr-1006",
@@ -528,7 +683,9 @@
             "label_pixels_masked": 20,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 31.57
           },
           {
             "site_id": "gmlr-1011",
@@ -540,13 +697,15 @@
             "found_any_overlap": 6,
             "covered_25pct": 6,
             "predicted_parts": 24,
-            "false_candidates": 17,
+            "false_candidates": 19,
             "valid_km2": 434.6037,
             "label_pixels": 90132,
             "label_pixels_masked": 896,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 17,
+            "false_candidate_ha": 841.52
           },
           {
             "site_id": "gmlr-1020",
@@ -558,13 +717,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 14,
-            "false_candidates": 11,
+            "false_candidates": 12,
             "valid_km2": 423.0869,
             "label_pixels": 72561,
             "label_pixels_masked": 36,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 924.16
           },
           {
             "site_id": "gmlr-1045",
@@ -582,7 +743,9 @@
             "label_pixels_masked": 1544,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 19,
+            "false_candidate_ha": 1151.42
           },
           {
             "site_id": "gmlr-1052",
@@ -600,7 +763,9 @@
             "label_pixels_masked": 11016,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-1090",
@@ -612,13 +777,15 @@
             "found_any_overlap": 8,
             "covered_25pct": 3,
             "predicted_parts": 18,
-            "false_candidates": 3,
+            "false_candidates": 4,
             "valid_km2": 426.18960000000004,
             "label_pixels": 152076,
             "label_pixels_masked": 13287,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 46.29
           },
           {
             "site_id": "gmlr-1136",
@@ -630,13 +797,15 @@
             "found_any_overlap": 1,
             "covered_25pct": 1,
             "predicted_parts": 30,
-            "false_candidates": 28,
+            "false_candidates": 29,
             "valid_km2": 422.4216,
             "label_pixels": 127814,
             "label_pixels_masked": 864,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 28,
+            "false_candidate_ha": 3701.61
           },
           {
             "site_id": "gmlr-1137",
@@ -648,13 +817,15 @@
             "found_any_overlap": 1,
             "covered_25pct": 1,
             "predicted_parts": 16,
-            "false_candidates": 13,
+            "false_candidates": 14,
             "valid_km2": 422.4905,
             "label_pixels": 148551,
             "label_pixels_masked": 1835,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 23998.21
           },
           {
             "site_id": "gmlr-1163",
@@ -666,13 +837,15 @@
             "found_any_overlap": 6,
             "covered_25pct": 6,
             "predicted_parts": 22,
-            "false_candidates": 17,
+            "false_candidates": 20,
             "valid_km2": 455.39430000000004,
             "label_pixels": 93590,
             "label_pixels_masked": 12,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 17,
+            "false_candidate_ha": 2706.23
           },
           {
             "site_id": "gmlr-1165",
@@ -684,13 +857,15 @@
             "found_any_overlap": 9,
             "covered_25pct": 0,
             "predicted_parts": 9,
-            "false_candidates": 3,
+            "false_candidates": 4,
             "valid_km2": 432.39480000000003,
             "label_pixels": 126181,
             "label_pixels_masked": 48,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 561.88
           },
           {
             "site_id": "gmlr-1190",
@@ -702,13 +877,15 @@
             "found_any_overlap": 8,
             "covered_25pct": 4,
             "predicted_parts": 25,
-            "false_candidates": 14,
+            "false_candidates": 15,
             "valid_km2": 420.8612,
             "label_pixels": 348576,
             "label_pixels_masked": 36,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 360.39
           },
           {
             "site_id": "gmlr-1202",
@@ -726,7 +903,9 @@
             "label_pixels_masked": 20880,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 9,
+            "false_candidate_ha": 78.61
           },
           {
             "site_id": "gmlr-1209",
@@ -744,7 +923,9 @@
             "label_pixels_masked": 324,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 5,
+            "false_candidate_ha": 96.01
           },
           {
             "site_id": "gmlr-1212",
@@ -756,13 +937,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 7,
-            "false_candidates": 3,
+            "false_candidates": 4,
             "valid_km2": 446.46290000000005,
             "label_pixels": 196620,
             "label_pixels_masked": 32,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 139.81
           },
           {
             "site_id": "gmlr-1221",
@@ -774,13 +957,15 @@
             "found_any_overlap": 10,
             "covered_25pct": 8,
             "predicted_parts": 33,
-            "false_candidates": 22,
+            "false_candidates": 26,
             "valid_km2": 452.4065,
             "label_pixels": 190325,
             "label_pixels_masked": 28,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 22,
+            "false_candidate_ha": 4622.45
           },
           {
             "site_id": "gmlr-1263",
@@ -798,7 +983,9 @@
             "label_pixels_masked": 45956,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 165.88
           },
           {
             "site_id": "gmlr-1270",
@@ -810,13 +997,15 @@
             "found_any_overlap": 18,
             "covered_25pct": 16,
             "predicted_parts": 28,
-            "false_candidates": 11,
+            "false_candidates": 13,
             "valid_km2": 415.0239,
             "label_pixels": 267570,
             "label_pixels_masked": 75628,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 551.07
           },
           {
             "site_id": "gmlr-1272",
@@ -834,7 +1023,9 @@
             "label_pixels_masked": 12935,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 92.58
           },
           {
             "site_id": "gmlr-1281",
@@ -846,13 +1037,15 @@
             "found_any_overlap": 30,
             "covered_25pct": 28,
             "predicted_parts": 37,
-            "false_candidates": 13,
+            "false_candidates": 17,
             "valid_km2": 422.6847,
             "label_pixels": 142702,
             "label_pixels_masked": 176,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 455.82
           },
           {
             "site_id": "gmlr-1288",
@@ -864,13 +1057,15 @@
             "found_any_overlap": 29,
             "covered_25pct": 26,
             "predicted_parts": 32,
-            "false_candidates": 10,
+            "false_candidates": 13,
             "valid_km2": 423.845,
             "label_pixels": 300358,
             "label_pixels_masked": 10757,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 10,
+            "false_candidate_ha": 500.95
           },
           {
             "site_id": "gmlr-1294",
@@ -888,7 +1083,9 @@
             "label_pixels_masked": 788,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 34.17
           },
           {
             "site_id": "gmlr-1298",
@@ -906,7 +1103,9 @@
             "label_pixels_masked": 1132,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 468.69
           },
           {
             "site_id": "gmlr-1318",
@@ -918,13 +1117,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 4,
-            "false_candidates": 0,
+            "false_candidates": 1,
             "valid_km2": 448.9533,
             "label_pixels": 202877,
             "label_pixels_masked": 244,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 122.3
           },
           {
             "site_id": "gmlr-1379",
@@ -942,7 +1143,9 @@
             "label_pixels_masked": 484,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 102.96000000000001
           },
           {
             "site_id": "gmlr-1410",
@@ -960,7 +1163,9 @@
             "label_pixels_masked": 12,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 5,
+            "false_candidate_ha": 35.38
           },
           {
             "site_id": "gmlr-1412",
@@ -972,13 +1177,15 @@
             "found_any_overlap": 1,
             "covered_25pct": 1,
             "predicted_parts": 3,
-            "false_candidates": 1,
+            "false_candidates": 2,
             "valid_km2": 427.9973,
             "label_pixels": 170789,
             "label_pixels_masked": 372,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 1762.94
           },
           {
             "site_id": "gmlr-1417",
@@ -990,13 +1197,15 @@
             "found_any_overlap": 10,
             "covered_25pct": 10,
             "predicted_parts": 19,
-            "false_candidates": 14,
+            "false_candidates": 15,
             "valid_km2": 425.22060000000005,
             "label_pixels": 326033,
             "label_pixels_masked": 10731,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 1002.99
           },
           {
             "site_id": "gmlr-1452",
@@ -1008,13 +1217,15 @@
             "found_any_overlap": 5,
             "covered_25pct": 5,
             "predicted_parts": 18,
-            "false_candidates": 14,
+            "false_candidates": 15,
             "valid_km2": 460.1361,
             "label_pixels": 731271,
             "label_pixels_masked": 7068,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 8252.06
           },
           {
             "site_id": "gmlr-1485",
@@ -1032,7 +1243,9 @@
             "label_pixels_masked": 106,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 259.59000000000003
           },
           {
             "site_id": "gmlr-1747",
@@ -1044,13 +1257,15 @@
             "found_any_overlap": 15,
             "covered_25pct": 14,
             "predicted_parts": 81,
-            "false_candidates": 74,
+            "false_candidates": 79,
             "valid_km2": 420.8064,
             "label_pixels": 127681,
             "label_pixels_masked": 252,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 74,
+            "false_candidate_ha": 4809.63
           },
           {
             "site_id": "gmlr-189",
@@ -1062,13 +1277,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 3,
-            "false_candidates": 1,
+            "false_candidates": 2,
             "valid_km2": 454.5588,
             "label_pixels": 73181,
             "label_pixels_masked": 896,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 88.03
           },
           {
             "site_id": "gmlr-1917",
@@ -1080,13 +1297,15 @@
             "found_any_overlap": 11,
             "covered_25pct": 10,
             "predicted_parts": 32,
-            "false_candidates": 24,
+            "false_candidates": 26,
             "valid_km2": 466.1109,
             "label_pixels": 38634,
             "label_pixels_masked": 122,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 24,
+            "false_candidate_ha": 2397.85
           },
           {
             "site_id": "gmlr-1953",
@@ -1098,13 +1317,15 @@
             "found_any_overlap": 20,
             "covered_25pct": 14,
             "predicted_parts": 36,
-            "false_candidates": 14,
+            "false_candidates": 18,
             "valid_km2": 431.5837,
             "label_pixels": 338572,
             "label_pixels_masked": 8063,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 737.09
           },
           {
             "site_id": "gmlr-2017",
@@ -1122,7 +1343,9 @@
             "label_pixels_masked": 80,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 292.29
           },
           {
             "site_id": "gmlr-2025",
@@ -1134,13 +1357,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 20,
-            "false_candidates": 17,
+            "false_candidates": 18,
             "valid_km2": 392.5151,
             "label_pixels": 251647,
             "label_pixels_masked": 9076,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 17,
+            "false_candidate_ha": 132.34
           },
           {
             "site_id": "gmlr-225",
@@ -1158,7 +1383,9 @@
             "label_pixels_masked": 5964,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 23,
+            "false_candidate_ha": 303.29
           },
           {
             "site_id": "gmlr-2272",
@@ -1176,7 +1403,9 @@
             "label_pixels_masked": 1135,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 42,
+            "false_candidate_ha": 974.57
           },
           {
             "site_id": "gmlr-2328",
@@ -1194,7 +1423,9 @@
             "label_pixels_masked": 856,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-2344",
@@ -1212,7 +1443,9 @@
             "label_pixels_masked": 684,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 164.29
           },
           {
             "site_id": "gmlr-2346",
@@ -1230,7 +1463,9 @@
             "label_pixels_masked": 312,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 5,
+            "false_candidate_ha": 72.65
           },
           {
             "site_id": "gmlr-2530",
@@ -1248,7 +1483,9 @@
             "label_pixels_masked": 80,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 13.71
           },
           {
             "site_id": "gmlr-2577",
@@ -1266,7 +1503,9 @@
             "label_pixels_masked": 12,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 12.67
           },
           {
             "site_id": "gmlr-260",
@@ -1278,13 +1517,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 3,
             "predicted_parts": 20,
-            "false_candidates": 14,
+            "false_candidates": 15,
             "valid_km2": 423.8073,
             "label_pixels": 139409,
             "label_pixels_masked": 134,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 5712.67
           },
           {
             "site_id": "gmlr-264",
@@ -1296,13 +1537,15 @@
             "found_any_overlap": 1,
             "covered_25pct": 1,
             "predicted_parts": 14,
-            "false_candidates": 11,
+            "false_candidates": 12,
             "valid_km2": 446.02880000000005,
             "label_pixels": 239033,
             "label_pixels_masked": 942,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 174.96
           },
           {
             "site_id": "gmlr-2645",
@@ -1314,13 +1557,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 38,
-            "false_candidates": 27,
+            "false_candidates": 29,
             "valid_km2": 458.8186,
             "label_pixels": 213364,
             "label_pixels_masked": 774,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 27,
+            "false_candidate_ha": 762.1
           },
           {
             "site_id": "gmlr-2669",
@@ -1338,7 +1583,9 @@
             "label_pixels_masked": 360,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 18,
+            "false_candidate_ha": 172.04
           },
           {
             "site_id": "gmlr-2728",
@@ -1356,7 +1603,9 @@
             "label_pixels_masked": 512,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 58.42
           },
           {
             "site_id": "gmlr-2753",
@@ -1368,13 +1617,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 10,
-            "false_candidates": 6,
+            "false_candidates": 7,
             "valid_km2": 456.64250000000004,
             "label_pixels": 260961,
             "label_pixels_masked": 3439,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 1167.3600000000001
           },
           {
             "site_id": "gmlr-2790",
@@ -1392,7 +1643,9 @@
             "label_pixels_masked": 4290,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 18.01
           },
           {
             "site_id": "gmlr-2825",
@@ -1404,13 +1657,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 21,
-            "false_candidates": 18,
+            "false_candidates": 19,
             "valid_km2": 430.5589,
             "label_pixels": 175569,
             "label_pixels_masked": 12,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 18,
+            "false_candidate_ha": 1198.89
           },
           {
             "site_id": "gmlr-296",
@@ -1422,13 +1677,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 15,
-            "false_candidates": 11,
+            "false_candidates": 13,
             "valid_km2": 454.29920000000004,
             "label_pixels": 51141,
             "label_pixels_masked": 2055,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 243.23000000000002
           },
           {
             "site_id": "gmlr-632",
@@ -1440,13 +1697,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 15,
-            "false_candidates": 9,
+            "false_candidates": 10,
             "valid_km2": 414.73830000000004,
             "label_pixels": 195351,
             "label_pixels_masked": 2390,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 9,
+            "false_candidate_ha": 129.17000000000002
           },
           {
             "site_id": "gmlr-637",
@@ -1458,13 +1717,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 15,
-            "false_candidates": 13,
+            "false_candidates": 14,
             "valid_km2": 412.9653,
             "label_pixels": 57917,
             "label_pixels_masked": 500,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 142.84
           },
           {
             "site_id": "gmlr-792",
@@ -1482,7 +1743,9 @@
             "label_pixels_masked": 1012,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 103.93
           },
           {
             "site_id": "gmlr-912",
@@ -1494,13 +1757,15 @@
             "found_any_overlap": 11,
             "covered_25pct": 8,
             "predicted_parts": 22,
-            "false_candidates": 8,
+            "false_candidates": 9,
             "valid_km2": 423.96250000000003,
             "label_pixels": 102530,
             "label_pixels_masked": 639,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 890.4200000000001
           },
           {
             "site_id": "gmlr-933",
@@ -1518,7 +1783,9 @@
             "label_pixels_masked": 1136,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 29.17
           },
           {
             "site_id": "gmlr-954",
@@ -1536,7 +1803,9 @@
             "label_pixels_masked": 1870,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 18,
+            "false_candidate_ha": 681.38
           },
           {
             "site_id": "gmlr-973",
@@ -1548,13 +1817,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 43,
-            "false_candidates": 39,
+            "false_candidates": 41,
             "valid_km2": 434.6325,
             "label_pixels": 205207,
             "label_pixels_masked": 770,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 39,
+            "false_candidate_ha": 946.14
           },
           {
             "site_id": "gmlr-988",
@@ -1572,7 +1843,9 @@
             "label_pixels_masked": 628,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 5,
+            "false_candidate_ha": 167.95000000000002
           }
         ]
       },
@@ -1586,7 +1859,10 @@
             "iou": 0.2704424652639745,
             "footprint_recall_any": 0.8681318681318682,
             "footprint_recall_25pct": 0.739010989010989,
-            "false_candidates_per_1000km2": 29.39789779417519,
+            "false_candidates_per_1000km2": 31.003504695807642,
+            "false_candidates_detached_per_1000km2": 29.39789779417519,
+            "false_candidate_ha_per_1000km2": 6591.282020914713,
+            "false_alarm_km2_per_1000km2": 64.74346434843535,
             "label_pixels_masked_share": 0.010109380001715714,
             "ci95": {
               "precision": [
@@ -1614,8 +1890,20 @@
                 0.8059739567468779
               ],
               "false_candidates_per_1000km2": [
+                23.857439117935044,
+                38.47564134253274
+              ],
+              "false_candidates_detached_per_1000km2": [
                 22.660082163513167,
                 36.60328166144459
+              ],
+              "false_candidate_ha_per_1000km2": [
+                2429.4803597046375,
+                11002.198260714662
+              ],
+              "false_alarm_km2_per_1000km2": [
+                27.024248702060728,
+                105.60539732422058
               ]
             },
             "totals": {
@@ -1626,7 +1914,9 @@
               "label_footprints": 364.0,
               "found_any_overlap": 316.0,
               "covered_25pct": 269.0,
-              "false_candidates": 769.0,
+              "false_candidates": 811.0,
+              "false_candidates_detached": 769.0,
+              "false_candidate_ha": 172416.95000000004,
               "valid_km2": 26158.333,
               "label_pixels": 14023313.0,
               "label_pixels_masked": 141767.0
@@ -1640,7 +1930,10 @@
             "iou": 0.37524770107176203,
             "footprint_recall_any": 0.8728813559322034,
             "footprint_recall_25pct": 0.6610169491525424,
-            "false_candidates_per_1000km2": 25.50004021160187,
+            "false_candidates_per_1000km2": 26.769272982315087,
+            "false_candidates_detached_per_1000km2": 25.50004021160187,
+            "false_candidate_ha_per_1000km2": 844.7805629231955,
+            "false_alarm_km2_per_1000km2": 9.363707073538077,
             "label_pixels_masked_share": 0.006988049440345408,
             "ci95": {
               "precision": [
@@ -1668,8 +1961,20 @@
                 0.7622950819672131
               ],
               "false_candidates_per_1000km2": [
+                12.96477431524108,
+                44.704214360949265
+              ],
+              "false_candidates_detached_per_1000km2": [
                 12.278619453824511,
                 43.01168341018182
+              ],
+              "false_candidate_ha_per_1000km2": [
+                247.82111667484105,
+                1749.2137125226116
+              ],
+              "false_alarm_km2_per_1000km2": [
+                3.951339807926751,
+                16.39853318929345
               ]
             },
             "totals": {
@@ -1680,7 +1985,9 @@
               "label_footprints": 118.0,
               "found_any_overlap": 103.0,
               "covered_25pct": 78.0,
-              "false_candidates": 221.0,
+              "false_candidates": 232.0,
+              "false_candidates_detached": 221.0,
+              "false_candidate_ha": 7321.420000000001,
               "valid_km2": 8666.653,
               "label_pixels": 5748099.0,
               "label_pixels_masked": 40168.0
@@ -1694,7 +2001,10 @@
             "iou": 0.24232182806205604,
             "footprint_recall_any": 0.8658536585365854,
             "footprint_recall_25pct": 0.7764227642276422,
-            "false_candidates_per_1000km2": 31.329180501815728,
+            "false_candidates_per_1000km2": 33.10145166158998,
+            "false_candidates_detached_per_1000km2": 31.329180501815728,
+            "false_candidate_ha_per_1000km2": 9438.517626665938,
+            "false_alarm_km2_per_1000km2": 92.18263197131438,
             "label_pixels_masked_share": 0.012277507264464702,
             "ci95": {
               "precision": [
@@ -1722,8 +2032,20 @@
                 0.87129549103559
               ],
               "false_candidates_per_1000km2": [
+                25.541585584272642,
+                41.52870716851654
+              ],
+              "false_candidates_detached_per_1000km2": [
                 24.146194650990275,
                 39.5802038491825
+              ],
+              "false_candidate_ha_per_1000km2": [
+                3910.038206278583,
+                16592.183266318094
+              ],
+              "false_alarm_km2_per_1000km2": [
+                41.08234417431428,
+                159.7638589390343
               ]
             },
             "totals": {
@@ -1734,7 +2056,9 @@
               "label_footprints": 246.0,
               "found_any_overlap": 213.0,
               "covered_25pct": 191.0,
-              "false_candidates": 548.0,
+              "false_candidates": 579.0,
+              "false_candidates_detached": 548.0,
+              "false_candidate_ha": 165095.53000000003,
               "valid_km2": 17491.679999999997,
               "label_pixels": 8275214.0,
               "label_pixels_masked": 101599.0
@@ -1748,7 +2072,10 @@
             "iou": 0.23209651133226833,
             "footprint_recall_any": 0.856,
             "footprint_recall_25pct": 0.776,
-            "false_candidates_per_1000km2": 24.384741691052998,
+            "false_candidates_per_1000km2": 25.76300969967773,
+            "false_candidates_detached_per_1000km2": 24.384741691052998,
+            "false_candidate_ha_per_1000km2": 10087.897663982036,
+            "false_alarm_km2_per_1000km2": 92.89583629263377,
             "label_pixels_masked_share": 0.009613977302664653,
             "ci95": {
               "precision": [
@@ -1776,8 +2103,20 @@
                 0.8740157480314961
               ],
               "false_candidates_per_1000km2": [
+                17.614125671586486,
+                33.664158905621875
+              ],
+              "false_candidates_detached_per_1000km2": [
                 16.56016212951043,
                 32.156513647796345
+              ],
+              "false_candidate_ha_per_1000km2": [
+                2660.9509839838242,
+                21017.400833401858
+              ],
+              "false_alarm_km2_per_1000km2": [
+                26.080968529200234,
+                191.7279029923198
               ]
             },
             "totals": {
@@ -1788,7 +2127,9 @@
               "label_footprints": 125.0,
               "found_any_overlap": 107.0,
               "covered_25pct": 97.0,
-              "false_candidates": 230.0,
+              "false_candidates": 243.0,
+              "false_candidates_detached": 230.0,
+              "false_candidate_ha": 95150.34000000001,
               "valid_km2": 9432.1278,
               "label_pixels": 3928655.0,
               "label_pixels_masked": 37770.0
@@ -1802,7 +2143,10 @@
             "iou": 0.28587178873276126,
             "footprint_recall_any": 0.9634146341463414,
             "footprint_recall_25pct": 0.8048780487804879,
-            "false_candidates_per_1000km2": 31.441017442126256,
+            "false_candidates_per_1000km2": 33.56280389527588,
+            "false_candidates_detached_per_1000km2": 31.441017442126256,
+            "false_candidate_ha_per_1000km2": 6048.009546341612,
+            "false_alarm_km2_per_1000km2": 61.373618316772934,
             "label_pixels_masked_share": 0.018835506903619615,
             "ci95": {
               "precision": [
@@ -1830,8 +2174,20 @@
                 0.9146598589479871
               ],
               "false_candidates_per_1000km2": [
+                15.461041398456715,
+                55.05718219273953
+              ],
+              "false_candidates_detached_per_1000km2": [
                 14.700112458662034,
                 50.540732148091955
+              ],
+              "false_candidate_ha_per_1000km2": [
+                303.71330133691913,
+                16113.71631544852
+              ],
+              "false_alarm_km2_per_1000km2": [
+                4.5842031368491085,
+                160.8675291566389
               ]
             },
             "totals": {
@@ -1842,7 +2198,9 @@
               "label_footprints": 82.0,
               "found_any_overlap": 79.0,
               "covered_25pct": 66.0,
-              "false_candidates": 163.0,
+              "false_candidates": 174.0,
+              "false_candidates_detached": 163.0,
+              "false_candidate_ha": 31354.760000000002,
               "valid_km2": 5184.310599999999,
               "label_pixels": 3329775.0,
               "label_pixels_masked": 62718.0
@@ -1856,7 +2214,10 @@
             "iou": 0.35448223136183094,
             "footprint_recall_any": 0.7317073170731707,
             "footprint_recall_25pct": 0.5365853658536586,
-            "false_candidates_per_1000km2": 40.93657495258573,
+            "false_candidates_per_1000km2": 43.035886488615766,
+            "false_candidates_detached_per_1000km2": 40.93657495258573,
+            "false_candidate_ha_per_1000km2": 2656.1924083401655,
+            "false_alarm_km2_per_1000km2": 29.657201494912744,
             "label_pixels_masked_share": 0.0020241951320140194,
             "ci95": {
               "precision": [
@@ -1884,8 +2245,20 @@
                 0.6740864939870489
               ],
               "false_candidates_per_1000km2": [
+                23.23942431193029,
+                66.18537394771796
+              ],
+              "false_candidates_detached_per_1000km2": [
                 21.94707795088636,
                 63.24804264492048
+              ],
+              "false_candidate_ha_per_1000km2": [
+                843.9189857469598,
+                5297.95198096541
+              ],
+              "false_alarm_km2_per_1000km2": [
+                12.021932905870768,
+                54.489928832233474
               ]
             },
             "totals": {
@@ -1896,7 +2269,9 @@
               "label_footprints": 82.0,
               "found_any_overlap": 60.0,
               "covered_25pct": 44.0,
-              "false_candidates": 234.0,
+              "false_candidates": 246.0,
+              "false_candidates_detached": 234.0,
+              "false_candidate_ha": 15183.22,
               "valid_km2": 5716.159700000001,
               "label_pixels": 3024906.0,
               "label_pixels_masked": 6123.0
@@ -1910,7 +2285,10 @@
             "iou": 0.26894579838738014,
             "footprint_recall_any": 0.9333333333333333,
             "footprint_recall_25pct": 0.8266666666666667,
-            "false_candidates_per_1000km2": 24.374607227664956,
+            "false_candidates_per_1000km2": 25.40452020911559,
+            "false_candidates_detached_per_1000km2": 24.374607227664956,
+            "false_candidate_ha_per_1000km2": 5274.635823198889,
+            "false_alarm_km2_per_1000km2": 56.588654591886765,
             "label_pixels_masked_share": 0.009400057807842133,
             "ci95": {
               "precision": [
@@ -1938,8 +2316,20 @@
                 0.9230769230769231
               ],
               "false_candidates_per_1000km2": [
+                15.049782181797275,
+                36.46112682608391
+              ],
+              "false_candidates_detached_per_1000km2": [
                 14.373387476997397,
                 35.257078172473854
+              ],
+              "false_candidate_ha_per_1000km2": [
+                361.55684587559773,
+                14904.658756741326
+              ],
+              "false_alarm_km2_per_1000km2": [
+                6.88533220154486,
+                150.44729799786734
               ]
             },
             "totals": {
@@ -1950,7 +2340,9 @@
               "label_footprints": 75.0,
               "found_any_overlap": 70.0,
               "covered_25pct": 62.0,
-              "false_candidates": 142.0,
+              "false_candidates": 148.0,
+              "false_candidates_detached": 142.0,
+              "false_candidate_ha": 30728.63,
               "valid_km2": 5825.7349,
               "label_pixels": 3739977.0,
               "label_pixels_masked": 35156.0
@@ -1964,7 +2356,10 @@
             "iou": 0.3691838823428936,
             "footprint_recall_any": 0.8846153846153846,
             "footprint_recall_25pct": 0.6923076923076923,
-            "false_candidates_per_1000km2": 20.28421886870494,
+            "false_candidates_per_1000km2": 20.960359497661774,
+            "false_candidates_detached_per_1000km2": 20.28421886870494,
+            "false_candidate_ha_per_1000km2": 408.02607775238596,
+            "false_alarm_km2_per_1000km2": 5.633310726195771,
             "label_pixels_masked_share": 0.0042583000739271895,
             "ci95": {
               "precision": [
@@ -1992,8 +2387,20 @@
                 0.8250271739130434
               ],
               "false_candidates_per_1000km2": [
+                10.472089178659354,
+                34.9437502195586
+              ],
+              "false_candidates_detached_per_1000km2": [
                 9.915170824482193,
                 34.2631063393427
+              ],
+              "false_candidate_ha_per_1000km2": [
+                185.57970496195938,
+                675.7190528624637
+              ],
+              "false_alarm_km2_per_1000km2": [
+                2.843774154783622,
+                9.206032961474765
               ]
             },
             "totals": {
@@ -2004,7 +2411,9 @@
               "label_footprints": 52.0,
               "found_any_overlap": 46.0,
               "covered_25pct": 36.0,
-              "false_candidates": 90.0,
+              "false_candidates": 93.0,
+              "false_candidates_detached": 90.0,
+              "false_candidate_ha": 1810.39,
               "valid_km2": 4436.9468,
               "label_pixels": 3406054.0,
               "label_pixels_masked": 14504.0
@@ -2018,7 +2427,10 @@
             "iou": 0.2572113633202408,
             "footprint_recall_any": 0.8653846153846154,
             "footprint_recall_25pct": 0.7467948717948718,
-            "false_candidates_per_1000km2": 31.25951510405907,
+            "false_candidates_per_1000km2": 33.054980625499866,
+            "false_candidates_detached_per_1000km2": 31.25951510405907,
+            "false_candidate_ha_per_1000km2": 7854.312723374906,
+            "false_alarm_km2_per_1000km2": 76.81767566012894,
             "label_pixels_masked_share": 0.011986427005312765,
             "ci95": {
               "precision": [
@@ -2046,8 +2458,20 @@
                 0.8239339612638722
               ],
               "false_candidates_per_1000km2": [
+                25.32995477871587,
+                42.04727009883142
+              ],
+              "false_candidates_detached_per_1000km2": [
                 23.92409218095797,
                 40.22074843021536
+              ],
+              "false_candidate_ha_per_1000km2": [
+                3130.115239336524,
+                14019.417066128191
+              ],
+              "false_alarm_km2_per_1000km2": [
+                33.259562382370866,
+                133.53901488524355
               ]
             },
             "totals": {
@@ -2058,7 +2482,9 @@
               "label_footprints": 312.0,
               "found_any_overlap": 270.0,
               "covered_25pct": 233.0,
-              "false_candidates": 679.0,
+              "false_candidates": 718.0,
+              "false_candidates_detached": 679.0,
+              "false_candidate_ha": 170606.56000000006,
               "valid_km2": 21721.386199999994,
               "label_pixels": 10617259.0,
               "label_pixels_masked": 127263.0
@@ -2076,13 +2502,15 @@
             "found_any_overlap": 5,
             "covered_25pct": 5,
             "predicted_parts": 20,
-            "false_candidates": 19,
+            "false_candidates": 20,
             "valid_km2": 439.6949,
             "label_pixels": 528085,
             "label_pixels_masked": 232,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 19,
+            "false_candidate_ha": 14523.44
           },
           {
             "site_id": "gmlr-1039",
@@ -2100,7 +2528,9 @@
             "label_pixels_masked": 96,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 1.6600000000000001
           },
           {
             "site_id": "gmlr-1048",
@@ -2118,7 +2548,9 @@
             "label_pixels_masked": 6792,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 94.02
           },
           {
             "site_id": "gmlr-1105",
@@ -2130,13 +2562,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 22,
-            "false_candidates": 21,
+            "false_candidates": 22,
             "valid_km2": 435.4461,
             "label_pixels": 90080,
             "label_pixels_masked": 0,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 21,
+            "false_candidate_ha": 18814.04
           },
           {
             "site_id": "gmlr-1140",
@@ -2148,13 +2582,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 14,
-            "false_candidates": 12,
+            "false_candidates": 13,
             "valid_km2": 427.7617,
             "label_pixels": 93035,
             "label_pixels_masked": 2253,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 12,
+            "false_candidate_ha": 745.44
           },
           {
             "site_id": "gmlr-1142",
@@ -2166,13 +2602,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 2,
             "predicted_parts": 15,
-            "false_candidates": 12,
+            "false_candidates": 14,
             "valid_km2": 448.36830000000003,
             "label_pixels": 157889,
             "label_pixels_masked": 4597,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 12,
+            "false_candidate_ha": 576.97
           },
           {
             "site_id": "gmlr-1146",
@@ -2190,7 +2628,9 @@
             "label_pixels_masked": 260,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 683.2
           },
           {
             "site_id": "gmlr-1176",
@@ -2208,7 +2648,9 @@
             "label_pixels_masked": 227,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 14,
+            "false_candidate_ha": 198.03
           },
           {
             "site_id": "gmlr-1179",
@@ -2220,13 +2662,15 @@
             "found_any_overlap": 11,
             "covered_25pct": 9,
             "predicted_parts": 6,
-            "false_candidates": 3,
+            "false_candidates": 4,
             "valid_km2": 423.3928,
             "label_pixels": 171448,
             "label_pixels_masked": 445,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 330.07
           },
           {
             "site_id": "gmlr-1181",
@@ -2244,7 +2688,9 @@
             "label_pixels_masked": 600,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 209.35
           },
           {
             "site_id": "gmlr-1185",
@@ -2256,13 +2702,15 @@
             "found_any_overlap": 12,
             "covered_25pct": 12,
             "predicted_parts": 11,
-            "false_candidates": 8,
+            "false_candidates": 9,
             "valid_km2": 420.6329,
             "label_pixels": 94687,
             "label_pixels_masked": 260,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 1207.72
           },
           {
             "site_id": "gmlr-1261",
@@ -2274,13 +2722,15 @@
             "found_any_overlap": 6,
             "covered_25pct": 4,
             "predicted_parts": 12,
-            "false_candidates": 7,
+            "false_candidates": 9,
             "valid_km2": 423.9037,
             "label_pixels": 91241,
             "label_pixels_masked": 284,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 7,
+            "false_candidate_ha": 229.18
           },
           {
             "site_id": "gmlr-1264",
@@ -2298,7 +2748,9 @@
             "label_pixels_masked": 112,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 15,
+            "false_candidate_ha": 796.58
           },
           {
             "site_id": "gmlr-1266",
@@ -2310,13 +2762,15 @@
             "found_any_overlap": 10,
             "covered_25pct": 9,
             "predicted_parts": 27,
-            "false_candidates": 21,
+            "false_candidates": 22,
             "valid_km2": 420.7763,
             "label_pixels": 116092,
             "label_pixels_masked": 2241,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 21,
+            "false_candidate_ha": 289.55
           },
           {
             "site_id": "gmlr-1280",
@@ -2334,7 +2788,9 @@
             "label_pixels_masked": 0,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 10,
+            "false_candidate_ha": 778.99
           },
           {
             "site_id": "gmlr-1330",
@@ -2346,13 +2802,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 31,
-            "false_candidates": 25,
+            "false_candidates": 26,
             "valid_km2": 435.2199,
             "label_pixels": 178472,
             "label_pixels_masked": 8034,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 25,
+            "false_candidate_ha": 588.86
           },
           {
             "site_id": "gmlr-1354",
@@ -2370,7 +2828,9 @@
             "label_pixels_masked": 6620,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 17,
+            "false_candidate_ha": 4099.5
           },
           {
             "site_id": "gmlr-1367",
@@ -2382,13 +2842,15 @@
             "found_any_overlap": 8,
             "covered_25pct": 8,
             "predicted_parts": 17,
-            "false_candidates": 13,
+            "false_candidates": 15,
             "valid_km2": 423.94730000000004,
             "label_pixels": 137768,
             "label_pixels_masked": 8,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 425.33
           },
           {
             "site_id": "gmlr-1414",
@@ -2406,7 +2868,9 @@
             "label_pixels_masked": 168,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 5,
+            "false_candidate_ha": 146.14000000000001
           },
           {
             "site_id": "gmlr-1422",
@@ -2424,7 +2888,9 @@
             "label_pixels_masked": 0,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-1438",
@@ -2442,7 +2908,9 @@
             "label_pixels_masked": 2300,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 7.21
           },
           {
             "site_id": "gmlr-1440",
@@ -2454,13 +2922,15 @@
             "found_any_overlap": 6,
             "covered_25pct": 6,
             "predicted_parts": 1,
-            "false_candidates": 0,
+            "false_candidates": 1,
             "valid_km2": 453.7848,
             "label_pixels": 374931,
             "label_pixels_masked": 6389,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 45274.71
           },
           {
             "site_id": "gmlr-1463",
@@ -2478,7 +2948,9 @@
             "label_pixels_masked": 164,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 34.71
           },
           {
             "site_id": "gmlr-1500",
@@ -2490,13 +2962,15 @@
             "found_any_overlap": 3,
             "covered_25pct": 3,
             "predicted_parts": 20,
-            "false_candidates": 17,
+            "false_candidates": 18,
             "valid_km2": 433.52270000000004,
             "label_pixels": 255079,
             "label_pixels_masked": 7381,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 17,
+            "false_candidate_ha": 838.37
           },
           {
             "site_id": "gmlr-1513",
@@ -2508,13 +2982,15 @@
             "found_any_overlap": 10,
             "covered_25pct": 10,
             "predicted_parts": 27,
-            "false_candidates": 26,
+            "false_candidates": 27,
             "valid_km2": 425.1336,
             "label_pixels": 64575,
             "label_pixels_masked": 204,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 26,
+            "false_candidate_ha": 27491.09
           },
           {
             "site_id": "gmlr-1525",
@@ -2526,13 +3002,15 @@
             "found_any_overlap": 7,
             "covered_25pct": 6,
             "predicted_parts": 15,
-            "false_candidates": 11,
+            "false_candidates": 12,
             "valid_km2": 446.5681,
             "label_pixels": 185657,
             "label_pixels_masked": 68,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 298.75
           },
           {
             "site_id": "gmlr-1540",
@@ -2550,7 +3028,9 @@
             "label_pixels_masked": 548,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 1.17
           },
           {
             "site_id": "gmlr-1606",
@@ -2562,13 +3042,15 @@
             "found_any_overlap": 5,
             "covered_25pct": 4,
             "predicted_parts": 18,
-            "false_candidates": 10,
+            "false_candidates": 11,
             "valid_km2": 440.2889,
             "label_pixels": 302359,
             "label_pixels_masked": 108,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 10,
+            "false_candidate_ha": 704.48
           },
           {
             "site_id": "gmlr-1625",
@@ -2586,7 +3068,9 @@
             "label_pixels_masked": 448,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 122.46000000000001
           },
           {
             "site_id": "gmlr-1665",
@@ -2604,7 +3088,9 @@
             "label_pixels_masked": 816,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 30,
+            "false_candidate_ha": 777.32
           },
           {
             "site_id": "gmlr-1813",
@@ -2622,7 +3108,9 @@
             "label_pixels_masked": 5365,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-1824",
@@ -2640,7 +3128,9 @@
             "label_pixels_masked": 13638,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 83.36
           },
           {
             "site_id": "gmlr-183",
@@ -2658,7 +3148,9 @@
             "label_pixels_masked": 24,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 134.11
           },
           {
             "site_id": "gmlr-1914",
@@ -2676,7 +3168,9 @@
             "label_pixels_masked": 1842,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 57,
+            "false_candidate_ha": 1268.8
           },
           {
             "site_id": "gmlr-1915",
@@ -2688,13 +3182,15 @@
             "found_any_overlap": 7,
             "covered_25pct": 4,
             "predicted_parts": 56,
-            "false_candidates": 43,
+            "false_candidates": 48,
             "valid_km2": 421.8895,
             "label_pixels": 177571,
             "label_pixels_masked": 1683,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 43,
+            "false_candidate_ha": 3495.08
           },
           {
             "site_id": "gmlr-2027",
@@ -2706,13 +3202,15 @@
             "found_any_overlap": 5,
             "covered_25pct": 3,
             "predicted_parts": 22,
-            "false_candidates": 15,
+            "false_candidates": 16,
             "valid_km2": 446.8068,
             "label_pixels": 89996,
             "label_pixels_masked": 68,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 15,
+            "false_candidate_ha": 892.07
           },
           {
             "site_id": "gmlr-2057",
@@ -2724,13 +3222,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 3,
             "predicted_parts": 16,
-            "false_candidates": 8,
+            "false_candidates": 9,
             "valid_km2": 432.2241,
             "label_pixels": 112895,
             "label_pixels_masked": 0,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 119.46000000000001
           },
           {
             "site_id": "gmlr-2113",
@@ -2742,13 +3242,15 @@
             "found_any_overlap": 2,
             "covered_25pct": 1,
             "predicted_parts": 14,
-            "false_candidates": 11,
+            "false_candidates": 12,
             "valid_km2": 451.2844,
             "label_pixels": 158595,
             "label_pixels_masked": 600,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 11,
+            "false_candidate_ha": 465.81
           },
           {
             "site_id": "gmlr-2117",
@@ -2766,7 +3268,9 @@
             "label_pixels_masked": 80,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 2,
+            "false_candidate_ha": 16.63
           },
           {
             "site_id": "gmlr-2118",
@@ -2778,13 +3282,15 @@
             "found_any_overlap": 15,
             "covered_25pct": 10,
             "predicted_parts": 25,
-            "false_candidates": 16,
+            "false_candidates": 18,
             "valid_km2": 446.7988,
             "label_pixels": 556677,
             "label_pixels_masked": 148,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 16,
+            "false_candidate_ha": 660.51
           },
           {
             "site_id": "gmlr-212",
@@ -2796,13 +3302,15 @@
             "found_any_overlap": 4,
             "covered_25pct": 4,
             "predicted_parts": 34,
-            "false_candidates": 30,
+            "false_candidates": 32,
             "valid_km2": 440.9026,
             "label_pixels": 144617,
             "label_pixels_masked": 2422,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 30,
+            "false_candidate_ha": 3491.82
           },
           {
             "site_id": "gmlr-2452",
@@ -2820,7 +3328,9 @@
             "label_pixels_masked": 336,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-2454",
@@ -2832,13 +3342,15 @@
             "found_any_overlap": 9,
             "covered_25pct": 7,
             "predicted_parts": 15,
-            "false_candidates": 4,
+            "false_candidates": 6,
             "valid_km2": 460.6913,
             "label_pixels": 155249,
             "label_pixels_masked": 550,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 280.35
           },
           {
             "site_id": "gmlr-2655",
@@ -2856,7 +3368,9 @@
             "label_pixels_masked": 112,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 29,
+            "false_candidate_ha": 529.22
           },
           {
             "site_id": "gmlr-2711",
@@ -2874,7 +3388,9 @@
             "label_pixels_masked": 140,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 8,
+            "false_candidate_ha": 211.56
           },
           {
             "site_id": "gmlr-2713",
@@ -2892,7 +3408,9 @@
             "label_pixels_masked": 544,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 7,
+            "false_candidate_ha": 34.300000000000004
           },
           {
             "site_id": "gmlr-2714",
@@ -2910,7 +3428,9 @@
             "label_pixels_masked": 1732,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "europe_north_asia"
+            "region": "europe_north_asia",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-2805",
@@ -2928,7 +3448,9 @@
             "label_pixels_masked": 0,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 35,
+            "false_candidate_ha": 6752.18
           },
           {
             "site_id": "gmlr-2931",
@@ -2946,7 +3468,9 @@
             "label_pixels_masked": 44,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "asia_oceania"
+            "region": "asia_oceania",
+            "false_candidates_detached": 6,
+            "false_candidate_ha": 93.88
           },
           {
             "site_id": "gmlr-375",
@@ -2964,7 +3488,9 @@
             "label_pixels_masked": 5062,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 1,
+            "false_candidate_ha": 4.82
           },
           {
             "site_id": "gmlr-586",
@@ -2982,7 +3508,9 @@
             "label_pixels_masked": 23820,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 29,
+            "false_candidate_ha": 895.3100000000001
           },
           {
             "site_id": "gmlr-659",
@@ -3000,7 +3528,9 @@
             "label_pixels_masked": 552,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 3,
+            "false_candidate_ha": 11.0
           },
           {
             "site_id": "gmlr-684",
@@ -3018,7 +3548,9 @@
             "label_pixels_masked": 131,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 0,
+            "false_candidate_ha": 0.0
           },
           {
             "site_id": "gmlr-782",
@@ -3036,7 +3568,9 @@
             "label_pixels_masked": 2868,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 9,
+            "false_candidate_ha": 130.04
           },
           {
             "site_id": "gmlr-783",
@@ -3048,13 +3582,15 @@
             "found_any_overlap": 12,
             "covered_25pct": 9,
             "predicted_parts": 36,
-            "false_candidates": 20,
+            "false_candidates": 21,
             "valid_km2": 419.94100000000003,
             "label_pixels": 109567,
             "label_pixels_masked": 336,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 20,
+            "false_candidate_ha": 302.5
           },
           {
             "site_id": "gmlr-924",
@@ -3066,13 +3602,15 @@
             "found_any_overlap": 14,
             "covered_25pct": 13,
             "predicted_parts": 27,
-            "false_candidates": 4,
+            "false_candidates": 5,
             "valid_km2": 422.8158,
             "label_pixels": 298745,
             "label_pixels_masked": 5337,
             "mine_scale": "Artisanal",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 4,
+            "false_candidate_ha": 197.44
           },
           {
             "site_id": "gmlr-937",
@@ -3090,7 +3628,9 @@
             "label_pixels_masked": 11000,
             "mine_scale": "Artisanal",
             "mine_type": "Placer",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 7,
+            "false_candidate_ha": 19.07
           },
           {
             "site_id": "gmlr-956",
@@ -3108,7 +3648,9 @@
             "label_pixels_masked": 6943,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 13,
+            "false_candidate_ha": 164.06
           },
           {
             "site_id": "gmlr-98",
@@ -3120,13 +3662,15 @@
             "found_any_overlap": 20,
             "covered_25pct": 19,
             "predicted_parts": 55,
-            "false_candidates": 45,
+            "false_candidates": 52,
             "valid_km2": 454.07500000000005,
             "label_pixels": 142122,
             "label_pixels_masked": 4223,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "americas"
+            "region": "americas",
+            "false_candidates_detached": 45,
+            "false_candidate_ha": 26004.59
           },
           {
             "site_id": "gmlr-986",
@@ -3138,13 +3682,15 @@
             "found_any_overlap": 6,
             "covered_25pct": 6,
             "predicted_parts": 27,
-            "false_candidates": 26,
+            "false_candidates": 27,
             "valid_km2": 433.1766,
             "label_pixels": 178861,
             "label_pixels_masked": 512,
             "mine_scale": "Industrial",
             "mine_type": "Surface",
-            "region": "africa"
+            "region": "africa",
+            "false_candidates_detached": 26,
+            "false_candidate_ha": 5870.64
           }
         ]
       }
@@ -3158,5 +3704,12 @@
   },
   "best_epoch": 24,
   "epochs": 40,
-  "runtime_s": 5113.1
+  "runtime_s": 5113.1,
+  "rescored": [
+    {
+      "at": "2026-11-08T09:34:18.428056+00:00",
+      "code_commit": "95510052b34fdbc88027072940e713833195021a",
+      "footprint_definition": "v2: false candidate = predicted 8-connected patch of >= 1 ha whose usable pixels are < 50% labelled mining; false_candidates_detached = such patches touching no label (v1 rule)"
+    }
+  ]
 }
