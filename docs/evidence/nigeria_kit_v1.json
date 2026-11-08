@@ -1,0 +1,37 @@
+{
+  "config": "configs/nigeria_aois.yaml",
+  "regions": {
+    "jos_plateau": {
+      "scene_id": "S2C_MSIL2A_20251229T094421_R036_T32PMR_20251229T134611",
+      "date": "2025-12-29T09:44:21.025000Z",
+      "provider": "planetary",
+      "bbox": [
+        8.7,
+        9.45,
+        9.1,
+        9.85
+      ],
+      "usable_fraction": 0.9722135778456978,
+      "nodata_fraction": 0.027777777777777776,
+      "decision": "pass",
+      "licence_note": "Contains modified Copernicus Sentinel data 2025",
+      "epsg": 32632
+    },
+    "kogi_kwara": {
+      "scene_id": "S2B_MSIL2A_20260106T095309_R079_T31PHK_20260106T133830",
+      "date": "2026-01-06T09:53:09.024000Z",
+      "provider": "planetary",
+      "bbox": [
+        5.8,
+        8.1,
+        6.2,
+        8.5
+      ],
+      "usable_fraction": 0.9997758852532497,
+      "nodata_fraction": 0.00022411474675033618,
+      "decision": "pass",
+      "licence_note": "Contains modified Copernicus Sentinel data 2026",
+      "epsg": 32631
+    }
+  }
+}

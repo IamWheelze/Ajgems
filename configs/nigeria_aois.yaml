@@ -2,14 +2,19 @@
 # Boxes are areas to label, chosen by region. They say nothing about where mining is.
 # Edit or add regions freely. Keep each box under about 0.5 degrees and inside one Sentinel-2 tile: the kit
 # reports how much of the box the scene covers. Tiles split at UTM zone edges (6 E, 12 E) and at latitude seams (about 8.1 N here).
-# Dry season (December to February) gives the clearest imagery.
+# Dry season (December to February) gives the clearest imagery. scene_id/provider pin the scene so every
+# machine builds the same kit; remove both lines to let the kit choose again.
 regions:
   - name: jos_plateau
+    scene_id: S2C_MSIL2A_20251229T094421_R036_T32PMR_20251229T134611   # pinned 2026-11-08: 2025-12-29, usable 97%
+    provider: planetary
     bbox: [8.70, 9.45, 9.10, 9.85]      # west, south, east, north (WGS 84)
     start: "2025-12-01"
     end: "2026-02-28"
     max_cloud: 10
   - name: kogi_kwara
+    scene_id: S2B_MSIL2A_20260106T095309_R079_T31PHK_20260106T133830   # pinned 2026-11-08: 2026-01-06, usable 100%
+    provider: planetary
     bbox: [5.80, 8.10, 6.20, 8.50]      # moved north of the ~8.1 N tile seam so one scene covers it
     start: "2025-12-01"
     end: "2026-02-28"
