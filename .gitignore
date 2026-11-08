@@ -5,3 +5,4 @@ data/
 *.egg-info/
 node_modules/
 web/frontend/dist/
+*.tsbuildinfo
