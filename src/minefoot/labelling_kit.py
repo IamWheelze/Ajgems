@@ -89,11 +89,16 @@ def build_kit(config_path, out_dir, log=print) -> dict:
         gis = out / "gis" / name
         prep = out / "prepared" / name
         if not (prep / "prepared.json").exists():
-            prov, items = search(bbox, r["start"], r["end"], r.get("max_cloud", 20))
-            if not items:
-                raise LookupError(f"{name}: no scene under {r.get('max_cloud', 20)}% cloud in {r['start']} to {r['end']}")
-            item, cover = _choose_scene(items, bbox)
-            log(f"{name}: {item.id} from {prov}, cloud {item.properties.get('eo:cloud_cover')}%, covers {cover:.0%} of box")
+            if r.get("scene_id"):   # pinned, so every machine builds the kit from the same scene
+                from .catalog import get_item
+                prov = r["provider"]; item = get_item(prov, r["scene_id"]); cover = None
+                log(f"{name}: pinned scene {item.id} from {prov}")
+            else:
+                prov, items = search(bbox, r["start"], r["end"], r.get("max_cloud", 20))
+                if not items:
+                    raise LookupError(f"{name}: no scene under {r.get('max_cloud', 20)}% cloud in {r['start']} to {r['end']}")
+                item, cover = _choose_scene(items, bbox)
+                log(f"{name}: {item.id} from {prov}, cloud {item.properties.get('eo:cloud_cover')}%, covers {cover:.0%} of box")
             raw = fetch_scene(item, prov, bbox, out / "raw", name=name)
             prepare_scene(raw, prep)
             (raw / "raw_dn.tif").unlink(missing_ok=True)   # prepared data is all the kit and G3 need
