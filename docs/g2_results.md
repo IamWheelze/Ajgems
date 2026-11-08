@@ -63,11 +63,38 @@ At gmlr-1105 most of a dry landscape is flagged. These large false areas touch a
 
 Per-type false-alert rates on validation (WorldCover proxy types, [file](evidence/g2_v1/false_alerts_by_type.json)): farmland 2.0%, settlement 6.3%, riverbank 17.5%, bare ground 18.1%, other land 1.1%. Compared with the random forest (0.7%, 14.2%, 15.8%, 27.2%, 0.6%), the U-Net flags less settlement and bare ground but more farmland, riverbank and other land.
 
+## Follow-up, 2026-11-08: false-candidate definition and hard negatives
+
+**False-candidate definition (v2).** A predicted patch of 1 ha or more now counts as a false candidate when under half of its usable pixels are labelled mining. Before, it counted only if it touched no label at all, so large false areas attached to a mine were missed. The old count is kept as `false_candidates_detached`, and false-candidate area is now reported too. Both runs were rescored from their stored score maps at their original thresholds (`minefoot rescore`; previous files kept as `metrics_before_rescore_1.json`).
+
+Counts barely moved (G2 validation 27 → 29 per 1,000 km²; G1 random forest 154 → 159). A large false area is still one patch, so **area is the measure that tells the models apart**. False-candidate area on validation: U-Net 2,900 ha against the random forest's 2,941 per 1,000 km², no clear difference (paired).
+
+**Hard negatives mined from the model's own errors.** `minefoot mine-negatives` ran `g2_v1` over the 60 **training** sites only, at its validation-chosen threshold. It kept every flagged patch of 1 ha or more beyond 500 m of any label: 782 patches, 31,360 ha ([summary](evidence/g2_hn/mined_negatives_summary.json); main WorldCover class tree 280, grass 174, bare 97, built-up 83, water 77). `g2_hn` fine-tuned `g2_v1`'s checkpoint for 12 epochs at learning rate 3e-4, with 25% of chips centred on these negatives (best epoch 6; threshold 0.41, chosen on validation; commit `2b6ecb5`; [config](evidence/g2_hn/config.json)).
+
+Paired, `g2_hn` minus `g2_v1` ([val](evidence/g2_hn/paired_vs_g2_v1_val.json), [test](evidence/g2_hn/paired_vs_g2_v1_test.json)):
+
+| Difference | Validation | Test |
+| --- | --- | --- |
+| Pixel F1 | +0.028 (−0.014 to +0.062), unclear | +0.053 (+0.004 to +0.100), better |
+| Precision | +0.076 (+0.024 to +0.105), better | +0.074 (+0.013 to +0.149), better |
+| Recall | −0.042 (−0.133 to +0.026), unclear | −0.013 (−0.038 to +0.009), unclear |
+| Footprints covered ≥25% | +0.008 (−0.037 to +0.051), unclear | −0.038 (−0.074 to +0.000), unclear |
+| False-alarm km² per 1,000 km² | **33.3 → 22.9: −10.4 (−21.1 to −1.7), better** | 64.7 → 46.0: −18.7 (−41.0 to −2.9), better |
+| False-candidate ha per 1,000 km² | 2,900 → 1,984: −916 (−1,869 to −95), better | 6,591 → 4,731: −1,860 (−4,060 to −201), better |
+
+**Decision (validation): `g2_hn` is the current best model.** It wrongly flags about a third less ground at the same recall. Against the G1 random forest, its validation F1 is +0.237 (+0.145 to +0.320), and its test false-alarm area is lower by 16 km² per 1,000 km² (−34.9 to −1.0). Test pixel F1 is 0.479 (0.383 to 0.593): artisanal 0.57, industrial 0.45, Africa 0.43. Per-type false alerts on validation fell for riverbank (17.5% → 11.6%) and bare ground (18.1% → 9.5%) ([file](evidence/g2_hn/false_alerts_by_type.json)). Error gallery: [`results/g2_hn_unet_errors.html`](../results/g2_hn_unet_errors.html).
+
+Caveats:
+- **The mined negatives are the model's own errors beyond 500 m of labels.** Labels are incomplete, so some may be real unlabelled mining. They help on these metrics, but a reviewer should look at a sample before they are reused.
+- **This is a second experiment at this gate,** decided on validation. The test set was scored for the record only.
+
+Digitised hard negatives use the same route: `minefoot rasterize-negatives hard_negatives.gpkg --sites … --out <folder>` adds them to the masks, then `minefoot g2 --negatives-root <folder>`.
+
 ## What this means
 
 1. **G2 passed, so G3 is next:** the first test on Nigerian sites with no Nigerian training. It needs the founder's 30 to 50 digitised Nigerian sites, locked first (step 7). It will measure the gap between global and Nigerian performance.
-2. **Large false areas in dry landscapes and water are the main failure.** Before any release, add digitised hard negatives (bare land, dry stream beds, water bodies near mines), and consider a minimum-confidence rule for very large predicted areas.
-3. **Fix the false-candidate definition.** Count predicted patches that are mostly outside labels, not only those touching none, so large attached false areas are counted. Until then, read false-alarm area alongside it.
+2. **Large false areas in dry landscapes and water are the main failure.** Model-mined hard negatives cut false-alarm area by about a third (above). Digitised negatives (bare land, dry stream beds, water bodies near mines) should follow.
+3. **False-candidate definition fixed** (v2, above). Read the count together with false-candidate area and false-alarm area.
 4. **The artisanal recall (0.43) is still limited by loose labels**, which enclose forest. Tighter Nigerian labels will show the real figure.
 5. **The pretrained encoder's licence must be resolved before release**, or the model retrained with `--encoder-weights none`.
 6. **The web app may now start** under CLAUDE.md's rule "not until G2 has passed". It must carry the FR-052 masking report, "model score" wording and the FR-110 limits.
