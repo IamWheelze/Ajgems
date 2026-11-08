@@ -201,6 +201,9 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
         m["footprint_recall_any"] = t["found_any_overlap"] / t["label_footprints"] if t["label_footprints"] else float("nan")
         m["footprint_recall_25pct"] = t["covered_25pct"] / t["label_footprints"] if t["label_footprints"] else float("nan")
         m["false_candidates_per_1000km2"] = 1000 * t["false_candidates"] / t["valid_km2"] if t["valid_km2"] else float("nan")
+        # Area flagged outside labels, km2 per 1,000 km2 of usable area. Unlike the false-candidate count,
+        # it also counts large false areas attached to a labelled mine.
+        m["false_alarm_km2_per_1000km2"] = 1000 * t["fp"] * 1e-4 / t["valid_km2"] if t["valid_km2"] else float("nan")
         m["label_pixels_masked_share"] = t["label_pixels_masked"] / t["label_pixels"] if t["label_pixels"] else float("nan")
         return m
 
@@ -217,8 +220,9 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
 
 
 # Higher is better for all of these except false candidates.
-COMPARE_METRICS = ("f1", "precision", "recall", "iou", "footprint_recall_25pct", "false_candidates_per_1000km2")
-LOWER_IS_BETTER = {"false_candidates_per_1000km2"}
+COMPARE_METRICS = ("f1", "precision", "recall", "iou", "footprint_recall_25pct", "false_candidates_per_1000km2",
+                   "false_alarm_km2_per_1000km2")
+LOWER_IS_BETTER = {"false_candidates_per_1000km2", "false_alarm_km2_per_1000km2"}
 
 
 def paired_compare(rows_a: list[dict], rows_b: list[dict], metrics=COMPARE_METRICS, n_boot=2000, seed=0) -> dict:

@@ -508,6 +508,7 @@ def test_g1_summary_has_site_bootstrap_interval():
     lo, hi = s["ci95"]["f1"]
     assert lo <= s["f1"] <= hi and s["sites"] == 8
     assert s["false_candidates_per_1000km2"] == pytest.approx(100.0)
+    assert s["false_alarm_km2_per_1000km2"] == pytest.approx(1000 * 10 * 1e-4 / 10.0)
     assert s["label_pixels_masked_share"] == pytest.approx(5 / 70)
 
 
