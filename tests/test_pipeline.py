@@ -825,3 +825,23 @@ def test_project_with_editable_layers(tmp_path):
         r = subprocess.run([exe, str(script), str(tmp_path / "pkg" / "project.qgs")], capture_output=True, text=True,
                            env={**os.environ, "QT_QPA_PLATFORM": "offscreen"})
         assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_vectorise_threshold_mmu_bands_and_masking(tmp_path):
+    from minefoot.vectorise import score_band, vectorise
+    raw = make_scene(tmp_path / "raw", size=128); d = tmp_path / "p" / raw.name; prepare_scene(raw, d)
+    with rasterio.open(d / "scl.tif") as s:
+        prof = {**s.profile, "dtype": "uint8", "nodata": None}
+    sc = np.zeros((128, 128), "uint8")
+    sc[10:30, 10:30] = 240        # 400 px = 4 ha, high score
+    sc[60:62, 60:62] = 240        # 4 px = 0.04 ha, below the 1 ha unit
+    sc[90:110, 90:110] = 140      # 4 ha, just above threshold
+    with rasterio.open(tmp_path / "s.tif", "w", **prof) as w:
+        w.write(sc, 1)
+    g = vectorise(tmp_path / "s.tif", threshold=0.5, mmu_ha=1.0, prepared_dir=d)
+    assert len(g) == 2 and g.crs.to_epsg() == 4326
+    g = g.sort_values("score_mean", ascending=False).reset_index(drop=True)
+    assert g.loc[0, "score_band"] == "high" and g.loc[1, "score_band"] == "low"
+    assert abs(g.loc[0, "area_ha"] - 4.0) < 1e-6 and g.loc[0, "score_mean"] == pytest.approx(240 / 255, abs=1e-6)
+    assert {"masked_fraction", "mask_status"} <= set(g.columns)
+    assert score_band(0.99, 0.4) == "high" and score_band(0.41, 0.4) == "low" and score_band(0.6, 0.4) == "medium"
