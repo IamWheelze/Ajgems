@@ -30,6 +30,9 @@ FEATURES = (*BANDS, *INDICES)
 # Index baselines: (feature, sign). Sign -1 means "low values look like disturbance".
 INDEX_CANDIDATES = (("BSI", 1), ("NDBI", 1), ("NDVI", -1))
 MMU_PIXELS = 100            # 1 ha at 10 m: FRD minimum mapping unit for evaluation
+FALSE_CANDIDATE_MAX_LABEL_SHARE = 0.5   # a predicted patch with less labelled mining than this is a false candidate
+FOOTPRINT_DEFINITION = ("v2: false candidate = predicted 8-connected patch of >= 1 ha whose usable pixels are "
+                        "< 50% labelled mining; false_candidates_detached = such patches touching no label (v1 rule)")
 SCORE_LEVELS = 256          # scores are stored as uint8 0..255
 RF_PARAMS = dict(n_estimators=100, max_depth=20, min_samples_leaf=5, max_features="sqrt", n_jobs=-1)
 PER_SITE_SAMPLE = 3000      # pixels per class per training site
@@ -169,7 +172,11 @@ def best_threshold(hists: list[dict]) -> tuple[int, float]:
 def object_metrics(pred: np.ndarray, valid: np.ndarray, label: np.ndarray, mmu=MMU_PIXELS) -> dict:
     """Footprint-level counts. Labelled footprints are 8-connected parts of the label of at least
     `mmu` usable pixels. A footprint is found if any usable pixel in it is predicted, and covered if
-    at least 25% are. False candidates are predicted parts of at least `mmu` pixels touching no label."""
+    at least 25% are.
+
+    False candidates are predicted parts of at least `mmu` usable pixels that are less than half
+    labelled mining (FOOTPRINT_DEFINITION v2). This counts large false areas that merely touch a mine,
+    which the v1 rule (touching no label, kept as false_candidates_detached) missed."""
     from scipy import ndimage
     st = np.ones((3, 3), bool)
     lab_cc, n_lab = ndimage.label(label & valid, structure=st)
@@ -181,19 +188,23 @@ def object_metrics(pred: np.ndarray, valid: np.ndarray, label: np.ndarray, mmu=M
     psize = np.bincount(pr_cc.ravel(), minlength=n_pr + 1)
     touch = np.bincount(pr_cc[label].ravel(), minlength=n_pr + 1)
     pbig = np.flatnonzero(psize >= mmu); pbig = pbig[pbig > 0]
-    false_cand = int((touch[pbig] == 0).sum())
+    share = touch[pbig] / psize[pbig]
+    false = pbig[share < FALSE_CANDIDATE_MAX_LABEL_SHARE]
     return {"label_footprints": int(big.size), "found_any_overlap": found, "covered_25pct": covered,
-            "predicted_parts": int(pbig.size), "false_candidates": false_cand,
+            "predicted_parts": int(pbig.size), "false_candidates": int(false.size),
+            "false_candidates_detached": int((touch[pbig] == 0).sum()),
+            "false_candidate_ha": float(psize[false].sum() * 0.01),
             "valid_km2": float(valid.sum() * 1e-4)}
 
 
 def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
     """Pooled metrics over sites with a site bootstrap 95% interval (FRD 12: pixels are not independent)."""
     keys = ("tp", "fp", "fn", "tn", "label_footprints", "found_any_overlap", "covered_25pct",
-            "false_candidates", "valid_km2", "label_pixels", "label_pixels_masked")
+            "false_candidates", "false_candidates_detached", "false_candidate_ha", "valid_km2",
+            "label_pixels", "label_pixels_masked")
     if not rows:
         return {"sites": 0}
-    M = np.array([[r[k] for k in keys] for r in rows], dtype="float64")
+    M = np.array([[r.get(k, np.nan) for k in keys] for r in rows], dtype="float64")   # older runs lack new keys
 
     def stats(tot):
         t = dict(zip(keys, tot))
@@ -201,6 +212,9 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
         m["footprint_recall_any"] = t["found_any_overlap"] / t["label_footprints"] if t["label_footprints"] else float("nan")
         m["footprint_recall_25pct"] = t["covered_25pct"] / t["label_footprints"] if t["label_footprints"] else float("nan")
         m["false_candidates_per_1000km2"] = 1000 * t["false_candidates"] / t["valid_km2"] if t["valid_km2"] else float("nan")
+        m["false_candidates_detached_per_1000km2"] = (1000 * t["false_candidates_detached"] / t["valid_km2"]
+                                                      if t["valid_km2"] else float("nan"))
+        m["false_candidate_ha_per_1000km2"] = 1000 * t["false_candidate_ha"] / t["valid_km2"] if t["valid_km2"] else float("nan")
         # Area flagged outside labels, km2 per 1,000 km2 of usable area. Unlike the false-candidate count,
         # it also counts large false areas attached to a labelled mine.
         m["false_alarm_km2_per_1000km2"] = 1000 * t["fp"] * 1e-4 / t["valid_km2"] if t["valid_km2"] else float("nan")
@@ -221,8 +235,8 @@ def summarise(rows: list[dict], n_boot=1000, seed=0) -> dict:
 
 # Higher is better for all of these except false candidates.
 COMPARE_METRICS = ("f1", "precision", "recall", "iou", "footprint_recall_25pct", "false_candidates_per_1000km2",
-                   "false_alarm_km2_per_1000km2")
-LOWER_IS_BETTER = {"false_candidates_per_1000km2", "false_alarm_km2_per_1000km2"}
+                   "false_candidate_ha_per_1000km2", "false_alarm_km2_per_1000km2")
+LOWER_IS_BETTER = {"false_candidates_per_1000km2", "false_candidate_ha_per_1000km2", "false_alarm_km2_per_1000km2"}
 
 
 def paired_compare(rows_a: list[dict], rows_b: list[dict], metrics=COMPARE_METRICS, n_boot=2000, seed=0) -> dict:
@@ -460,3 +474,40 @@ def run_g1(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     if worldcover_root:
         add_type_breakdown(out, metrics, results, prepared_root, labels_root, worldcover_root)
     return metrics
+
+
+def rescore_run(run_dir, prepared_root, labels_root, seed=0, log=print) -> dict:
+    """Recompute footprint metrics of a stored run from its score maps, at its original thresholds.
+
+    Pixel counts and thresholds are unchanged; only footprint metrics follow the current
+    FOOTPRINT_DEFINITION. The previous metrics.json is kept as metrics_before_rescore_<n>.json.
+    """
+    import rasterio
+    run_dir = Path(run_dir)
+    m = json.loads((run_dir / "metrics.json").read_text())
+    n = len(list(run_dir.glob("metrics_before_rescore_*.json"))) + 1
+    (run_dir / f"metrics_before_rescore_{n}.json").write_text(json.dumps(m, indent=2, default=float))
+    rows_by_site = {}
+    for name, r in m["models"].items():
+        for k in ("val", "test"):
+            for row in r[k]["per_site"]:
+                rows_by_site.setdefault(row["site_id"], []).append((name, row))
+    for i, (sid, entries) in enumerate(sorted(rows_by_site.items()), 1):
+        _, valid, label, _ = load_site(Path(prepared_root) / sid, Path(labels_root) / sid / "labels.geojson")
+        for name, row in entries:
+            with rasterio.open(run_dir / "scores" / f"{sid}__{name}.tif") as src:
+                pred = (src.read(1) >= m["models"][name]["threshold_level"]) & valid
+            row.update(object_metrics(pred, valid, label))
+        log(f"rescored {i}/{len(rows_by_site)} {sid}")
+    for name, r in m["models"].items():
+        for k in ("val", "test"):
+            rows = r[k]["per_site"]
+            strata = {"all": summarise(rows, seed=seed)}
+            for col in ("mine_scale", "region", "mine_type"):
+                for v in sorted({x[col] for x in rows}):
+                    strata[f"{col}={v}"] = summarise([x for x in rows if x[col] == v], seed=seed)
+            r[k]["strata"] = strata
+    m.setdefault("rescored", []).append({"at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(),
+                                         "footprint_definition": FOOTPRINT_DEFINITION})
+    (run_dir / "metrics.json").write_text(json.dumps(m, indent=2, default=float))
+    return m

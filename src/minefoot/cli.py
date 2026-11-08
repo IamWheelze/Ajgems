@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -98,6 +98,8 @@ def main(argv=None):
     a.add_argument("run"); a.add_argument("--model", required=True); a.add_argument("--prepared-root", required=True)
     a.add_argument("--split", default="test", choices=["test"]); a.add_argument("--limit", type=int, default=20)
     a.add_argument("--out", required=True)
+    a = sub.add_parser("rescore", help="recompute footprint metrics of a stored run with the current definition")
+    a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
     a = sub.add_parser("compare", help="paired site bootstrap of model B minus model A on the same sites")
     a.add_argument("--a", required=True, help="metrics.json:model"); a.add_argument("--b", required=True, help="metrics.json:model")
     a.add_argument("--split", default="val", choices=["val", "test"]); a.add_argument("--n-boot", type=int, default=2000)
@@ -294,6 +296,16 @@ def main(argv=None):
     if x.cmd == "error-gallery":
         from .viewer import error_gallery
         print(error_gallery(x.run, x.model, x.prepared_root, x.out, x.split, x.limit)); return 0
+    if x.cmd == "rescore":
+        from .baseline import rescore_run
+        m = rescore_run(x.run, x.prepared_root, x.labels_root, log=lambda t: print(t, file=sys.stderr, flush=True))
+        for name, r in m["models"].items():
+            for k in ("val", "test"):
+                a = r[k]["strata"]["all"]
+                print(f"{name} {k}: false candidates/1000 km2 {a['false_candidates_per_1000km2']:.1f} "
+                      f"(touching no label: {a['false_candidates_detached_per_1000km2']:.1f}), "
+                      f"false-candidate area {a['false_candidate_ha_per_1000km2']:.0f} ha/1000 km2")
+        return 0
     if x.cmd == "compare":
         from .baseline import paired_compare
         def rows(spec):

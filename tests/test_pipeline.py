@@ -495,6 +495,12 @@ def test_g1_object_metrics():
     m = object_metrics(pred, valid, label, mmu=100)
     assert m["label_footprints"] == 2 and m["found_any_overlap"] == 1 and m["covered_25pct"] == 0
     assert m["false_candidates"] == 1
+    assert m["false_candidates_detached"] == 1 and m["false_candidate_ha"] == pytest.approx(2.25)
+    # A large false area attached to a labelled mine: missed by the old rule, counted by the new one.
+    blob = pred.copy(); blob[5:20, 5:60] = True        # labelled footprint plus 600 unlabelled pixels, one patch
+    mb = object_metrics(blob, valid, label, mmu=100)
+    assert mb["false_candidates_detached"] == 1       # only the old detached patch
+    assert mb["false_candidates"] == 2                 # the attached blob is mostly unlabelled, so it counts too
     valid[40:55, 40:55] = False                       # the missed footprint was never seen
     assert object_metrics(pred, valid, label, mmu=100)["label_footprints"] == 1
 
