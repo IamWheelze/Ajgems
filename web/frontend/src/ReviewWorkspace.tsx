@@ -2,6 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, DetectionFeature, Me, Project, ReviewOptions } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
+import SwipeCompare from "./SwipeCompare";
 import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
 
 const LAYERS: Record<string, string> = {
@@ -19,6 +20,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [filter, setFilter] = useState("unreviewed");
   const [selected, setSelected] = useState<DetectionFeature | null>(null);
   const [layer, setLayer] = useState("true_colour");
+  const [compare, setCompare] = useState("");   // FR-127 swipe: the right-hand preset, "" when off
+  const [mapObj, setMapObj] = useState<maplibregl.Map | null>(null);
   const [showOsm, setShowOsm] = useState(false);
   const [showNA, setShowNA] = useState(true);
   const [editRing, setEditRing] = useState<[number, number][] | null>(null);
@@ -93,18 +96,20 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       m.on("mouseleave", "dets-fill", () => (m.getCanvas().style.cursor = ""));
     });
     map.current = m;
+    setMapObj(m);
     if (import.meta.env.DEV) (window as unknown as { __reviewMap: maplibregl.Map }).__reviewMap = m;   // browser tests only
     return () => m.remove();
   }, [select]);
 
+  const dets = useMemo<GeoJSON.FeatureCollection>(() => ({ type: "FeatureCollection",
+    features: features.map((f) => ({ ...f, properties: { id: f.properties.id, status: f.properties.status } })) as GeoJSON.Feature[] }), [features]);
   const featuresRef = useRef(features);
   useEffect(() => {
     featuresRef.current = features;
     const m = map.current;
-    const apply = () => (m!.getSource("dets") as maplibregl.GeoJSONSource)?.setData({
-      type: "FeatureCollection", features: features.map((f) => ({ ...f, properties: { id: f.properties.id, status: f.properties.status } })) });
+    const apply = () => (m!.getSource("dets") as maplibregl.GeoJSONSource)?.setData(dets);
     if (m) whenReady(m, apply);
-  }, [features]);
+  }, [features, dets]);
 
   useEffect(() => {
     const m = map.current;
@@ -247,10 +252,20 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
 
       <div className="ws-map">
         <div ref={mapEl} className="map" />
+        {mapObj && compare && compare !== layer && selected && (
+          <SwipeCompare main={mapObj} detectionId={selected.properties.id} layer={compare}
+            label={`◀ ${LAYERS[layer]}  |  ${LAYERS[compare]} ▶`} outline={selected as unknown as GeoJSON.Feature} all={dets} showNA={showNA} />
+        )}
         <div className="map-overlay">
           <select value={layer} onChange={(e) => setLayer(e.target.value)} aria-label="Band preset">
             {Object.entries(LAYERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <label className="small">Swipe compare
+            <select value={compare} onChange={(e) => setCompare(e.target.value)} aria-label="Swipe comparison preset">
+              <option value="">Off</option>
+              {Object.entries(LAYERS).filter(([k]) => k !== layer).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </label>
           <label className="small"><input type="checkbox" checked={showNA} onChange={(e) => setShowNA(e.target.checked)} /> Not assessed (hatched)</label>
           <label className="small"><input type="checkbox" checked={showOsm} onChange={(e) => setShowOsm(e.target.checked)} /> OpenStreetMap (orientation only)</label>
           {imagery && <div className="small">{imagery.scene_id}<br />{imagery.licence_note}</div>}

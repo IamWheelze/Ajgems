@@ -129,9 +129,16 @@ The explorer page (ML and admin users) shows:
 - *Warnings:* overlaps across splits.
 - *Per site:* labels and details.
 
+## Swipe comparison (FR-127, MVP)
+
+In review, **Swipe compare** puts a second band preset (for example SWIR false colour) on the right of a draggable divider; arrow keys move it too.
+- **Synced:** the right pane copies the main map's position and zoom on every move.
+- **Same overlays:** candidate outlines in their status styles and the "not assessed" hatch are drawn on both sides.
+- **Same interactions:** clicks, keyboard review and boundary editing all go to the main map.
+
 ## Not built yet (next slices)
 
-- **Swipe and side-by-side comparison** in the review workspace (FR-127).
+- **Side-by-side and blink comparison, and comparing dates** (FR-127, Pilot). Swipe between band presets of one scene is built.
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
 - **Experiment dashboard** (FR-130).
 - **Signed export manifests** (FR-109). Checksums exist; signatures do not.

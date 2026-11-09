@@ -78,3 +78,13 @@ progress { accent-color: var(--accent); }
 fieldset.statuses { border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
 .scroll { overflow-x: auto; } table { border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
 th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-align: left; }
+
+/* FR-127 swipe comparison */
+.swipe-top { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.swipe-handle { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; z-index: 2; cursor: ew-resize;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.5); touch-action: none; }
+.swipe-handle:focus-visible { outline: 3px solid #56B4E9; }
+.swipe-grip { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; color: #000; border-radius: 12px;
+  padding: 2px 6px; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.swipe-label { position: absolute; top: 84px; right: 10px; z-index: 3; background: color-mix(in srgb, var(--panel) 90%, transparent); padding: 3px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.ws-map .map-overlay, .ws-map .legend { z-index: 3; }
