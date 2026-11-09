@@ -37,7 +37,10 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
     if not items:
         raise JobError(f"no scene under {max_cloud}% cloud in {start} to {end}; widen the window or the cloud limit")
     tiles = pipeline.tile_grid(area.geometry, settings.MINEFOOT["TILE_KM"])
-    card = pipeline.model_card()
+    try:
+        card = pipeline.model_card()
+    except ValueError as exc:   # schema mismatch (FR-102)
+        raise JobError(str(exc))
     covered = sum(1 for _, t in tiles if pipeline.choose_scene(items, t)[1] > 0.01)
     est = {"tiles": len(tiles), "tiles_with_imagery": covered, "scenes_found": len(items),
            "clearest_scene": items[0]["id"], "clearest_cloud_pct": items[0]["properties"].get("eo:cloud_cover"),
@@ -50,7 +53,7 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
             state=Job.State.ESTIMATED, model_version=card["model_version"], created_by=user, estimate=est,
             parameters={"start": start, "end": end, "max_cloud": max_cloud, "threshold": card["threshold"],
                         "mmu_ha": settings.MINEFOOT["MMU_HA"], "tile_km": settings.MINEFOOT["TILE_KM"],
-                        "provider": provider, "items": items, "model_run": str(settings.MINEFOOT["MODEL_RUN"])})
+                        "provider": provider, "items": items, "model_run": card.get("model_run", str(settings.MINEFOOT["MODEL_RUN"]))})
         Tile.objects.bulk_create([Tile(job=job, grid_id=gid, geometry=GEOSGeometry(t.wkt, srid=4326)) for gid, t in tiles])
         record(user, "job.estimate", job, after={k: v for k, v in est.items() if k != "model"})
     return job

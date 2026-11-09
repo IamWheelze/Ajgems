@@ -1,0 +1,102 @@
+"""FR-101 to FR-104: lineage required, comparison before promotion, two-person approval, rollback."""
+import json
+import tempfile
+from pathlib import Path
+
+from django.conf import settings
+from django.test import TestCase, override_settings
+from rest_framework.test import APIClient
+
+from accounts.models import Organisation, User
+from audit.models import AuditEvent
+from registry.models import ModelVersion
+
+
+def fake_run(root: Path, name: str, f1_shift=0.0, commit="abc123", schema="s2-l2a-10band-v1"):
+    run = root / name
+    run.mkdir(parents=True)
+    rows = lambda: [{"site_id": f"s{i}", "tp": 50 + i + int(100 * f1_shift), "fp": 10, "fn": 40 - int(100 * f1_shift) - i % 3,
+                     "tn": 1000, "label_footprints": 2, "found_any_overlap": 1, "covered_25pct": 1, "false_candidates": 1,
+                     "valid_km2": 10.0, "label_pixels": 90 + i - i % 3, "label_pixels_masked": 0} for i in range(20)]
+    strata = {"all": {"f1": 0.5 + f1_shift, "precision": 0.5, "recall": 0.5, "false_alarm_km2_per_1000km2": 10.0}}
+    (run / "metrics.json").write_text(json.dumps({"models": {"unet": {
+        "threshold_score": 0.4, "val": {"strata": strata, "per_site": rows()}, "test": {"strata": strata, "per_site": rows()}}}}))
+    (run / "config.json").write_text(json.dumps({
+        "code_commit": commit, "dataset": {"name": "global_ml_ready", "version": "1.0.0", "licence": "CC BY-SA 4.0"},
+        "input_schema": schema, "split_file_sha256": "f" * 64, "sites": {"train": ["a"]}, "params": {"epochs": 1},
+        "encoder_weights_note": "x"}))
+    (run / "normalisation.json").write_text(json.dumps({"mean": [0] * 10, "std": [1] * 10}))
+    (run / "unet_best.pt").write_bytes(b"weights")
+    return run
+
+
+class RegistryTest(TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.ov = override_settings(MINEFOOT={**settings.MINEFOOT, "DATA_ROOT": self.tmp})
+        self.ov.enable()
+        org = Organisation.objects.create(name="O")
+        self.ml1 = User.objects.create_user("ml1", password="pw-long-enough", organisation=org, roles=["ml"])
+        self.ml2 = User.objects.create_user("ml2", password="pw-long-enough", organisation=org, roles=["ml"])
+        self.adm = User.objects.create_user("adm", password="pw-long-enough", organisation=org, roles=["admin"])
+        self.gis = User.objects.create_user("gis", password="pw-long-enough", organisation=org, roles=["gis"])
+
+    def tearDown(self):
+        self.ov.disable()
+
+    def c(self, u):
+        c = APIClient(); c.force_login(u)
+        if u.is_privileged:
+            User.objects.filter(pk=u.pk).update(mfa_enabled=True)
+            s = c.session; s["mfa_verified"] = True; s.save()
+        return c
+
+    def reg(self, u, run, name=None):
+        return self.c(u).post("/api/models/", {"run": run, **({"name": name} if name else {})}, format="json")
+
+    def act(self, u, pk, action):
+        return self.c(u).post(f"/api/models/{pk}/{action}/", {}, format="json")
+
+    def test_lineage_required(self):
+        fake_run(self.tmp / "runs", "dirty", commit="abc+uncommitted")
+        self.assertIn("uncommitted", self.reg(self.ml1, "dirty").json()["detail"])
+        r = fake_run(self.tmp / "runs", "nocommit"); cfg = json.loads((r / "config.json").read_text())
+        cfg["code_commit"] = ""; (r / "config.json").write_text(json.dumps(cfg))
+        self.assertIn("code_commit", self.reg(self.ml1, "nocommit").json()["detail"])
+        self.assertEqual(self.reg(self.ml1, "../../etc").status_code, 400)          # no arbitrary paths
+        self.assertEqual(self.reg(self.gis, "dirty").status_code, 403)
+
+    def test_compare_propose_two_person_approve_and_rollback(self):
+        fake_run(self.tmp / "runs", "m1"); fake_run(self.tmp / "runs", "m2", f1_shift=0.1)
+        m1 = self.reg(self.ml1, "m1").json()
+        self.assertEqual(m1["state"], "experimental")
+        self.assertIn("pretrained encoder weights", json.dumps(m1["licences"]))
+        self.assertIn("propose", self.act(self.ml1, m1["id"], "propose").json()["detail"])   # not under evaluation yet
+        self.act(self.ml1, m1["id"], "compare")
+        self.assertEqual(self.act(self.ml1, m1["id"], "propose").json()["state"], "candidate")
+        self.assertIn("second person", self.act(self.ml1, m1["id"], "approve").json()["detail"])   # self-approval refused
+        self.assertEqual(self.act(self.ml2, m1["id"], "approve").json()["state"], "production")
+        m2 = self.reg(self.ml1, "m2").json()
+        rep = self.c(self.ml1).post(f"/api/models/{m2['id']}/compare/", {}, format="json").json()["reports"][0]
+        self.assertEqual(rep["baseline"], "m1"); self.assertEqual(rep["sites"], 20)
+        self.assertEqual(rep["result"]["metrics"]["f1"]["verdict"], "b better")
+        self.act(self.ml1, m2["id"], "propose")
+        self.assertEqual(self.act(self.adm, m2["id"], "approve").json()["state"], "production")
+        self.assertEqual(ModelVersion.objects.get(name="m1").state, "retired")
+        from projects.pipeline import active_model
+        self.assertEqual(active_model()[1], "m2")                                     # jobs use production
+        r = self.act(self.adm, m2["id"], "rollback")
+        self.assertEqual(r.json()["name"], "m1")
+        self.assertEqual(ModelVersion.objects.get(name="m1").state, "production")
+        self.assertEqual(ModelVersion.objects.get(name="m2").state, "rolled_back")
+        for a in ("model.register", "model.compare", "model.propose", "model.approve", "model.rollback"):
+            self.assertTrue(AuditEvent.objects.filter(action=a).exists(), a)
+
+    def test_schema_mismatch_refused(self):
+        fake_run(self.tmp / "runs", "old", schema="s2-l2a-4band-v0")
+        m = self.reg(self.ml1, "old").json()
+        self.act(self.ml1, m["id"], "compare")
+        self.assertIn("schema", self.act(self.ml1, m["id"], "propose").json()["detail"])
+        from projects.pipeline import check_schema
+        with self.assertRaises(ValueError):
+            check_schema(self.tmp / "runs" / "old")

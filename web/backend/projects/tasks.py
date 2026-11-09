@@ -84,7 +84,7 @@ def process_tile(job, tile, items, provider, work):
         tile.save(); return None
     tile.state = Tile.State.RUNNING; tile.save(update_fields=["state", "usable_pct", "quality_decision"])
     _set(job, state=Job.State.RUNNING)
-    score = pipeline.score_prepared(prep)
+    score = pipeline.score_prepared(prep, job.parameters.get("model_run"))   # the model frozen at start
     score_path = pipeline.write_score(score, prep, Path(work) / f"{tile.grid_id}_score.tif")
     threshold = job.parameters["threshold"]
     g = vectorise(score_path, threshold, job.parameters["mmu_ha"], prepared_dir=prep)

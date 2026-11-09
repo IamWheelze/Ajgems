@@ -106,8 +106,18 @@ Also run for real here: a 122 kmÂ² area in Ghana, 4 tiles, 18 candidates in 42â€
 - **Django admin** at `/admin/` needs a session whose code was verified. Sign in through the app first, then open the admin in the same browser.
 - **Audit:** enrolment, successful codes, wrong codes and locked attempts are all recorded.
 
+## Model registry (FR-101 to FR-104)
+
+- **Registration** of a finished G2 run (`python manage.py register_model --run ../../data/runs/<run> --user <ml user>`, or the API) is refused if any lineage field is missing: code commit (not uncommitted code), dataset, input schema, split hash, sites, parameters, normalisation, metrics and weights. The model card lists every licence in the lineage, including unverified ones.
+- **Compare** a model with the production model on the same locked test sites (paired site bootstrap). Promotion is impossible without this report.
+- **Propose, then approve.** A model is proposed by ML and approved by a **different** person (ML or admin); self-approval is refused. Inference refuses a model whose input schema does not match.
+- **Rollback** returns to the previous production model in one step. Every action is audited.
+- **Which model jobs use.** Detection jobs use the production model and freeze it in the job's parameters. With no production model, they use `MINEFOOT_MODEL_RUN`, labelled "(unregistered)".
+- **Current state.** `g2_v1` and `g2_hn` are registered. `g2_hn` is under evaluation; nothing is approved for production yet, because that is a two-person decision.
+
 ## Not built yet (next slices)
 
 - **Swipe and side-by-side comparison** in the review workspace (FR-127).
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Model registry** with second-person approval (FR-102 to FR-104), and the dataset explorer.
+- **Dataset explorer** (FR-131) and the experiment dashboard (FR-130).
+- **Signed export manifests** (FR-109). Checksums exist; signatures do not.

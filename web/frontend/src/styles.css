@@ -76,3 +76,5 @@ ol.history { padding-left: 18px; display: grid; gap: 4px; }
 .swatch.hatched { background: repeating-linear-gradient(45deg, #999 0 2px, transparent 2px 6px); }
 progress { accent-color: var(--accent); }
 fieldset.statuses { border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+.scroll { overflow-x: auto; } table { border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-align: left; }

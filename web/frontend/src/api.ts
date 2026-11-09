@@ -24,6 +24,15 @@ export type Job = {
 };
 export type TileProps = { grid_id: string; state: string; outcome: string; usable_pct: number | null; quality_decision: string;
   candidates: number; failure_reason: string; scene: string | null; date: string | null };
+export type ModelVersion = {
+  id: number; name: string; state: string; input_schema: string; code_commit: string; threshold: number;
+  dataset: Record<string, string>; licences: { item: string; licence: string }[];
+  metrics: Record<string, Record<string, number | null>>; card: Record<string, string | boolean>;
+  registered_at: string; registered_by: string; proposed_by: string | null; approved_by: string | null;
+  approved_at: string | null; previous_production: string | null;
+  reports: { id: number; split: string; baseline: string | null; sites: number; created_at: string;
+    result: { metrics?: Record<string, { a: number | null; b: number | null; b_minus_a: number | null; ci95: [number | null, number | null]; verdict: string }>; note?: string } }[];
+};
 export type ReviewOptions = Record<string, { status_after: string; roles: string[]; allowed_from: string[] | null; reasons: string[] }>;
 
 function csrf(): string {
@@ -103,6 +112,8 @@ export const api = {
   exportPackage: (projectId: number, format: string, statuses: string[], job?: number) =>
     download(`/api/projects/${projectId}/exports/`, { format, statuses, ...(job ? { job } : {}) },
       `project_${projectId}_${format}_export.zip`),
+  models: () => call<ModelVersion[]>("GET", "/api/models/"),
+  modelAction: (id: number, action: string) => call<ModelVersion>("POST", `/api/models/${id}/${action}/`, {}),
   jobs: (projectId: number) => call<Job[]>("GET", `/api/projects/${projectId}/jobs/`),
   estimateJob: (projectId: number, area: number, start: string, end: string, max_cloud: number) =>
     call<Job>("POST", `/api/projects/${projectId}/jobs/`, { area, start, end, max_cloud }),

@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, EditGeometryView, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from registry.views import ModelActionView, ModelListView
 from review.views import ReviewCreateView, ReviewOptionsView
 
 # FR-001: the Django admin is for administrators, so it also requires a session whose second factor was
@@ -46,6 +47,8 @@ urlpatterns = [
     path("api/scenes/<int:pk>/image/", SceneImageView.as_view()),
     path("api/audit/", AuditListView.as_view()),
     path("api/model-card/", ModelCardView.as_view()),
+    path("api/models/", ModelListView.as_view()),
+    path("api/models/<int:pk>/<str:action>/", ModelActionView.as_view()),
     path("api/projects/<int:project_pk>/exports/", ExportView.as_view()),
     path("api/projects/<int:project_pk>/jobs/", jobs),
     path("api/jobs/<int:pk>/", job),

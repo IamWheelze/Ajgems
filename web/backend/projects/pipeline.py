@@ -89,14 +89,35 @@ def _model(run_dir):
     return load_run_model(run_dir)
 
 
+def active_model():
+    """(run folder, name) of the model jobs use: the registry's production model, else MINEFOOT_MODEL_RUN."""
+    from registry.services import production
+    mv = production()
+    if mv is not None:
+        return Path(mv.run_path), mv.name
+    run = Path(settings.MINEFOOT["MODEL_RUN"])
+    return run, f"{run.name}:unet (unregistered)"
+
+
+def check_schema(run_dir):
+    """FR-102: inference refuses a model whose input schema does not match."""
+    from minefoot.schema import SCHEMA_VERSION
+    cfg = json.loads((Path(run_dir) / "config.json").read_text())
+    if cfg.get("input_schema") != SCHEMA_VERSION:
+        raise ValueError(f"model input schema {cfg.get('input_schema')!r} does not match inference {SCHEMA_VERSION!r}")
+
+
 def model_card(run_dir=None) -> dict:
     """What the run setup screen shows about the model (FR-014 domain warning, FR-084 wording)."""
-    run_dir = Path(run_dir or settings.MINEFOOT["MODEL_RUN"])
+    active, name = active_model()
+    run_dir = Path(run_dir or active)
     m = json.loads((run_dir / "metrics.json").read_text())["models"]["unet"]
     cfg = json.loads((run_dir / "config.json").read_text())
     test = m["test"]["strata"]["all"]
     tested_in_nigeria = Path(settings.MINEFOOT["NIGERIA_G3_RESULT"]).exists()
-    return {"model_version": f"{run_dir.name}:unet", "threshold": m["threshold_score"], "score_type": "model score",
+    check_schema(run_dir)
+    return {"model_version": name if run_dir == active else f"{run_dir.name}:unet", "model_run": str(run_dir),
+            "threshold": m["threshold_score"], "score_type": "model score",
             "trained_on": "Global ML-ready (internal research)", "code_commit": cfg.get("code_commit"),
             "global_test_f1": test["f1"], "global_test_f1_ci95": test["ci95"]["f1"],
             "tested_in_nigeria": tested_in_nigeria,
@@ -109,7 +130,7 @@ def score_prepared(prep_dir, run_dir=None):
     import rasterio
     from minefoot.g2 import predict_tile
     from minefoot.schema import BANDS
-    model, norm, level, cfg, dev = _model(str(run_dir or settings.MINEFOOT["MODEL_RUN"]))
+    model, norm, level, cfg, dev = _model(str(run_dir or active_model()[0]))
     with rasterio.open(Path(prep_dir) / "reflectance.tif") as s:
         refl = s.read()
     return predict_tile(model, refl[:len(BANDS)], norm, dev, cfg["chip"], cfg.get("infer_overlap") or cfg["chip"] // 4)
