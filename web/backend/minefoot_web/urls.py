@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.views import CsrfView, LoginView, LogoutView, MeView
 from audit.views import AuditListView
-from projects.views import AreaViewSet, DetectionViewSet, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, EditGeometryView, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from review.views import ReviewCreateView, ReviewOptionsView
 
 router = DefaultRouter()
@@ -31,6 +31,8 @@ urlpatterns = [
     path("api/projects/<int:project_pk>/detections/", detections),
     path("api/detections/<int:pk>/", detection),
     path("api/detections/<int:pk>/reviews/", ReviewCreateView.as_view()),
+    path("api/detections/<int:pk>/image/", DetectionImageView.as_view()),
+    path("api/detections/<int:pk>/edit-geometry/", EditGeometryView.as_view()),
     path("api/review-options/", ReviewOptionsView.as_view()),
     path("api/scenes/<int:pk>/image/", SceneImageView.as_view()),
     path("api/audit/", AuditListView.as_view()),

@@ -9,45 +9,109 @@ from pathlib import Path
 import numpy as np
 from django.conf import settings
 
-LAYERS = ("true_colour", "swir_false_colour", "nir_false_colour", "ndvi", "ndwi", "quality")
+LAYERS = ("true_colour", "swir_false_colour", "nir_false_colour", "ndvi", "ndwi", "quality", "not_assessed")
+
+
+def not_assessed_rgba(scl):
+    """Diagonal hatch where the quality mask removed pixels (FR-125); transparent elsewhere."""
+    from minefoot.quality import usable_mask
+    h, w = scl.shape
+    yy, xx = np.mgrid[:h, :w]
+    stripe = ((xx + yy) % 6) < 2
+    out = np.zeros((h, w, 4), "uint8")
+    masked = ~usable_mask(scl)
+    out[masked & stripe] = (235, 235, 235, 230)
+    out[masked & ~stripe] = (60, 60, 60, 90)
+    return out
+
+
 MAX_SIZE = 2048
 
 
-def render_scene_png(scene, layer="true_colour"):
+def _render(arr, scl, t, crs, layer, cache):
+    """Display layer (or the not-assessed hatch) warped to WGS 84 as RGBA PNG; returns (path, bounds)."""
     import rasterio
     from PIL import Image
     from rasterio.warp import Resampling, calculate_default_transform, reproject
     from minefoot.viewer import build_layers
-    if layer not in LAYERS:
-        raise ValueError(f"layer must be one of {LAYERS}")
-    prep = Path(scene.prepared_path)
-    if not (prep / "reflectance.tif").exists():
-        raise ValueError("this scene's prepared imagery is not on the server")
-    cache = settings.MINEFOOT["IMAGE_CACHE"] / f"scene_{scene.pk}_{layer}.png"
-    meta = cache.with_suffix(".bounds")
-    if cache.exists() and meta.exists():
-        return cache, [float(v) for v in meta.read_text().split(",")]
-    with rasterio.open(prep / "reflectance.tif") as src:
-        f = max(src.width, src.height) / MAX_SIZE
-        shape = (int(src.height / max(f, 1)), int(src.width / max(f, 1)))
-        arr = src.read(out_shape=(src.count, *shape), resampling=Resampling.average)
-        t = src.transform * src.transform.scale(src.width / shape[1], src.height / shape[0])
-        crs = src.crs
-    with rasterio.open(prep / "scl.tif") as s:
-        scl = s.read(1, out_shape=shape, resampling=Resampling.nearest)
-    img = build_layers(arr, scl)[layer]                               # (H, W, 3) uint8
+    shape = scl.shape
+    if layer == "not_assessed":
+        rgba = not_assessed_rgba(scl)
+        img, alpha_src = rgba[..., :3], rgba[..., 3]
+    else:
+        img, alpha_src = build_layers(arr, scl)[layer], None              # (H, W, 3) uint8
     dst_t, w, h = calculate_default_transform(crs, "EPSG:4326", shape[1], shape[0],
                                               *rasterio.transform.array_bounds(shape[0], shape[1], t))
     out = np.zeros((4, h, w), "uint8")
     for b in range(3):
         reproject(img[..., b], out[b], src_transform=t, src_crs=crs, dst_transform=dst_t, dst_crs="EPSG:4326",
                   resampling=Resampling.nearest)
-    alpha = np.full(shape, 255, "uint8")
+    alpha = alpha_src if alpha_src is not None else np.full(shape, 255, "uint8")
     reproject(alpha, out[3], src_transform=t, src_crs=crs, dst_transform=dst_t, dst_crs="EPSG:4326",
               resampling=Resampling.nearest, dst_nodata=0)
     cache.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(out.transpose(1, 2, 0), "RGBA").save(cache, optimize=True)
     west, north = dst_t * (0, 0); east, south = dst_t * (w, h)
     bounds = [west, south, east, north]
-    meta.write_text(",".join(str(v) for v in bounds))
+    cache.with_suffix(".bounds").write_text(",".join(str(v) for v in bounds))
     return cache, bounds
+
+
+def _cached(cache):
+    meta = cache.with_suffix(".bounds")
+    if cache.exists() and meta.exists():
+        return cache, [float(v) for v in meta.read_text().split(",")]
+    return None
+
+
+def _read(prepared_dirs):
+    """Reflectance and SCL from one or more prepared folders (job tiles), mosaicked and downsampled."""
+    import rasterio
+    from rasterio.enums import Resampling
+    from rasterio.merge import merge
+    srcs = [rasterio.open(Path(d) / "reflectance.tif") for d in prepared_dirs]
+    scls = [rasterio.open(Path(d) / "scl.tif") for d in prepared_dirs]
+    try:
+        crs = srcs[0].crs
+        keep = [i for i, s in enumerate(srcs) if s.crs == crs]   # tiles in another UTM zone are left out
+        srcs, scls = [srcs[i] for i in keep], [scls[i] for i in keep]
+        W = max(s.bounds.right for s in srcs) - min(s.bounds.left for s in srcs)
+        H = max(s.bounds.top for s in srcs) - min(s.bounds.bottom for s in srcs)
+        res = max(abs(srcs[0].res[0]), max(W, H) / MAX_SIZE)
+        arr, t = merge(srcs, res=res, resampling=Resampling.average, nodata=np.nan)
+        scl, _ = merge(scls, res=res, resampling=Resampling.nearest, nodata=0)
+        return arr, scl[0], t, crs
+    finally:
+        for s in srcs + scls:
+            s.close()
+
+
+def render_scene_png(scene, layer="true_colour"):
+    if layer not in LAYERS:
+        raise ValueError(f"layer must be one of {LAYERS}")
+    prep = Path(scene.prepared_path)
+    if not (prep / "reflectance.tif").exists():
+        raise ValueError("this scene's prepared imagery is not on the server")
+    cache = settings.MINEFOOT["IMAGE_CACHE"] / f"scene_{scene.pk}_{layer}.png"
+    hit = _cached(cache)
+    if hit:
+        return hit
+    arr, scl, t, crs = _read([prep])
+    return _render(arr, scl, t, crs, layer, cache)
+
+
+def render_detection_png(detection, layer="true_colour"):
+    """The imagery under a detection: a mosaic of its job's tiles that touch it, or its scene's folder."""
+    if layer not in LAYERS:
+        raise ValueError(f"layer must be one of {LAYERS}")
+    tiles = [t for t in detection.job.tiles.filter(geometry__intersects=detection.geometry).exclude(prepared_path="")
+             if (Path(t.prepared_path) / "reflectance.tif").exists()]
+    if not tiles:
+        return render_scene_png(detection.scene, layer)
+    key = "_".join(sorted(str(t.pk) for t in tiles))
+    cache = settings.MINEFOOT["IMAGE_CACHE"] / f"tiles_{key}_{layer}.png"
+    hit = _cached(cache)
+    if hit:
+        return hit
+    arr, scl, t, crs = _read([t.prepared_path for t in tiles])
+    return _render(arr, scl, t, crs, layer, cache)

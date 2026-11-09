@@ -84,11 +84,22 @@ Verified: 4 job tests on synthetic imagery cover:
 
 Also run for real here: a 122 km² area in Ghana, 4 tiles, 18 candidates in 42–51 seconds on CPU, driven from the browser.
 
+## What W3 covers (exports and review tools)
+
+- **Export packages** (FR-106 to FR-109). One zip per request:
+  - *Data:* GeoJSON, GeoPackage or CSV (WKT geometry), with the FRD 9.2 fields.
+  - *PDF report:* the coverage map and the limits section are always included, along with method, model card, versions and evidence grades.
+  - *Licence notice:* the Copernicus credit for each scene year.
+  - *Manifest:* a SHA-256 for every file. Signing is not built yet.
+  - *Which candidates:* the latest finished job per area by default, so reruns are not duplicated. Viewers export released candidates only.
+- **"Not assessed" layer** (FR-125). In review, pixels the quality mask removed are hatched over the imagery, on by default.
+- **Imagery under each candidate.** A mosaic of the job tiles it touches, not a single tile.
+- **Boundary editing** (FR-091). The server returns a valid outline of at most 200 vertices, simplified with topology preserved. You drag vertices and record the edit with a reason. Invalid outlines are refused with the reason, and the original is kept in the history.
+- **Smoother polygons.** `minefoot.vectorise` removes pixel stair-steps at 0.75 pixel; polygons stay valid and area changes by under 1%.
+
 ## Not built yet (next slices)
 
-- **W3, review and display:**
-  - *Map display:* a "not assessed" hatch layer, swipe, and geometry editing in the review workspace.
-  - *Delivery:* exports (GeoJSON, GeoPackage, CSV, PDF report with licence notice, FR-106 to FR-108).
-  - *Serving:* a raster tile server (TiTiler) instead of whole-scene PNGs.
+- **Swipe and side-by-side comparison** in the review workspace (FR-127).
+- **A raster tile server** (TiTiler) instead of whole-scene PNGs.
 - **Security:** multi-factor sign-in for privileged roles (FR-001). The interface flags privileged users until it exists.
 - **Model registry** with second-person approval (FR-102 to FR-104), and the dataset explorer.

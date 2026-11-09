@@ -19,7 +19,7 @@ export const BAND_LABEL: Record<string, string> = { high: "High", medium: "Mediu
 
 export const ACTION_LABEL: Record<string, string> = {
   confirm: "Confirm", reject: "Reject", uncertain: "Uncertain", request_field_check: "Request field check",
-  field_confirm: "Field confirm", field_reject: "Field reject", release: "Release", edit: "Edit",
+  field_confirm: "Field confirm", field_reject: "Field reject", release: "Release", edit: "Edit boundary",
 };
 
 // Keyboard shortcuts in the review workspace.

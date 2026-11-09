@@ -331,3 +331,28 @@ class ExportJobSelectionTest(Base):
             self.assertEqual(man({"format": "csv", "job": d.job_id})["jobs"], [d.job_id])
             other = self.dets["B"].job_id
             self.assertEqual(c.post(f"/api/projects/{p.pk}/exports/", {"format": "csv", "job": other}, format="json").status_code, 404)
+
+
+class NotAssessedLayerTest(TestCase):
+    def test_hatch_only_where_masked(self):
+        import numpy as np
+        from projects.imagery import not_assessed_rgba
+        scl = np.full((12, 12), 4, "uint8"); scl[:, :6] = 9      # left half cloud
+        rgba = not_assessed_rgba(scl)
+        self.assertTrue((rgba[:, 6:, 3] == 0).all())               # usable: transparent
+        self.assertTrue((rgba[:, :6, 3] > 0).all())                # masked: never blank
+        self.assertGreater(len(np.unique(rgba[:, :6, 0])), 1)      # striped, not a flat fill
+
+
+class EditGeometryTest(Base):
+    def test_simplified_outline_is_valid_and_small(self):
+        import math
+        from django.contrib.gis.geos import Polygon as GPolygon
+        d = self.dets["A"]
+        ring = [(8.8 + 0.01 * math.cos(2 * math.pi * i / 3000) + (0.00005 if i % 2 else 0),
+                 9.7 + 0.01 * math.sin(2 * math.pi * i / 3000)) for i in range(3000)]
+        g = GPolygon(ring + [ring[0]], srid=4326)
+        Detection.objects.filter(pk=d.pk).update(geometry=g)
+        r = self.client_for("A", "gis").get(f"/api/detections/{d.pk}/edit-geometry/").json()
+        self.assertTrue(r["valid"]); self.assertLessEqual(r["vertices"], 200); self.assertEqual(r["original_vertices"], 3000)
+        self.assertEqual(self.client_for("A", "viewer").get(f"/api/detections/{d.pk}/edit-geometry/").status_code, 403)

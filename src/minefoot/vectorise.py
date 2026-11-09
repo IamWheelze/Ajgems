@@ -38,6 +38,10 @@ def vectorise(score_path, threshold: float, mmu_ha: float = 1.0, prepared_dir=No
             valid = np.isfinite(s.read(1))
     mask = (score >= threshold) & valid
     polys = [shape(g) for g, v in shapes(mask.astype("uint8"), mask=mask, transform=tr, connectivity=8) if v == 1]
+    # Smooth pixel stair-steps. A one-pixel step's corner lies ~0.71 px from the diagonal it approximates, so a
+    # 0.75 px tolerance removes steps and stays below a pixel. preserve_topology keeps polygons valid.
+    tol = 0.75 * abs(tr.a)
+    polys = [p.simplify(tol, preserve_topology=True) for p in polys]
     polys = [p for p in polys if p.area / 1e4 >= mmu_ha] if crs.is_projected else polys
     cols = ["area_ha", "score_mean", "score_band", "threshold", "min_mapping_unit_ha"]
     if not polys:

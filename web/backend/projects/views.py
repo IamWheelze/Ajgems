@@ -111,9 +111,15 @@ class DetectionViewSet(viewsets.ViewSet):
         return qs
 
     def list(self, request, project_pk=None):
-        qs = self._qs(request).filter(project_id=project_pk)
-        if not Project.objects.filter(pk=project_pk, organisation=request.user.organisation).exists():
+        """Candidates of the latest finished job per area by default, or of ?job=<id>."""
+        from .exports import selected_jobs
+        try:
+            p = Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
             raise Http404
+        job = request.query_params.get("job")
+        jobs = selected_jobs(p, int(job) if job else None)
+        qs = self._qs(request).filter(project_id=project_pk, job__in=jobs)
         for key in ("status", "score_band", "mask_status"):
             if request.query_params.get(key):
                 qs = qs.filter(**{f"{key}__in": request.query_params[key].split(",")})
@@ -280,3 +286,52 @@ class ExportView(APIView):
         resp = HttpResponse(data, content_type="application/zip")
         resp["Content-Disposition"] = f'attachment; filename="project_{p.pk}_{fmt}_export.zip"'
         return resp
+
+
+class DetectionImageView(APIView):
+    """Imagery under one detection: a mosaic of the job tiles it touches (or its scene), as PNG or bounds."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer")
+
+    def get(self, request, pk):
+        qs = DetectionViewSet()._qs(request)
+        try:
+            d = qs.select_related("job", "scene").get(pk=pk)
+        except Detection.DoesNotExist:
+            raise Http404
+        layer = request.query_params.get("layer", "true_colour")
+        from .imagery import render_detection_png
+        try:
+            path, bounds = render_detection_png(d, layer)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        if request.query_params.get("bounds") == "1":
+            return Response({"bounds": bounds, "date": d.scene.acquired_at.isoformat(), "scene_id": d.scene.source_id,
+                             "licence_note": d.scene.licence_note, "layer": layer})
+        return FileResponse(open(path, "rb"), content_type="image/png")
+
+
+class EditGeometryView(APIView):
+    """A valid simplified outline for editing: at most `max` vertices, topology preserved (always valid)."""
+    permission_classes = [RolePermission]
+    read_roles = ("gis",)
+
+    def get(self, request, pk):
+        import json
+        from shapely import wkt
+        try:
+            d = Detection.objects.get(pk=pk, organisation=request.user.organisation)
+        except Detection.DoesNotExist:
+            raise Http404
+        limit = min(int(request.query_params.get("max", 200)), 1000)
+        g = wkt.loads(d.geometry.wkt)
+        tol = 1e-5   # degrees, about 1 m
+        while len(g.exterior.coords) > limit + 1 and tol < 0.1:
+            g = wkt.loads(d.geometry.wkt).simplify(tol, preserve_topology=True)
+            tol *= 1.6
+        if g.geom_type != "Polygon":
+            g = max(g.geoms, key=lambda x: x.area)
+        g = type(g)(g.exterior)   # editing works on the outer boundary
+        return Response({"type": "Polygon", "coordinates": [list(map(list, g.exterior.coords))],
+                         "vertices": len(g.exterior.coords) - 1, "original_vertices": len(d.geometry.coords[0]) - 1,
+                         "valid": g.is_valid})

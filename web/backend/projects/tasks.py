@@ -73,8 +73,7 @@ def process_tile(job, tile, items, provider, work):
     tile.save(update_fields=["scene", "scene_cover", "state"])
     _set(job, state=Job.State.FETCHING)
     prep = pipeline.fetch_tile(provider, item, list(tg.bounds), work, tile.grid_id)
-    if not scene.prepared_path:
-        scene.prepared_path = str(prep); scene.save(update_fields=["prepared_path"])
+    tile.prepared_path = str(prep); tile.save(update_fields=["prepared_path"])
     tile.state = Tile.State.CHECKING; tile.save(update_fields=["state"])
     _set(job, state=Job.State.CHECKING)
     with rasterio.open(prep / "scl.tif") as s:

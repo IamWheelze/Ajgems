@@ -20,6 +20,9 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [selected, setSelected] = useState<DetectionFeature | null>(null);
   const [layer, setLayer] = useState("true_colour");
   const [showOsm, setShowOsm] = useState(false);
+  const [showNA, setShowNA] = useState(true);
+  const [editRing, setEditRing] = useState<[number, number][] | null>(null);
+  const editRef = useRef<[number, number][] | null>(null);
   const [imagery, setImagery] = useState<{ date: string; scene_id: string; licence_note: string } | null>(null);
   const [action, setAction] = useState("");
   const [reason, setReason] = useState("");
@@ -41,7 +44,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const counts = useMemo(() => features.reduce<Record<string, number>>((c, f) => ({ ...c, [f.properties.status]: (c[f.properties.status] ?? 0) + 1 }), {}), [features]);
 
   const select = useCallback((f: DetectionFeature | null) => {
-    setAction(""); setReason(""); setNote(""); setError("");
+    setAction(""); setReason(""); setNote(""); setError(""); setEditRing(null);
     if (!f) { setSelected(null); return; }
     setSelected(f);
     api.detection(f.properties.id).then(setSelected).catch((e) => setError(e.message));
@@ -66,6 +69,21 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       }
       m.addLayer({ id: "dets-selected", type: "line", source: "dets", filter: ["==", ["get", "id"], -1],
         paint: { "line-color": "#ffffff", "line-width": 4 } });
+      m.addSource("edit", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      m.addLayer({ id: "edit-line", type: "line", source: "edit", filter: ["==", ["geometry-type"], "Polygon"],
+        paint: { "line-color": "#56B4E9", "line-width": 2.5 } });
+      m.addLayer({ id: "edit-pts", type: "circle", source: "edit", filter: ["==", ["geometry-type"], "Point"],
+        paint: { "circle-radius": 5, "circle-color": "#ffffff", "circle-stroke-color": "#0072B2", "circle-stroke-width": 2 } });
+      let drag: number | null = null;
+      m.on("mousedown", "edit-pts", (e) => {
+        e.preventDefault(); drag = e.features?.[0]?.properties?.i ?? null; m.dragPan.disable();
+      });
+      m.on("mousemove", (e) => {
+        if (drag === null || !editRef.current) return;
+        const next = editRef.current.map((p, i) => (i === drag ? [e.lngLat.lng, e.lngLat.lat] as [number, number] : p));
+        setEditRing(next);
+      });
+      m.on("mouseup", () => { if (drag !== null) { drag = null; m.dragPan.enable(); } });
       m.on("click", "dets-fill", (e) => {
         const id = e.features?.[0]?.properties?.id;
         const f = featuresRef.current.find((x) => x.properties.id === id);
@@ -75,6 +93,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       m.on("mouseleave", "dets-fill", () => (m.getCanvas().style.cursor = ""));
     });
     map.current = m;
+    if (import.meta.env.DEV) (window as unknown as { __reviewMap: maplibregl.Map }).__reviewMap = m;   // browser tests only
     return () => m.remove();
   }, [select]);
 
@@ -92,36 +111,72 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
     if (m && m.getLayer("osm")) m.setLayoutProperty("osm", "visibility", showOsm ? "visible" : "none");
   }, [showOsm]);
 
+  const showNARef = useRef(showNA);
+  useEffect(() => {
+    showNARef.current = showNA;
+    const m = map.current;
+    if (m && m.getLayer("na")) m.setLayoutProperty("na", "visibility", showNA ? "visible" : "none");
+  }, [showNA]);
+
+  // Edit mode: start from a simplified outline; show draggable vertices.
+  useEffect(() => {
+    if (action === "edit" && selected && !editRing)   // a valid outline of at most 200 vertices, simplified on the server
+      api.editGeometry(selected.properties.id).then((g) => setEditRing((g.coordinates[0] as [number, number][]).slice(0, -1)))
+        .catch((e) => setError(e.message));
+    if (action !== "edit" && editRing) setEditRing(null);
+  }, [action, selected]);
+  useEffect(() => {
+    editRef.current = editRing;
+    const src = map.current?.getSource("edit") as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({ type: "FeatureCollection", features: editRing ? [
+      { type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [[...editRing, editRing[0]]] } },
+      ...editRing.map((p, i) => ({ type: "Feature" as const, properties: { i }, geometry: { type: "Point" as const, coordinates: p } })),
+    ] : [] });
+  }, [editRing]);
+
   // Show the selected candidate's own scene, dated, under the polygons.
   useEffect(() => {
     const m = map.current;
     if (!m || !selected) return;
-    const sceneId = selected.properties.scene.id;
+    const detId = selected.properties.id;
     const run = async () => {
       m.setFilter("dets-selected", ["==", ["get", "id"], selected.properties.id]);
       const coords = selected.geometry.coordinates[0] as [number, number][];
       const b = coords.reduce((bb, c) => bb.extend(c), new maplibregl.LngLatBounds(coords[0], coords[0]));
       m.fitBounds(b, { padding: 120, maxZoom: 15, duration: 300 });
       try {
-        const meta = await api.sceneBounds(sceneId, layer);
+        const meta = await api.detectionBounds(detId, layer);
         setImagery(meta);
         const [w, s, e, n] = meta.bounds;
         const corners: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]];
-        const url = api.sceneImageUrl(sceneId, layer);
+        const url = api.detectionImageUrl(detId, layer);
         const src = m.getSource("scene") as maplibregl.ImageSource | undefined;
         if (src) src.updateImage({ url, coordinates: corners });
         else {
           m.addSource("scene", { type: "image", url, coordinates: corners });
           m.addLayer({ id: "scene", type: "raster", source: "scene", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-fill");
         }
+        // FR-125: pixels the quality mask removed are hatched, so unassessed ground never looks clean.
+        const naMeta = await api.detectionBounds(detId, "not_assessed");
+        const [nw, ns, ne, nn] = naMeta.bounds;
+        const naCorners: typeof corners = [[nw, nn], [ne, nn], [ne, ns], [nw, ns]];
+        const naUrl = api.detectionImageUrl(detId, "not_assessed");
+        const na = m.getSource("na") as maplibregl.ImageSource | undefined;
+        if (na) na.updateImage({ url: naUrl, coordinates: naCorners });
+        else {
+          m.addSource("na", { type: "image", url: naUrl, coordinates: naCorners });
+          m.addLayer({ id: "na", type: "raster", source: "na", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-fill");
+        }
+        m.setLayoutProperty("na", "visibility", showNARef.current ? "visible" : "none");
       } catch (e) { setError((e as Error).message); }
     };
     whenReady(m, run);
-  }, [selected?.properties.id, selected?.properties.scene.id, layer]);
+  }, [selected?.properties.id, layer]);
 
   const allowed = useMemo(() => {
     if (!selected) return [];
-    return Object.entries(options).filter(([a, o]) => a !== "edit" && o.roles.some((r) => me.roles.includes(r))
+    return Object.entries(options).filter(([, o]) => o.roles.some((r) => me.roles.includes(r))
       && (!o.allowed_from || o.allowed_from.includes(selected.properties.status))).map(([a]) => a);
   }, [options, selected, me.roles]);
 
@@ -129,7 +184,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
     if (!selected || !action || !reason) return;
     setBusy(true); setError("");
     try {
-      const updated = await api.review(selected.properties.id, action, reason, note);
+      const geometry = action === "edit" && editRing ? { type: "Polygon" as const, coordinates: [[...editRing, editRing[0]]] } : undefined;
+      const updated = await api.review(selected.properties.id, action, reason, note, geometry);
       setFeatures((fs) => fs.map((f) => (f.properties.id === updated.properties.id ? updated : f)));
       const idx = queue.findIndex((f) => f.properties.id === selected.properties.id);
       const next = queue.filter((f) => f.properties.id !== selected.properties.id)[Math.max(0, idx)] ?? null;
@@ -137,7 +193,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       setAction(""); setReason(""); setNote("");
     } catch (e) { setError((e as Error).message); }
     finally { setBusy(false); }
-  }, [selected, action, reason, note, queue, filter, select]);
+  }, [selected, action, reason, note, queue, filter, select, editRing]);
 
   // Keyboard review: c/r/u/f choose an action, j/k move through the queue, Enter submits.
   useEffect(() => {
@@ -195,6 +251,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           <select value={layer} onChange={(e) => setLayer(e.target.value)} aria-label="Band preset">
             {Object.entries(LAYERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <label className="small"><input type="checkbox" checked={showNA} onChange={(e) => setShowNA(e.target.checked)} /> Not assessed (hatched)</label>
           <label className="small"><input type="checkbox" checked={showOsm} onChange={(e) => setShowOsm(e.target.checked)} /> OpenStreetMap (orientation only)</label>
           {imagery && <div className="small">{imagery.scene_id}<br />{imagery.licence_note}</div>}
         </div>
@@ -230,6 +287,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
                     <button key={a} className={action === a ? "primary" : ""} onClick={() => { setAction(a); setReason(""); }}>{ACTION_LABEL[a] ?? human(a)}</button>
                   ))}
                 </div>
+                {action === "edit" && <p className="small muted">Drag the white vertices on the map. The original outline is kept in the history.</p>}
                 {action && (
                   <>
                     <label className="small">Reason (required)

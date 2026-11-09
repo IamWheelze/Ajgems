@@ -39,8 +39,11 @@ def submit_review(user, detection_id, action, reason_code, note="", geometry=Non
         new_geom = None
         if geometry is not None:
             new_geom = GEOSGeometry(geometry if isinstance(geometry, str) else json.dumps(geometry), srid=4326)
-            if new_geom.geom_type != "Polygon" or not new_geom.valid:
-                raise ReviewError("edited geometry must be a valid polygon")
+            if new_geom.geom_type != "Polygon":
+                raise ReviewError("edited geometry must be a polygon")
+            if not new_geom.valid:
+                raise ReviewError(f"edited outline is not valid: {new_geom.valid_reason}. Move the vertex so the outline "
+                                  "does not cross itself.")
         rv = Review.objects.create(
             organisation=user.organisation, detection=d, action=action, reason_code=reason_code, note=note,
             reviewer=user, reviewer_role=role, status_before=d.status, status_after=status_after,

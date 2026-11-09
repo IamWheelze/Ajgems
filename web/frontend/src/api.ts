@@ -82,13 +82,19 @@ export const api = {
   detections: (id: number) =>
     call<GeoJSON.FeatureCollection<GeoJSON.Polygon, DetectionProps>>("GET", `/api/projects/${id}/detections/`),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
-  review: (id: number, action: string, reason_code: string, note: string) =>
-    call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note }),
+  review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
+    call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),
   reviewOptions: () => call<ReviewOptions>("GET", "/api/review-options/"),
   sceneBounds: (id: number, layer: string) =>
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
       "GET", `/api/scenes/${id}/image/?bounds=1&layer=${layer}`),
   sceneImageUrl: (id: number, layer: string) => `/api/scenes/${id}/image/?layer=${layer}`,
+  detectionBounds: (id: number, layer: string) =>
+    call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
+      "GET", `/api/detections/${id}/image/?bounds=1&layer=${layer}`),
+  detectionImageUrl: (id: number, layer: string) => `/api/detections/${id}/image/?layer=${layer}`,
+  editGeometry: (id: number) => call<GeoJSON.Polygon & { vertices: number; original_vertices: number; valid: boolean }>(
+    "GET", `/api/detections/${id}/edit-geometry/`),
   exportPackage: (projectId: number, format: string, statuses: string[], job?: number) =>
     download(`/api/projects/${projectId}/exports/`, { format, statuses, ...(job ? { job } : {}) },
       `project_${projectId}_${format}_export.zip`),

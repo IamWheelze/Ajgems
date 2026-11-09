@@ -100,6 +100,7 @@ class Tile(models.Model):
     quality_decision = models.CharField(max_length=10, blank=True, help_text="pass, warn or block (FR-053)")
     candidates = models.IntegerField(default=0)
     failure_reason = models.CharField(max_length=80, blank=True)
+    prepared_path = models.CharField(max_length=500, blank=True, help_text="minefoot prepared folder for this tile")
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 
     class Meta:

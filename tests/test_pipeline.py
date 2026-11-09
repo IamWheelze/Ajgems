@@ -906,3 +906,18 @@ def test_g3_on_synthetic_kit_refuses_edits_and_logs_access(tmp_path):
         run_g3(tmp_path / "run", kit, labels, kit / "lock.json", tmp_path / "g3b", window_m=200,
                access_log=tmp_path / "access.csv", device="cpu", log=lambda *_: None)
     assert sum(1 for _ in open(tmp_path / "access.csv")) == 2          # refused runs are not logged as uses
+
+
+def test_vectorise_smooths_stair_steps_keeping_area(tmp_path):
+    from rasterio.transform import from_origin
+    from minefoot.vectorise import vectorise
+    yy, xx = np.mgrid[:200, :200]
+    disc = ((yy - 100) ** 2 + (xx - 100) ** 2 < 80 ** 2).astype("uint8") * 250   # a pixelated circle
+    prof = dict(driver="GTiff", height=200, width=200, count=1, dtype="uint8", crs="EPSG:32632",
+                transform=from_origin(500000, 1000000, 10, 10))
+    with rasterio.open(tmp_path / "s.tif", "w", **prof) as d:
+        d.write(disc, 1)
+    g = vectorise(tmp_path / "s.tif", threshold=0.5, mmu_ha=1.0).to_crs(32632)
+    assert len(g) == 1 and g.geometry.iloc[0].is_valid
+    assert len(g.geometry.iloc[0].exterior.coords) < 200           # stair-steps removed (a raw trace has ~640)
+    assert abs(g.geometry.iloc[0].area / 1e4 - (disc > 0).sum() * 0.01) / ((disc > 0).sum() * 0.01) < 0.01
