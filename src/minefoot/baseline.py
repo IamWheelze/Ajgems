@@ -154,7 +154,8 @@ def prf(c: dict) -> dict:
     tp, fp, fn = c["tp"], c["fp"], c["fn"]
     p = tp / (tp + fp) if tp + fp else float("nan")
     r = tp / (tp + fn) if tp + fn else float("nan")
-    f = 2 * p * r / (p + r) if p == p and r == r and p + r else float("nan")
+    # 2TP/(2TP+FP+FN): equals 2PR/(P+R) when TP > 0, and is 0 (not undefined) when mining is missed entirely.
+    f = 2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else float("nan")
     iou = tp / (tp + fp + fn) if tp + fp + fn else float("nan")
     return {"precision": p, "recall": r, "f1": f, "iou": iou}
 

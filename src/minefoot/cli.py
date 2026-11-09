@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -119,6 +119,14 @@ def main(argv=None):
     a.add_argument("path"); a.add_argument("--out", required=True); a.add_argument("--kit"); a.add_argument("--note", default="")
     a = sub.add_parser("verify-lock", help="detect edits to locked Nigerian sites")
     a.add_argument("path"); a.add_argument("--lock", required=True)
+    a = sub.add_parser("g3", help="gate G3: test a finished model on the locked Nigerian sites (no training, no tuning)")
+    a.add_argument("--run", required=True, help="finished G2 run folder, e.g. data/runs/g2_hn")
+    a.add_argument("--kit", required=True, help="labelling kit folder (kit.json, prepared/)")
+    a.add_argument("--labels", required=True); a.add_argument("--lock", required=True)
+    a.add_argument("--negatives", help="digitised hard_negatives.gpkg, for per-type false-alert rates")
+    a.add_argument("--out", required=True); a.add_argument("--window-m", type=float, default=1000.0)
+    a.add_argument("--access-log", default="docs/evidence/nigeria_test_access_log.csv")
+    a.add_argument("--device")
     a = sub.add_parser("compare", help="paired site bootstrap of model B minus model A on the same sites")
     a.add_argument("--a", required=True, help="metrics.json:model"); a.add_argument("--b", required=True, help="metrics.json:model")
     a.add_argument("--split", default="val", choices=["val", "test"]); a.add_argument("--n-boot", type=int, default=2000)
@@ -350,6 +358,18 @@ def main(argv=None):
     if x.cmd == "verify-lock":
         from .labelling_kit import verify_lock
         r = verify_lock(x.path, x.lock); print(json.dumps(r, indent=2)); return 0 if r["intact"] else 1
+    if x.cmd == "g3":
+        from .g3 import run_g3
+        r = run_g3(x.run, x.kit, x.labels, x.lock, x.out, x.negatives, x.window_m, x.access_log, x.device,
+                   log=lambda t: print(t, file=sys.stderr, flush=True))
+        a = r["strata"]["all"]; sr = r["site_recall"]
+        print(f"G3 on {r['sites']} locked Nigerian sites: pixel F1 {a['f1']:.3f} "
+              f"(95% CI {a['ci95']['f1'][0]:.3f} to {a['ci95']['f1'][1]:.3f}); global test F1 {r['global_test']['f1']:.3f}; "
+              f"gap {r['gap_f1_nigeria_minus_global']:+.3f}")
+        if sr["found_ci95"]:
+            print(f"site recall (sites >= 1 ha, any overlap): {sr['found_any_overlap']:.2f} "
+                  f"(95% CI {sr['found_ci95'][0]:.2f} to {sr['found_ci95'][1]:.2f}); FRD O1 target 0.70")
+        return 0
     if x.cmd == "compare":
         from .baseline import paired_compare
         def rows(spec):

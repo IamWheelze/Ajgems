@@ -18,4 +18,6 @@ To digitise hard negatives, run `minefoot negatives-template data/labels/hard_ne
 
 A quarry may count as mining in some definitions. This draft treats it as a hard negative until the founder decides.
 
+**Label everything near a site.** For each test site, label all visible mining disturbance within 1 km of it, using the same `site_id`. G3 scores each site inside a 1 km window, and any prediction there that misses every label counts as a false alarm. Unlabelled mining in the window would be scored as a false alarm, so mark it `ignore` if you cannot judge it.
+
 Minimum polygon: 0.5 ha for display, 1 ha for evaluation (provisional). Two annotators label a sample, and their agreement is reported. Do not label from a later base map without checking the Sentinel-2 date.

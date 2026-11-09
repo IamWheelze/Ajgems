@@ -845,3 +845,64 @@ def test_vectorise_threshold_mmu_bands_and_masking(tmp_path):
     assert abs(g.loc[0, "area_ha"] - 4.0) < 1e-6 and g.loc[0, "score_mean"] == pytest.approx(240 / 255, abs=1e-6)
     assert {"masked_fraction", "mask_status"} <= set(g.columns)
     assert score_band(0.99, 0.4) == "high" and score_band(0.41, 0.4) == "low" and score_band(0.6, 0.4) == "medium"
+
+
+def test_g3_on_synthetic_kit_refuses_edits_and_logs_access(tmp_path):
+    pytest.importorskip("torch"); pytest.importorskip("segmentation_models_pytorch")
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.g2 import run_g2
+    from minefoot.g3 import run_g3
+    from minefoot.labelling_kit import LABEL_LAYER, lock_labels, write_label_template
+    from minefoot.negatives import write_template
+    # A tiny trained run (stand-in for g2_hn).
+    ids = {"train": ["s-tr1"], "val": ["s-va"], "test": ["s-te"]}
+    rows = []
+    for i, (k, sids) in enumerate(ids.items()):
+        for sid in sids:
+            raw = make_scene(tmp_path / "raw", size=128, seed=20 + i, scene_id=sid)
+            prepare_scene(raw, tmp_path / "prep" / sid)
+            (tmp_path / "lab" / sid).mkdir(parents=True)
+            (tmp_path / "lab" / sid / "labels.geojson").write_text((raw / "truth.geojson").read_text())
+            rows.append({"site_id": sid, "split": k, "mine_scale": "Artisanal", "mine_type": "Surface",
+                         "dataset": "synthetic", "geometry": box(10 * len(rows), 0, 10 * len(rows) + 1, 1)})
+    gpd.GeoDataFrame(rows, crs=4326).to_file(tmp_path / "split.gpkg", layer="sites", driver="GPKG")
+    run_g2(ids, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "lab", tmp_path / "run", log=lambda *_: None,
+           device="cpu", epochs=1, chip=64, batch=4, chips_per_site=4, workers=0, encoder="resnet18", encoder_weights="none")
+    # A one-region kit with two labelled sites, one ignore area and one hard negative.
+    kit = tmp_path / "kit"
+    raw = make_scene(tmp_path / "kraw", size=128, seed=99, scene_id="KIT_SCENE")
+    prepare_scene(raw, kit / "prepared" / "region_a")
+    (kit / "kit.json").write_text(json.dumps({"regions": {"region_a": {"scene_id": "KIT_SCENE"}}}))
+    truth = gpd.read_file(raw / "truth.geojson").to_crs(4326)
+    labels = write_label_template(kit / "labels" / "m.gpkg")
+    base = {"label_class": "mining_disturbance", "mine_scale": "artisanal", "protocol_version": "0.1",
+            "scene_id": "KIT_SCENE", "image_date": "2026-01-03", "annotator": "A", "evidence_grade": "E1", "notes": ""}
+    minx, miny, maxx, maxy = truth.total_bounds
+    second = box(maxx - 0.0012, maxy - 0.0012, maxx - 0.0002, maxy - 0.0002)   # about 1.2 ha, a second site
+    recs = [{**base, "site_id": "ng-test-001", "geometry": truth.geometry[0].difference(second)},
+            {**base, "site_id": "ng-test-002", "geometry": second}]
+    recs.append({**base, "site_id": "ng-test-001", "label_class": "ignore", "geometry": truth.geometry[0].buffer(1e-4)})
+    gpd.GeoDataFrame(recs, crs=4326).to_file(labels, layer=LABEL_LAYER, driver="GPKG")
+    lock = lock_labels(labels, kit / "lock.json")
+    negs = write_template(kit / "labels" / "n.gpkg")
+    c = truth.geometry[0].centroid
+    gpd.GeoDataFrame([{"neg_type": "bare_ground", "protocol_version": "0.1", "scene_id": "KIT_SCENE",
+                       "image_date": "2026-01-03", "annotator": "A", "evidence_grade": "E1", "notes": "",
+                       "geometry": box(c.x + 0.002, c.y + 0.002, c.x + 0.004, c.y + 0.004)}], crs=4326).to_file(
+        negs, layer="hard_negatives", driver="GPKG")
+    r = run_g3(tmp_path / "run", kit, labels, kit / "lock.json", tmp_path / "g3", negatives_path=negs,
+               window_m=200, access_log=tmp_path / "access.csv", device="cpu", log=lambda *_: None)
+    assert r["sites"] == 2 and r["lock_sha256"] == lock["sha256"]
+    assert 0 <= r["strata"]["all"]["f1"] <= 1 and "region=region_a" in r["strata"]
+    assert "GLOBAL validation" in r["threshold_rule"] and r["site_recall"]["frd_o1_target"] == 0.70
+    assert (tmp_path / "g3" / "region_a_errors.tif").exists() and (tmp_path / "g3" / "g3_per_site.csv").exists()
+    assert sum(1 for _ in open(tmp_path / "access.csv")) == 2          # header + one logged use
+    # Editing a locked site stops G3.
+    g = gpd.read_file(labels, layer=LABEL_LAYER)
+    g.loc[0, "geometry"] = g.loc[0, "geometry"].buffer(1e-4)
+    g.to_file(labels, layer=LABEL_LAYER, driver="GPKG")
+    with pytest.raises(ValueError, match="changed since locking"):
+        run_g3(tmp_path / "run", kit, labels, kit / "lock.json", tmp_path / "g3b", window_m=200,
+               access_log=tmp_path / "access.csv", device="cpu", log=lambda *_: None)
+    assert sum(1 for _ in open(tmp_path / "access.csv")) == 2          # refused runs are not logged as uses

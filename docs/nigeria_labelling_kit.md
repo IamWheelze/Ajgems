@@ -31,6 +31,7 @@ Aim for **30 to 50 sites**, spread across both regions and across artisanal and 
    - `scene_id` and `image_date`: copy them from the region's group name in the layer list.
    - `evidence_grade`: E1 for what you see in this imagery. Use E2 if you checked dated high-resolution imagery, and E3 only for a field visit.
 3. Keep polygons at least 0.5 ha. Label only what is visible on this date.
+4. **Label everything within 1 km of each site** under the same `site_id`. G3 scores each site in a 1 km window, so unlabelled mining there would count as a false alarm. Use `ignore` where you cannot judge.
 
 Never record mineral type, ownership, legality or whether a site is active (FR-110).
 
@@ -75,6 +76,18 @@ git push
 
 `data/` is in `.gitignore`, so `-f` is needed. The label files are small.
 
-A later session then runs G3: it scores `g2_hn` on the locked sites and reports the global-to-Nigerian gap per region and mine scale, with site-bootstrap intervals and the FR-052 masking report.
+Then G3 runs with one command. It checks the lock first and refuses edited labels:
+
+```bash
+minefoot g3 --run data/runs/g2_hn --kit data/labelling_kit/nigeria_v1 --labels data/labelling_kit/nigeria_v1/labels/mining_labels.gpkg --lock docs/evidence/nigeria_test_lock_v1.json --negatives data/labelling_kit/nigeria_v1/labels/hard_negatives.gpkg --out data/runs/g3_v1
+```
+
+It reports:
+- pixel and footprint metrics per region and mine scale, with site-bootstrap intervals, and the gap to global test performance;
+- site recall against FRD objective O1 (sites of 1 ha or more found, target 0.70);
+- the masking share per site, and per-type false-alert rates on your hard negatives;
+- model flags outside the 1 km windows as **unverified candidates**, not errors.
+
+The threshold stays the one chosen on global validation, and every run is appended to `docs/evidence/nigeria_test_access_log.csv` with the lock hash (ML-07).
 
 The hard negatives can also join training (`minefoot rasterize-negatives`, then `g2 --negatives-root`), but only negatives **outside** the locked test sites' blocks, so test independence holds.
