@@ -75,3 +75,4 @@ ol.history { padding-left: 18px; display: grid; gap: 4px; }
 .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); flex: none; }
 .swatch.hatched { background: repeating-linear-gradient(45deg, #999 0 2px, transparent 2px 6px); }
 progress { accent-color: var(--accent); }
+fieldset.statuses { border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }

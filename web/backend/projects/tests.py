@@ -29,6 +29,7 @@ def reference_km2(geojson):
 
 
 def make_world():
+    """Two organisations; each has one project, one finished job and one detection."""
     orgs = {n: Organisation.objects.create(name=n) for n in ("A", "B")}
     users = {}
     for o in orgs.values():
@@ -43,7 +44,7 @@ def make_world():
         gis = users[(o.name, "gis")]
         p = Project.objects.create(organisation=o, name=f"P{o.name}", purpose="test", created_by=gis,
                                    acceptable_use_accepted_by=gis, acceptable_use_accepted_at=datetime.now(timezone.utc))
-        job = Job.objects.create(organisation=o, project=p, model_version="g2_hn", created_by=gis)
+        job = Job.objects.create(organisation=o, project=p, model_version="g2_hn", created_by=gis, state="succeeded")
         poly = Polygon.from_bbox((8.80, 9.70, 8.81, 9.71)); poly.srid = 4326
         d = Detection.objects.create(organisation=o, project=p, job=job, scene=scene, geometry=poly,
                                      original_geometry=poly, area_ha=120.0, score_mean=0.8, score_band="high",
@@ -255,3 +256,78 @@ class AuthAuditTest(Base):
         r = c.post("/api/projects/", {"name": "n", "purpose": "pilot", "acceptable_use": True}, format="json")
         self.assertEqual(r.status_code, 201)
         self.assertTrue(AuditEvent.objects.filter(action="project.create").exists())
+
+
+class ExportTest(Base):
+    def export(self, role, body):
+        r = self.client_for("A", role).post(f"/api/projects/{self.projects['A'].pk}/exports/", body, format="json")
+        return r
+
+    def unzip(self, r):
+        import zipfile
+        return zipfile.ZipFile(io.BytesIO(r.content))
+
+    def test_package_contents_and_checksums(self):
+        import hashlib
+        from unittest import mock
+        card = {"model_version": "test", "threshold": 0.41, "score_type": "model score", "tested_in_nigeria": False,
+                "domain_warning": "Not yet tested on Nigerian sites (gate G3 pending)."}
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            for fmt in ("geojson", "csv", "gpkg"):
+                r = self.export("gis", {"format": fmt})
+                self.assertEqual(r.status_code, 200, r.content[:200])
+                z = self.unzip(r)
+                names = set(z.namelist())
+                self.assertEqual(names, {f"candidates.{fmt}", "report.pdf", "LICENCE_AND_ATTRIBUTION.txt", "manifest.json"})
+                man = json.loads(z.read("manifest.json"))
+                for n, info in man["files"].items():
+                    self.assertEqual(hashlib.sha256(z.read(n)).hexdigest(), info["sha256"])   # FR-109: alteration detectable
+                self.assertIn("Contains modified Copernicus Sentinel data 2026", z.read("LICENCE_AND_ATTRIBUTION.txt").decode())
+        # GeoJSON fields follow FRD 9.2.
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            fc = json.loads(self.unzip(self.export("gis", {"format": "geojson"})).read("candidates.geojson"))
+            csv_text = self.unzip(self.export("gis", {"format": "csv"})).read("candidates.csv").decode()
+            pdf = self.unzip(self.export("gis", {"format": "geojson"})).read("report.pdf")
+        props = fc["features"][0]["properties"]
+        for k in ("project_id", "detection_id", "crs", "area_ha", "area_method", "scene_ids", "usable_coverage_pct",
+                  "model_version", "threshold", "min_mapping_unit_ha", "score_band", "score_type", "review_status",
+                  "evidence_grade", "statement"):
+            self.assertIn(k, props)
+        self.assertEqual(props["score_type"], "model score")
+        self.assertIn("geometry_wkt_epsg4326", csv_text.splitlines()[0])   # CSV states its geometry form
+        from pypdf import PdfReader
+        text = " ".join(pg.extract_text() for pg in PdfReader(io.BytesIO(pdf)).pages)
+        for section in ("Coverage map", "Limits", "Versions", "Evidence grades", "Not yet tested on Nigerian sites",
+                        "Contains modified Copernicus Sentinel data"):
+            self.assertIn(section, text)
+        self.assertTrue(AuditEvent.objects.filter(action="export.create").exists())
+
+    def test_viewer_exports_released_only_and_ml_refused(self):
+        from unittest import mock
+        card = {"model_version": "t", "threshold": 0.4, "score_type": "model score", "tested_in_nigeria": False, "domain_warning": "x"}
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            r = self.export("viewer", {"format": "geojson", "statuses": ["unreviewed"]})
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(json.loads(self.unzip(r).read("candidates.geojson"))["features"], [])
+        self.assertEqual(self.export("ml", {"format": "geojson"}).status_code, 403)
+        self.assertEqual(self.export("gis", {"format": "shp"}).status_code, 400)
+
+
+class ExportJobSelectionTest(Base):
+    def test_latest_job_per_area_by_default_and_explicit_job(self):
+        import zipfile
+        from unittest import mock
+        p, d = self.projects["A"], self.dets["A"]
+        newer = Job.objects.create(organisation=p.organisation, project=p, model_version="g2_hn", state="succeeded",
+                                   created_by=self.users[("A", "gis")])
+        d2 = Detection.objects.get(pk=d.pk); d2.pk = None; d2.job = newer; d2.save()   # same candidate from a rerun
+        card = {"model_version": "t", "threshold": 0.4, "score_type": "model score", "tested_in_nigeria": False, "domain_warning": "x"}
+        c = self.client_for("A", "gis")
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            man = lambda body: json.loads(zipfile.ZipFile(io.BytesIO(c.post(f"/api/projects/{p.pk}/exports/", body,
+                                                                                format="json").content)).read("manifest.json"))
+            self.assertEqual(man({"format": "csv"})["candidates"], 1)            # not duplicated
+            self.assertEqual(man({"format": "csv"})["jobs"], [newer.pk])
+            self.assertEqual(man({"format": "csv", "job": d.job_id})["jobs"], [d.job_id])
+            other = self.dets["B"].job_id
+            self.assertEqual(c.post(f"/api/projects/{p.pk}/exports/", {"format": "csv", "job": other}, format="json").status_code, 404)

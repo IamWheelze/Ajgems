@@ -241,3 +241,42 @@ class ModelCardView(APIView):
     def get(self, request):
         from .pipeline import model_card
         return Response(model_card())
+
+
+class ExportView(APIView):
+    """POST {format, statuses?, job?} -> zip package (FR-106 to FR-109). Viewers get released candidates only.
+
+    Without `job`, the latest finished job for each area is exported, so repeated runs are not duplicated."""
+    permission_classes = [RolePermission]
+    write_roles = ("gis", "admin", "viewer")
+
+    def post(self, request, project_pk):
+        from django.http import HttpResponse
+        from .exports import FORMATS, build_package
+        try:
+            p = Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
+            raise Http404
+        fmt = request.data.get("format", "geojson")
+        if fmt not in FORMATS:
+            return Response({"detail": f"format must be one of {list(FORMATS)}"}, status=400)
+        statuses = request.data.get("statuses") or [s for s in Detection.Status.values if s != "rejected"]
+        viewer_only = request.user.has_role("viewer") and not request.user.has_role("admin", "gis")
+        if viewer_only:
+            statuses = ["released"]
+        bad = [s for s in statuses if s not in Detection.Status.values]
+        if bad:
+            return Response({"detail": f"unknown statuses {bad}"}, status=400)
+        from .exports import selected_jobs
+        job_id = request.data.get("job")
+        jobs = selected_jobs(p, int(job_id) if job_id else None)
+        if job_id and not jobs:
+            raise Http404
+        dets = (Detection.objects.filter(project=p, job__in=jobs, status__in=statuses).select_related("scene")
+                .prefetch_related("reviews").order_by("id"))
+        data, manifest = build_package(p, dets, request.user, fmt, statuses, jobs)
+        record(request.user, "export.create", p, after={"format": fmt, "statuses": statuses, "candidates": manifest["candidates"],
+                                                       "files": {k: v["sha256"] for k, v in manifest["files"].items()}})
+        resp = HttpResponse(data, content_type="application/zip")
+        resp["Content-Disposition"] = f'attachment; filename="project_{p.pk}_{fmt}_export.zip"'
+        return resp

@@ -49,6 +49,19 @@ async function call<T>(method: string, url: string, body?: unknown): Promise<T> 
   return data as T;
 }
 
+async function download(url: string, body: unknown, filename: string): Promise<void> {
+  const res = await fetch(url, { method: "POST", credentials: "same-origin",
+    headers: { "Content-Type": "application/json", "X-CSRFToken": csrf() }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(res.status, String(data.detail ?? res.statusText));
+  }
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
 export const api = {
   csrf: () => call<{ csrfToken: string }>("GET", "/api/auth/csrf/"),
   login: (username: string, password: string) => call<Me>("POST", "/api/auth/login/", { username, password }),
@@ -76,6 +89,9 @@ export const api = {
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
       "GET", `/api/scenes/${id}/image/?bounds=1&layer=${layer}`),
   sceneImageUrl: (id: number, layer: string) => `/api/scenes/${id}/image/?layer=${layer}`,
+  exportPackage: (projectId: number, format: string, statuses: string[], job?: number) =>
+    download(`/api/projects/${projectId}/exports/`, { format, statuses, ...(job ? { job } : {}) },
+      `project_${projectId}_${format}_export.zip`),
   jobs: (projectId: number) => call<Job[]>("GET", `/api/projects/${projectId}/jobs/`),
   estimateJob: (projectId: number, area: number, start: string, end: string, max_cloud: number) =>
     call<Job>("POST", `/api/projects/${projectId}/jobs/`, { area, start, end, max_cloud }),
