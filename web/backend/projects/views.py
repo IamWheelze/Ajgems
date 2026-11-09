@@ -148,3 +148,96 @@ class SceneImageView(APIView):
             return Response({"bounds": bounds, "date": scene.acquired_at.isoformat(), "scene_id": scene.source_id,
                              "licence_note": scene.licence_note, "layer": layer})
         return FileResponse(open(path, "rb"), content_type="image/png")
+
+
+def job_payload(job):
+    from collections import Counter
+    tiles = list(job.tiles.all())
+    return {"id": job.id, "project": job.project_id, "area": job.area_id, "state": job.state,
+            "model_version": job.model_version, "message": job.message, "failure_reason": job.failure_reason,
+            "estimate": job.estimate, "created_at": job.created_at, "started_at": job.started_at,
+            "finished_at": job.finished_at,
+            "parameters": {k: v for k, v in job.parameters.items() if k not in ("items",)},
+            "tiles": {"total": len(tiles), "by_state": Counter(t.state for t in tiles),
+                      "by_outcome": Counter(t.outcome for t in tiles)},
+            "candidates": job.detections.count()}
+
+
+class JobViewSet(viewsets.ViewSet):
+    """Detection jobs (FR-080 to FR-085): estimate, start, cancel, resume, status and tile map."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis")
+    write_roles = ("gis",)
+
+    def _job(self, request, pk):
+        from .models import Job
+        try:
+            return Job.objects.select_related("project").get(pk=pk, organisation=request.user.organisation)
+        except Job.DoesNotExist:
+            raise Http404
+
+    def list(self, request, project_pk=None):
+        from .models import Job
+        if not Project.objects.filter(pk=project_pk, organisation=request.user.organisation).exists():
+            raise Http404
+        return Response([job_payload(j) for j in Job.objects.filter(project_id=project_pk).order_by("-created_at")[:50]])
+
+    def create(self, request, project_pk=None):
+        from .jobs import JobError, estimate
+        try:
+            p = Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
+            raise Http404
+        d = request.data
+        try:
+            job = estimate(request.user, p, d.get("area"), d.get("start"), d.get("end"), float(d.get("max_cloud", 20)))
+        except JobError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except RuntimeError as exc:   # all catalogues failed
+            return Response({"detail": f"imagery catalogue unavailable: {exc}"[:400]}, status=503)
+        return Response(job_payload(job), status=201)
+
+    def retrieve(self, request, pk=None):
+        return Response(job_payload(self._job(request, pk)))
+
+    def tiles(self, request, pk=None):
+        import json
+        job = self._job(request, pk)
+        return Response({"type": "FeatureCollection", "features": [
+            {"type": "Feature", "id": t.id, "geometry": json.loads(t.geometry.geojson),
+             "properties": {"grid_id": t.grid_id, "state": t.state, "outcome": t.outcome, "usable_pct": t.usable_pct,
+                            "quality_decision": t.quality_decision, "candidates": t.candidates,
+                            "failure_reason": t.failure_reason,
+                            "scene": t.scene.source_id if t.scene_id else None,
+                            "date": t.scene.acquired_at.date().isoformat() if t.scene_id else None}}
+            for t in job.tiles.select_related("scene").order_by("grid_id")]})
+
+    def _act(self, request, pk, fn):
+        from .jobs import JobError
+        job = self._job(request, pk)
+        try:
+            job = fn(request.user, job)
+        except JobError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(job_payload(job))
+
+    def start(self, request, pk=None):
+        from .jobs import start
+        return self._act(request, pk, start)
+
+    def cancel(self, request, pk=None):
+        from .jobs import cancel
+        return self._act(request, pk, cancel)
+
+    def resume(self, request, pk=None):
+        from .jobs import resume
+        return self._act(request, pk, resume)
+
+
+class ModelCardView(APIView):
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer")
+
+    def get(self, request):
+        from .pipeline import model_card
+        return Response(model_card())

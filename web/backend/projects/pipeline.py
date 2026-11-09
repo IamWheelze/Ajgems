@@ -1,0 +1,144 @@
+"""Detection job steps (FR-020, FR-050 to FR-053, FR-060 to FR-062, FR-080 to FR-085).
+
+Plain functions, so tests can replace the catalogue and the model with synthetic ones.
+All raster work goes through the minefoot package, with the same preprocessing as training.
+"""
+from __future__ import annotations
+import json
+import math
+from functools import lru_cache
+from pathlib import Path
+
+import numpy as np
+from django.conf import settings
+
+
+# ---------- area to tile grid ----------
+
+def utm_epsg(lon, lat):
+    return (32600 if lat >= 0 else 32700) + int(min(max((lon + 180) // 6 + 1, 1), 60))
+
+
+def tile_grid(area_geom_4326, tile_km: float):
+    """10 km (by default) square tiles in the area's UTM zone that intersect the area.
+
+    Returns a list of (grid_id, shapely polygon in EPSG:4326)."""
+    import geopandas as gpd
+    from shapely import wkt
+    from shapely.geometry import box
+    g = wkt.loads(area_geom_4326.wkt)
+    c = g.centroid
+    epsg = utm_epsg(c.x, c.y)
+    gu = gpd.GeoSeries([g], crs=4326).to_crs(epsg).iloc[0]
+    step = tile_km * 1000
+    minx, miny, maxx, maxy = gu.bounds
+    x0, y0 = math.floor(minx / step) * step, math.floor(miny / step) * step
+    tiles = []
+    for i, y in enumerate(np.arange(y0, maxy, step)):
+        for j, x in enumerate(np.arange(x0, maxx, step)):
+            t = box(x, y, x + step, y + step)
+            if t.intersects(gu):
+                tiles.append((f"z{epsg % 100}_r{int(y // step)}_c{int(x // step)}", t))
+    out = gpd.GeoSeries([t for _, t in tiles], crs=epsg).to_crs(4326)
+    return [(gid, geom) for (gid, _), geom in zip(tiles, out)]
+
+
+# ---------- catalogue ----------
+
+def find_scenes(bbox, start, end, max_cloud):
+    """Scenes for the job, clearest first. Returns (provider, [item dicts])."""
+    from minefoot.catalog import search
+    prov, items = search(bbox, start, end, max_cloud)
+    return prov, [it.to_dict() for it in items]
+
+
+def choose_scene(items, tile_geom):
+    """Clearest scene that fully covers the tile, else the one covering most of it (FR-061)."""
+    from shapely.geometry import shape
+    best = None
+    for it in items:
+        cover = shape(it["geometry"]).intersection(tile_geom).area / tile_geom.area
+        key = (cover < 0.999, -round(cover, 3), it["properties"].get("eo:cloud_cover", 100), it["id"])
+        if best is None or key < best[0]:
+            best = (key, it, cover)
+    return (best[1], best[2]) if best else (None, 0.0)
+
+
+def fetch_tile(provider, item_dict, tile_bbox, out_dir, name):
+    """Windowed fetch and the one preprocessing path. Returns the prepared folder."""
+    import pystac
+    from minefoot.catalog import PROVIDERS
+    from minefoot.catalog import fetch_scene
+    from minefoot.preprocess import prepare_scene
+    item = pystac.Item.from_dict(item_dict)
+    if PROVIDERS[provider].get("sign"):
+        import planetary_computer
+        item = planetary_computer.sign(item)
+    raw = fetch_scene(item, provider, tile_bbox, Path(out_dir) / "raw", name=name)
+    prep = Path(out_dir) / "prepared" / name
+    prepare_scene(raw, prep)
+    (raw / "raw_dn.tif").unlink(missing_ok=True)
+    return prep
+
+
+# ---------- model ----------
+
+@lru_cache(maxsize=2)
+def _model(run_dir):
+    from minefoot.g2 import load_run_model
+    return load_run_model(run_dir)
+
+
+def model_card(run_dir=None) -> dict:
+    """What the run setup screen shows about the model (FR-014 domain warning, FR-084 wording)."""
+    run_dir = Path(run_dir or settings.MINEFOOT["MODEL_RUN"])
+    m = json.loads((run_dir / "metrics.json").read_text())["models"]["unet"]
+    cfg = json.loads((run_dir / "config.json").read_text())
+    test = m["test"]["strata"]["all"]
+    tested_in_nigeria = Path(settings.MINEFOOT["NIGERIA_G3_RESULT"]).exists()
+    return {"model_version": f"{run_dir.name}:unet", "threshold": m["threshold_score"], "score_type": "model score",
+            "trained_on": "Global ML-ready (internal research)", "code_commit": cfg.get("code_commit"),
+            "global_test_f1": test["f1"], "global_test_f1_ci95": test["ci95"]["f1"],
+            "tested_in_nigeria": tested_in_nigeria,
+            "domain_warning": None if tested_in_nigeria else
+            "Not yet tested on Nigerian sites (gate G3 pending). Treat every candidate as unverified."}
+
+
+def score_prepared(prep_dir, run_dir=None):
+    """Model score in [0, 1] for a prepared tile, 0 where unusable."""
+    import rasterio
+    from minefoot.g2 import predict_tile
+    from minefoot.schema import BANDS
+    model, norm, level, cfg, dev = _model(str(run_dir or settings.MINEFOOT["MODEL_RUN"]))
+    with rasterio.open(Path(prep_dir) / "reflectance.tif") as s:
+        refl = s.read()
+    return predict_tile(model, refl[:len(BANDS)], norm, dev, cfg["chip"], cfg.get("infer_overlap") or cfg["chip"] // 4)
+
+
+def write_score(score, prep_dir, path):
+    import rasterio
+    from minefoot.baseline import to_levels
+    with rasterio.open(Path(prep_dir) / "reflectance.tif") as s:
+        p = {**s.profile, "count": 1, "dtype": "uint8", "nodata": None, "compress": "deflate"}
+    with rasterio.open(path, "w", **p) as d:
+        d.write(to_levels(score), 1)
+    return path
+
+
+# ---------- embargo on the Nigerian test regions (ML-07) ----------
+
+def embargoed(area_geom_4326) -> str | None:
+    """Refuse jobs over the labelling-kit regions until the Nigerian test labels are locked."""
+    import yaml
+    from shapely import wkt
+    from shapely.geometry import box
+    cfg_path = Path(settings.MINEFOOT["NIGERIA_AOIS"])
+    lock = Path(settings.MINEFOOT["NIGERIA_TEST_LOCK"])
+    if lock.exists() or not cfg_path.exists():
+        return None
+    g = wkt.loads(area_geom_4326.wkt)
+    for r in yaml.safe_load(cfg_path.read_text()).get("regions", []):
+        if g.intersects(box(*r["bbox"])):
+            return (f"this area overlaps the Nigerian test region '{r['name']}'. Jobs there are refused until the "
+                    f"Nigerian test labels are locked, so model output cannot influence labelling (ML-07).")
+    return None

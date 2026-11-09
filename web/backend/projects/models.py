@@ -71,6 +71,8 @@ class Job(models.Model):
     parameters = models.JSONField(default=dict, help_text="Immutable once the job starts")
     scenes = models.ManyToManyField(Scene, blank=True)
     failure_reason = models.CharField(max_length=80, blank=True)
+    estimate = models.JSONField(default=dict, help_text="Tiles, scenes and time estimated before starting")
+    message = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True)
@@ -84,10 +86,20 @@ class Tile(models.Model):
         INSUFFICIENT = "insufficient_usable_imagery"
         NOT_PROCESSED = "not_processed"
 
+    class State(models.TextChoices):
+        PENDING = "pending"; FETCHING = "fetching"; CHECKING = "checking"; RUNNING = "running"
+        DONE = "done"; FAILED = "failed"; SKIPPED = "skipped"
+
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="tiles")
     grid_id = models.CharField(max_length=60)
     geometry = models.PolygonField(srid=4326)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.PENDING)
+    scene = models.ForeignKey(Scene, on_delete=models.PROTECT, null=True, help_text="Source of every pixel in the tile")
+    scene_cover = models.FloatField(null=True, help_text="Share of the tile the scene covers")
     usable_pct = models.FloatField(null=True)
+    quality_decision = models.CharField(max_length=10, blank=True, help_text="pass, warn or block (FR-053)")
+    candidates = models.IntegerField(default=0)
+    failure_reason = models.CharField(max_length=80, blank=True)
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 
     class Meta:

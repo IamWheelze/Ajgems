@@ -13,7 +13,13 @@ cd web/backend && python manage.py migrate && python manage.py createsuperuser
 python manage.py runserver 8000
 ```
 
-In a second terminal:
+In a second terminal, start a job worker (W2):
+
+```bash
+cd web/backend && celery -A minefoot_web worker -l info --concurrency 1
+```
+
+In a third terminal:
 
 ```bash
 cd web/frontend && npm install && npm run dev
@@ -53,11 +59,33 @@ cd web/backend && python manage.py test
 - **Append-only history.** Reviews, evidence and the audit log cannot be changed or deleted, even with raw SQL, because database triggers refuse it (FR-092). Sign-ins, failed sign-ins and every change are audited (FR-004).
 - **Status styling.** Colour-blind-safe colours, always with an outline style and an icon (FRD 10.3).
 
+## What W2 covers (detection jobs)
+
+- **Run setup** (on the project page). Choose an area, a date window and a cloud limit, then **Estimate**.
+  - *What it does:* searches the catalogue and lays a 10 km tile grid. Nothing is downloaded yet.
+  - *What it shows:* tile count, scenes found, estimated time (20 s per tile on CPU; 13 s measured), and the model card with its "not yet tested on Nigerian sites" warning until G3 has run.
+  - *Then:* **Start job**.
+- **Celery worker,** tile by tile (FR-080 to FR-085):
+  1. *Scene:* the clearest scene that covers the tile, recorded per tile (FR-061).
+  2. *Fetch:* a windowed fetch through the one preprocessing path.
+  3. *Quality check:* a tile below 40% usable is **insufficient usable imagery**, and is never scored or called "no candidate" (FR-052).
+  4. *Score and vectorise:* the model scores the tile; `minefoot.vectorise` produces polygons with the masking report.
+  5. *Merge:* candidates crossing tile edges are merged and clipped to the area.
+  - *Controls:* cancel stops before the next tile, and resume skips finished tiles. Failures carry FRD reasons, and a job's parameters are frozen once it starts.
+- **Job monitor.** Tiles coloured by their FR-052 outcome, with "insufficient usable imagery" hatched. It polls live, shows tile details on click, offers cancel and resume, and links to review.
+- **Embargo (ML-07).** Jobs overlapping the Jos Plateau and Kogi/Kwara labelling regions are refused until `docs/evidence/nigeria_test_lock_v1.json` exists, so model output cannot influence the Nigerian test labels.
+- **Model.** Set by `MINEFOOT_MODEL_RUN` (default `data/runs/g2_hn`) until the model registry exists.
+
+Verified: 4 job tests on synthetic imagery cover:
+- FR-052 on a fully clouded tile,
+- candidates merged across tile edges,
+- cancel, then resume without refetching finished tiles,
+- frozen parameters, the embargo, and roles.
+
+Also run for real here: a 122 km² area in Ghana, 4 tiles, 18 candidates in 42–51 seconds on CPU, driven from the browser.
+
 ## Not built yet (next slices)
 
-- **W2, jobs:** run detection on a project area through Celery workers.
-  - *Steps:* imagery search and quality check, the FR-052 tile outcomes, scoring with the approved model, then `minefoot.vectorise` with the masking report.
-  - *Screens:* the job monitor and run setup.
 - **W3, review and display:**
   - *Map display:* a "not assessed" hatch layer, swipe, and geometry editing in the review workspace.
   - *Delivery:* exports (GeoJSON, GeoPackage, CSV, PDF report with licence notice, FR-106 to FR-108).

@@ -2,6 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
 import { api, Area, Me, Project } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
+import RunSetup from "./RunSetup";
 
 // Areas of interest (FR-011, FR-012): draw by clicking, or upload a file. The server validates
 // geometry, CRS and the size limit, and computes the geodesic area.
@@ -121,6 +122,7 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
           </div>
         )}
         {error && <p className="error" role="alert">{error}</p>}
+        {me.roles.includes("gis") && project?.status === "active" && <RunSetup projectId={projectId} areas={areas} />}
       </aside>
       <div ref={mapEl} className="map" />
     </div>

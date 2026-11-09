@@ -87,6 +87,18 @@ MINEFOOT = {
     "AOI_MAX_KM2": float(os.environ.get("MINEFOOT_AOI_MAX_KM2", "10000")),          # FR-013
     "DATA_ROOT": Path(os.environ.get("MINEFOOT_DATA_ROOT", REPO_ROOT / "data")),
     "IMAGE_CACHE": Path(os.environ.get("MINEFOOT_IMAGE_CACHE", REPO_ROOT / "data" / "web_cache")),
+    # Detection jobs (W2). The model is a finished minefoot G2 run until the registry exists (FR-102).
+    "MODEL_RUN": Path(os.environ.get("MINEFOOT_MODEL_RUN", REPO_ROOT / "data" / "runs" / "g2_hn")),
+    "JOB_ROOT": Path(os.environ.get("MINEFOOT_JOB_ROOT", REPO_ROOT / "data" / "jobs")),
+    "TILE_KM": float(os.environ.get("MINEFOOT_TILE_KM", "10")),
+    "MMU_HA": float(os.environ.get("MINEFOOT_MMU_HA", "1.0")),
+    # Measured 2026-11-09: 13 s per 10 km tile on 4 CPU cores (fetch, prepare, score, vectorise). 20 s is cautious.
+    "SECONDS_PER_TILE": float(os.environ.get("MINEFOOT_SECONDS_PER_TILE", "20")),
+    "NIGERIA_AOIS": Path(os.environ.get("MINEFOOT_NIGERIA_AOIS", REPO_ROOT / "configs" / "nigeria_aois.yaml")),
+    "NIGERIA_TEST_LOCK": Path(os.environ.get("MINEFOOT_NIGERIA_TEST_LOCK",
+                                             REPO_ROOT / "docs" / "evidence" / "nigeria_test_lock_v1.json")),
+    "NIGERIA_G3_RESULT": Path(os.environ.get("MINEFOOT_NIGERIA_G3_RESULT",
+                                             REPO_ROOT / "docs" / "evidence" / "g3_v1" / "g3_metrics.json")),
 }
 
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "redis://localhost:6379/0")

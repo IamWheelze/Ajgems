@@ -68,3 +68,10 @@ ol.history { padding-left: 18px; display: grid; gap: 4px; }
   .workspace { grid-template-columns: 1fr; grid-template-rows: auto auto 55vh auto; grid-template-areas: "top" "queue" "map" "evidence"; height: auto; }
   .ws-queue { max-height: 30vh; }
 }
+
+.estimate { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.badge.block { display: block; white-space: normal; border-radius: 6px; padding: 6px 8px; }
+.legend-list li { display: flex; gap: 6px; align-items: center; margin: 3px 0; }
+.swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); flex: none; }
+.swatch.hatched { background: repeating-linear-gradient(45deg, #999 0 2px, transparent 2px 6px); }
+progress { accent-color: var(--accent); }

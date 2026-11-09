@@ -11,6 +11,18 @@ export type DetectionProps = {
   evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[];
 };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
+export type ModelCard = { model_version: string; threshold: number; score_type: string; trained_on?: string;
+  global_test_f1?: number; global_test_f1_ci95?: [number, number]; tested_in_nigeria: boolean; domain_warning: string | null };
+export type Job = {
+  id: number; project: number; area: number; state: string; model_version: string; message: string; failure_reason: string;
+  created_at: string; started_at: string | null; finished_at: string | null; candidates: number;
+  parameters: Record<string, unknown>;
+  estimate: { tiles: number; tiles_with_imagery: number; scenes_found: number; clearest_scene: string; clearest_cloud_pct: number;
+    estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard };
+  tiles: { total: number; by_state: Record<string, number>; by_outcome: Record<string, number> };
+};
+export type TileProps = { grid_id: string; state: string; outcome: string; usable_pct: number | null; quality_decision: string;
+  candidates: number; failure_reason: string; scene: string | null; date: string | null };
 export type ReviewOptions = Record<string, { status_after: string; roles: string[]; allowed_from: string[] | null; reasons: string[] }>;
 
 function csrf(): string {
@@ -64,4 +76,10 @@ export const api = {
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
       "GET", `/api/scenes/${id}/image/?bounds=1&layer=${layer}`),
   sceneImageUrl: (id: number, layer: string) => `/api/scenes/${id}/image/?layer=${layer}`,
+  jobs: (projectId: number) => call<Job[]>("GET", `/api/projects/${projectId}/jobs/`),
+  estimateJob: (projectId: number, area: number, start: string, end: string, max_cloud: number) =>
+    call<Job>("POST", `/api/projects/${projectId}/jobs/`, { area, start, end, max_cloud }),
+  job: (id: number) => call<Job>("GET", `/api/jobs/${id}/`),
+  jobTiles: (id: number) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, TileProps>>("GET", `/api/jobs/${id}/tiles/`),
+  jobAction: (id: number, action: "start" | "cancel" | "resume") => call<Job>("POST", `/api/jobs/${id}/${action}/`),
 };

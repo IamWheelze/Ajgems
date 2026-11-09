@@ -4,8 +4,9 @@ import Login from "./Login";
 import Projects from "./Projects";
 import ProjectAreas from "./ProjectAreas";
 import ReviewWorkspace from "./ReviewWorkspace";
+import JobMonitor from "./JobMonitor";
 
-// Hash routes: #/projects, #/projects/:id/areas, #/projects/:id/review
+// Hash routes: #/projects, #/projects/:id, #/projects/:id/review, #/projects/:id/jobs/:jobId
 function useRoute() {
   const [hash, setHash] = useState(window.location.hash || "#/projects");
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function App() {
   if (me === null) return <Login onSignedIn={setMe} />;
 
   const signOut = async () => { await api.logout(); setMe(null); };
-  const [section, id, page] = route;
+  const [section, id, page, sub] = route;
   return (
     <div className="app">
       <header className="topbar">
@@ -47,7 +48,8 @@ export default function App() {
         <button className="link" onClick={signOut}>Sign out</button>
       </header>
       <main className="content">
-        {section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />
+        {section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
+          : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />
           : section === "projects" && id ? <ProjectAreas projectId={Number(id)} me={me} />
           : <Projects me={me} />}
       </main>

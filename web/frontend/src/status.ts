@@ -26,3 +26,19 @@ export const ACTION_LABEL: Record<string, string> = {
 export const SHORTCUTS: Record<string, string> = { c: "confirm", r: "reject", u: "uncertain", f: "request_field_check" };
 
 export const human = (code: string) => code.replace(/_/g, " ");
+
+// Tile outcomes (FR-052). "Insufficient usable imagery" is hatched, never blank or clean ground (FRD 10.3).
+export const OUTCOME: Record<string, { label: string; colour: string; hatch?: boolean }> = {
+  candidate_found: { label: "Candidate found", colour: "#E69F00" },
+  no_candidate_found_in_usable_imagery: { label: "No candidate found in usable imagery", colour: "#56B4E9" },
+  insufficient_usable_imagery: { label: "Insufficient usable imagery (not assessed)", colour: "#999999", hatch: true },
+  not_processed: { label: "Not processed", colour: "#555555" },
+};
+
+export const JOB_STATE: Record<string, string> = {
+  draft: "Draft", estimated: "Estimated", queued: "Queued", fetching: "Fetching imagery", checking: "Checking quality",
+  running: "Running model", vectorising: "Making polygons", succeeded: "Succeeded",
+  succeeded_with_warnings: "Succeeded with warnings", blocked_by_quality: "Blocked by quality", failed: "Failed",
+  cancelling: "Cancelling", cancelled: "Cancelled", resumable: "Stopped, can resume",
+};
+export const ACTIVE_JOB = new Set(["queued", "fetching", "checking", "running", "vectorising", "cancelling"]);
