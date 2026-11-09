@@ -33,6 +33,12 @@ export type ModelVersion = {
   reports: { id: number; split: string; baseline: string | null; sites: number; created_at: string;
     result: { metrics?: Record<string, { a: number | null; b: number | null; b_minus_a: number | null; ci95: [number | null, number | null]; verdict: string }>; note?: string } }[];
 };
+export type DatasetInfo = { id: number; name: string; version: string; state: string; licence: string; licence_status: string;
+  source: string; split_name: string; split_sha256: string; test_lock_sha256: string; samples: number;
+  split_check: Record<string, number | boolean>; overlaps: { pairs: number; cross_split: number; by_kind: Record<string, number> } };
+export type SampleProps = { id: number; site_id: string; split: string; mine_scale: string; mine_type: string; region: string; locked_test: boolean };
+export type SampleDetail = SampleProps & { source_split: string; unit_id: string; block_id: string; scene_id: string; acquired: string | null;
+  footprint: GeoJSON.Polygon; labels: GeoJSON.MultiPolygon | null; overlaps: { other: string; kind: string; cross_split: boolean; iou: number | null }[] };
 export type ReviewOptions = Record<string, { status_after: string; roles: string[]; allowed_from: string[] | null; reasons: string[] }>;
 
 function csrf(): string {
@@ -114,6 +120,11 @@ export const api = {
       `project_${projectId}_${format}_export.zip`),
   models: () => call<ModelVersion[]>("GET", "/api/models/"),
   modelAction: (id: number, action: string) => call<ModelVersion>("POST", `/api/models/${id}/${action}/`, {}),
+  datasets: () => call<DatasetInfo[]>("GET", "/api/datasets/"),
+  samples: (id: number, q: string) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, SampleProps> & {
+    balance: Record<string, { sites: number; mine_scale: Record<string, number>; mine_type: Record<string, number>; region: Record<string, number> }>;
+    options: Record<string, string[]> }>("GET", `/api/datasets/${id}/samples/${q}`),
+  sample: (id: number) => call<SampleDetail>("GET", `/api/samples/${id}/`),
   jobs: (projectId: number) => call<Job[]>("GET", `/api/projects/${projectId}/jobs/`),
   estimateJob: (projectId: number, area: number, start: string, end: string, max_cloud: number) =>
     call<Job>("POST", `/api/projects/${projectId}/jobs/`, { area, start, end, max_cloud }),

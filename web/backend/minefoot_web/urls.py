@@ -5,6 +5,7 @@ from rest_framework.routers import DefaultRouter
 from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, EditGeometryView, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ModelActionView, ModelListView
 from review.views import ReviewCreateView, ReviewOptionsView
 
@@ -48,6 +49,9 @@ urlpatterns = [
     path("api/audit/", AuditListView.as_view()),
     path("api/model-card/", ModelCardView.as_view()),
     path("api/models/", ModelListView.as_view()),
+    path("api/datasets/", DatasetListView.as_view()),
+    path("api/datasets/<int:pk>/samples/", SampleListView.as_view()),
+    path("api/samples/<int:pk>/", SampleDetailView.as_view()),
     path("api/models/<int:pk>/<str:action>/", ModelActionView.as_view()),
     path("api/projects/<int:project_pk>/exports/", ExportView.as_view()),
     path("api/projects/<int:project_pk>/jobs/", jobs),

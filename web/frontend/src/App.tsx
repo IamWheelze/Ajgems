@@ -7,6 +7,7 @@ import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
 import Registry from "./Registry";
+import DatasetExplorer from "./DatasetExplorer";
 
 // Hash routes: #/projects, #/projects/:id, #/projects/:id/review, #/projects/:id/jobs/:jobId
 function useRoute() {
@@ -43,12 +44,14 @@ export default function App() {
         <span className="muted">{me.organisation}</span>
         <a href="#/projects" className="small">Projects</a>
         {me.roles.some((r) => r === "ml" || r === "admin") && <a href="#/models" className="small">Models</a>}
+        {me.roles.some((r) => r === "ml" || r === "admin") && <a href="#/datasets" className="small">Datasets</a>}
         <span className="spacer" />
         <span className="muted">{me.username} · {me.roles.join(", ")}</span>
         <button className="link" onClick={signOut}>Sign out</button>
       </header>
       <main className="content">
         {section === "models" ? <Registry me={me} />
+          : section === "datasets" ? <DatasetExplorer />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
           : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />
           : section === "projects" && id ? <ProjectAreas projectId={Number(id)} me={me} />

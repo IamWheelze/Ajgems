@@ -115,9 +115,23 @@ Also run for real here: a 122 kmÂ² area in Ghana, 4 tiles, 18 candidates in 42â€
 - **Which model jobs use.** Detection jobs use the production model and freeze it in the job's parameters. With no production model, they use `MINEFOOT_MODEL_RUN`, labelled "(unregistered)".
 - **Current state.** `g2_v1` and `g2_hn` are registered. `g2_hn` is under evaluation; nothing is approved for production yet, because that is a two-person decision.
 
+## Dataset explorer (FR-131, internal)
+
+`python manage.py import_dataset --split <split.gpkg> --overlaps <overlaps.csv> --lock <test_lock.json> --name <name> --dataset-version <v>` imports a dataset version's sites, labels, split, overlaps and test lock. The import also does three things:
+- reruns the split leakage check,
+- takes the licence status from `docs/licence_register.csv`,
+- sets the state to "licence review" when the register says legal review is needed.
+
+The explorer page (ML and admin users) shows:
+- *Map:* sites coloured by split, with locked test sites outlined thicker.
+- *Filters:* split, mine scale, mine type and region.
+- *Class balance:* per split.
+- *Warnings:* overlaps across splits.
+- *Per site:* labels and details.
+
 ## Not built yet (next slices)
 
 - **Swipe and side-by-side comparison** in the review workspace (FR-127).
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Dataset explorer** (FR-131) and the experiment dashboard (FR-130).
+- **Experiment dashboard** (FR-130).
 - **Signed export manifests** (FR-109). Checksums exist; signatures do not.

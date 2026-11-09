@@ -64,6 +64,6 @@ W3 done 2026-11-09:
 - *Review tools:* "not assessed" hatch in review (FR-125), imagery mosaics per candidate, boundary editing with server-simplified valid outlines, stair-step smoothing in `minefoot.vectorise`.
 - *Multi-factor sign-in* (FR-001): TOTP; secrets Fernet-encrypted (`MINEFOOT_MFA_KEY`); privileged users refused until enrolled; admin site needs a verified session.
 - *Verified:* 30 backend tests and browser checks.
-Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required, paired comparison on locked sites before promotion, second-person approval, one-step rollback; jobs use the production model. `g2_v1` and `g2_hn` are registered; nothing is approved yet (a two-person decision). Not built: swipe comparison (FR-127), TiTiler, export signing, dataset explorer (FR-131).
+Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required, paired comparison on locked sites before promotion, second-person approval, one-step rollback; jobs use the production model. `g2_v1` and `g2_hn` are registered; nothing is approved yet (a two-person decision). Dataset explorer done (`web/backend/datasets`, FR-131; Global ML-ready v1 imported: 1,207 sites, no leakage). Not built: swipe comparison (FR-127), experiment dashboard (FR-130), TiTiler, export signing.
 
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.

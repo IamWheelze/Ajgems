@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "review",
     "audit",
     "registry",
+    "datasets",
 ]
 
 MIDDLEWARE = [
