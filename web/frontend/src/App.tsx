@@ -5,6 +5,7 @@ import Projects from "./Projects";
 import ProjectAreas from "./ProjectAreas";
 import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
+import MfaSetup from "./MfaSetup";
 
 // Hash routes: #/projects, #/projects/:id, #/projects/:id/review, #/projects/:id/jobs/:jobId
 function useRoute() {
@@ -31,7 +32,8 @@ export default function App() {
   if (me === undefined) return <div className="centre muted">Loading…</div>;
   if (me === null) return <Login onSignedIn={setMe} />;
 
-  const signOut = async () => { await api.logout(); setMe(null); };
+  const signOut = async () => { await api.logout().catch(() => undefined); setMe(null); };
+  if (me.privileged && !me.mfa_satisfied) return <MfaSetup me={me} onDone={setMe} onSignOut={signOut} />;
   const [section, id, page, sub] = route;
   return (
     <div className="app">
@@ -39,11 +41,6 @@ export default function App() {
         <a href="#/projects" className="brand">minefoot</a>
         <span className="muted">{me.organisation}</span>
         <span className="spacer" />
-        {me.privileged && !me.mfa_enabled && (
-          <span className="badge warn" title="FR-001: multi-factor sign-in is required for privileged roles and is not built yet">
-            Multi-factor sign-in not set up
-          </span>
-        )}
         <span className="muted">{me.username} · {me.roles.join(", ")}</span>
         <button className="link" onClick={signOut}>Sign out</button>
       </header>

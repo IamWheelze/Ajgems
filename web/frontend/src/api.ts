@@ -1,6 +1,7 @@
 // Thin client for the Django API. Session cookie + CSRF header, same origin via the Vite proxy.
 
-export type Me = { username: string; organisation: string; roles: string[]; privileged: boolean; mfa_enabled: boolean };
+export type Me = { username: string; organisation: string; roles: string[]; privileged: boolean; mfa_enabled: boolean;
+  mfa_satisfied: boolean };
 export type Project = { id: number; name: string; purpose: string; status: string; created_at: string; areas: number; detections: number };
 export type Area = { id: number; name: string; area_km2: number; source: string; source_crs: string; geometry: GeoJSON.Geometry };
 export type Scene = { id: number; source_id: string; provider: string; sensor: string; acquired_at: string; processing_baseline: string; cloud_pct: number | null; licence_note: string };
@@ -64,7 +65,11 @@ async function download(url: string, body: unknown, filename: string): Promise<v
 
 export const api = {
   csrf: () => call<{ csrfToken: string }>("GET", "/api/auth/csrf/"),
-  login: (username: string, password: string) => call<Me>("POST", "/api/auth/login/", { username, password }),
+  login: (username: string, password: string) =>
+    call<Me | { mfa_required: true }>("POST", "/api/auth/login/", { username, password }),
+  mfaVerify: (code: string) => call<Me>("POST", "/api/auth/mfa/verify/", { code }),
+  mfaSetup: () => call<{ secret: string; otpauth_uri: string; qr_png: string }>("POST", "/api/auth/mfa/setup/"),
+  mfaConfirm: (code: string) => call<Me>("POST", "/api/auth/mfa/confirm/", { code }),
   logout: () => call<void>("POST", "/api/auth/logout/"),
   me: () => call<Me>("GET", "/api/me/"),
   projects: () => call<{ results: Project[] }>("GET", "/api/projects/").then((r) => r.results),

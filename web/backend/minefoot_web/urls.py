@@ -2,10 +2,16 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from accounts.views import CsrfView, LoginView, LogoutView, MeView
+from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, EditGeometryView, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from review.views import ReviewCreateView, ReviewOptionsView
+
+# FR-001: the Django admin is for administrators, so it also requires a session whose second factor was
+# verified through the app's sign-in (/api/auth/login/ then /api/auth/mfa/verify/).
+_default_has_permission = admin.site.has_permission
+admin.site.has_permission = lambda request: (_default_has_permission(request)
+                                             and request.session.get("mfa_verified") is True)
 
 router = DefaultRouter()
 router.register("projects", ProjectViewSet, basename="project")
@@ -25,6 +31,9 @@ urlpatterns = [
     path("api/auth/csrf/", CsrfView.as_view()),
     path("api/auth/login/", LoginView.as_view()),
     path("api/auth/logout/", LogoutView.as_view()),
+    path("api/auth/mfa/verify/", MfaVerifyView.as_view()),
+    path("api/auth/mfa/setup/", MfaSetupView.as_view()),
+    path("api/auth/mfa/confirm/", MfaConfirmView.as_view()),
     path("api/me/", MeView.as_view()),
     path("api/", include(router.urls)),
     path("api/projects/<int:project_pk>/areas/", areas),

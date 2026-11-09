@@ -97,9 +97,17 @@ Also run for real here: a 122 kmÂ² area in Ghana, 4 tiles, 18 candidates in 42â€
 - **Boundary editing** (FR-091). The server returns a valid outline of at most 200 vertices, simplified with topology preserved. You drag vertices and record the edit with a reason. Invalid outlines are refused with the reason, and the original is kept in the history.
 - **Smoother polygons.** `minefoot.vectorise` removes pixel stair-steps at 0.75 pixel; polygons stay valid and area changes by under 1%.
 
+## Multi-factor sign-in (FR-001)
+
+- **Who needs it.** Administrators and ML administrators use a 6-digit code from an authenticator app after their password.
+- **Until they enrol:** every endpoint refuses them except sign-in, `/api/me` and enrolment. The app opens an enrolment screen with a QR code.
+- **After enrolling:** the password alone does not sign them in. Five wrong codes end the attempt.
+- **Secrets** are encrypted at rest with Fernet. Set `MINEFOOT_MFA_KEY` in production; generate one with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`. Without it, a key derived from `DJANGO_SECRET_KEY` is used, which suits development only.
+- **Django admin** at `/admin/` needs a session whose code was verified. Sign in through the app first, then open the admin in the same browser.
+- **Audit:** enrolment, successful codes, wrong codes and locked attempts are all recorded.
+
 ## Not built yet (next slices)
 
 - **Swipe and side-by-side comparison** in the review workspace (FR-127).
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Security:** multi-factor sign-in for privileged roles (FR-001). The interface flags privileged users until it exists.
 - **Model registry** with second-person approval (FR-102 to FR-104), and the dataset explorer.

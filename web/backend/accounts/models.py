@@ -28,6 +28,8 @@ class User(AbstractUser):
     """A person in exactly one organisation, holding one or more roles."""
     organisation = models.ForeignKey(Organisation, on_delete=models.PROTECT, related_name="users", null=True)
     roles = models.JSONField(default=list, blank=True, help_text="List of Role values")
+    mfa_secret_encrypted = models.TextField(blank=True, help_text="TOTP secret, Fernet-encrypted (FR-001)")
+    mfa_enabled = models.BooleanField(default=False)
 
     def has_role(self, *roles) -> bool:
         return any(r in (self.roles or []) for r in roles)
@@ -41,3 +43,24 @@ class User(AbstractUser):
         bad = [r for r in self.roles or [] if r not in Role.values]
         if bad:
             raise ValidationError({"roles": f"unknown roles {bad}"})
+
+
+def _fernet():
+    import base64
+    import hashlib
+    import os
+    from cryptography.fernet import Fernet
+    from django.conf import settings
+    key = os.environ.get("MINEFOOT_MFA_KEY")
+    if key:
+        return Fernet(key.encode())
+    # Development fallback: derived from SECRET_KEY. Set MINEFOOT_MFA_KEY in production.
+    return Fernet(base64.urlsafe_b64encode(hashlib.sha256(("mfa:" + settings.SECRET_KEY).encode()).digest()))
+
+
+def set_mfa_secret(user, secret: str):
+    user.mfa_secret_encrypted = _fernet().encrypt(secret.encode()).decode()
+
+
+def get_mfa_secret(user) -> str:
+    return _fernet().decrypt(user.mfa_secret_encrypted.encode()).decode() if user.mfa_secret_encrypted else ""

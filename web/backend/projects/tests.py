@@ -60,8 +60,15 @@ class Base(TestCase):
         self.orgs, self.users, self.projects, self.dets = make_world()
 
     def client_for(self, org, role):
+        """A signed-in client. Privileged users have passed their second factor (FR-001)."""
+        u = self.users[(org, role)]
         c = APIClient()
-        c.force_authenticate(self.users[(org, role)])
+        c.force_login(u)
+        if u.is_privileged:
+            User.objects.filter(pk=u.pk).update(mfa_enabled=True)
+            session = c.session
+            session["mfa_verified"] = True
+            session.save()
         return c
 
 

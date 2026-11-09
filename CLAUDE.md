@@ -59,6 +59,11 @@ Still unverified:
 - *Embargo:* jobs over the Nigerian labelling regions are refused until the test lock exists.
 - *Screens:* run setup and a job monitor with a hatched "insufficient" outcome.
 - *Verified:* 21 backend tests, and a real 4-tile Ghana job in under a minute on CPU.
-Next: W3 (exports, "not assessed" hatch in review, geometry editing, TiTiler) and multi-factor sign-in (FR-001).
+W3 done 2026-11-09:
+- *Export packages* (FR-106 to FR-109): data, PDF report with coverage map and limits, licence notice, SHA-256 manifest.
+- *Review tools:* "not assessed" hatch in review (FR-125), imagery mosaics per candidate, boundary editing with server-simplified valid outlines, stair-step smoothing in `minefoot.vectorise`.
+- *Multi-factor sign-in* (FR-001): TOTP; secrets Fernet-encrypted (`MINEFOOT_MFA_KEY`); privileged users refused until enrolled; admin site needs a verified session.
+- *Verified:* 30 backend tests and browser checks.
+Not built: swipe comparison (FR-127), TiTiler, export signing, model registry (FR-102 to FR-104), dataset explorer (FR-131).
 
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.

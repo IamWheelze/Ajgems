@@ -7,12 +7,24 @@ cross-organisation request by ID returns 404, not 403.
 from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
+def second_factor_ok(request) -> bool:
+    """FR-001: privileged users need a verified second factor in this session; others do not."""
+    u = request.user
+    return not u.is_privileged or (u.mfa_enabled and request.session.get("mfa_verified") is True)
+
+
 class RolePermission(BasePermission):
-    """Grant access when the user holds one of the view's read_roles (GET) or write_roles (others)."""
+    """Grant access when the user holds one of the view's read_roles (GET) or write_roles (others).
+
+    Privileged users (admin, ML) without a verified second factor are refused everywhere (FR-001)."""
+    message = "You do not have permission to do this."
 
     def has_permission(self, request, view):
         user = request.user
         if not user or not user.is_authenticated or user.organisation_id is None:
+            return False
+        if not second_factor_ok(request):
+            self.message = "Multi-factor sign-in is required for your role. Set it up or enter your code first."
             return False
         roles = getattr(view, "read_roles" if request.method in SAFE_METHODS else "write_roles", ())
         action_roles = getattr(view, "action_roles", {}).get(getattr(view, "action", None))
