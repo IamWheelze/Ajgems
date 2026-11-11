@@ -246,4 +246,6 @@ The review header has a **Job** picker, so an earlier job's candidates and revie
 ## Not built yet (next slices)
 
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Signed export manifests** (FR-109). Checksums exist; signatures do not.
+- **Signed export manifests** (FR-109, Commercial). Checksums exist; signatures do not.
+- **Ingesting accepted pool labels** into a minefoot dataset version for training. Exports exist; the adapter does not.
+- **Automatic face and number-plate detection** in field photos. Blurring is manual.

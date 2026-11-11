@@ -70,6 +70,15 @@ Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required
 - *Jobs:* threshold and minimum-size preview from stored score maps, matching the job at its own settings; saving makes a derived job (FR-126). Tile checksums, scene retrieval time, configurable coverage thresholds (FR-021, FR-023, FR-053). Time so far and usable share of the area (FR-051, FR-132).
 - *ML:* error maps on locked test sites, worst F1 first (FR-129).
 - *Verified:* 41 backend tests, 65 package tests and browser checks.
-- *Not built:* side-by-side and blink comparison (FR-127, Pilot), TiTiler, export signing (FR-109, Commercial), season-of-year domain flag (FR-083; the Nigerian-domain warning exists).
+2026-11-11, Pilot items built (details in `web/README.md`):
+- *Labels:* annotation pool with independent QC as the only route from reviews to training labels (FR-075); annotation workspace with polygon, brush, split, merge and a mask on the tile grid (FR-076); hard-negative counts per dataset version (FR-074).
+- *Review:* side-by-side, blink and other-date comparison, plus a job picker (FR-127).
+- *Field:* offline field visits with on-phone blurring and metadata-free, role-restricted photos (FR-095).
+- *Imagery:* resumable verified uploads of L2A .SAFE zips, read through the same preprocessing path (FR-022); catalogue fallback test (FR-024); source approval per project use, so Planetary Computer is refused for commercial use (FR-025).
+- *Access:* restricted sites hidden from viewers and exports without a grant (FR-005); validated-domain check by distance to test sites and season (FR-014; Jos is outside, 1,391 km away).
+- *Jobs:* calibrated cost estimates and measured actuals (FR-086); organisation quotas (FR-087).
+- *Prompts:* condition prompts measured on 120 sites (FR-054): water against WorldCover, precision 0.98 and recall 0.63; haze not evaluable here; burn scars unlabelled.
+- *Verified:* 54 backend tests, 68 package tests and browser checks, including offline field sync and an interrupted upload.
+- *Not built:* TiTiler, export signing (FR-109, Commercial), a minefoot adapter that ingests accepted pool labels into a dataset version, automatic face detection (blurring is manual).
 
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.
