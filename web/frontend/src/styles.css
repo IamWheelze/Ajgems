@@ -1,11 +1,13 @@
 :root {
   --bg: #f6f5f1; --panel: #ffffff; --ink: #1d1d1b; --muted: #5f5e58; --line: #dcdad2; --accent: #0072b2;
   --warn-bg: #fdf3dc; --warn: #7a5200; --err: #b3261e; --map-bg: #20201e;
+  --series-1: #0072B2; --series-2: #D55E00; --series-3: #009E73;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root { --bg: #171715; --panel: #222220; --ink: #eceae4; --muted: #a8a69e; --line: #3a3935; --accent: #56b4e9;
-          --warn-bg: #3a2e14; --warn: #f2c572; --err: #ff8a80; color-scheme: dark; }
+          --warn-bg: #3a2e14; --warn: #f2c572; --err: #ff8a80; color-scheme: dark;
+          --series-1: #3A93D0; --series-2: #DD6A1F; --series-3: #1BA67E; }
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -88,3 +90,25 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
   padding: 2px 6px; font-size: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
 .swipe-label { position: absolute; top: 84px; right: 10px; z-index: 3; background: color-mix(in srgb, var(--panel) 90%, transparent); padding: 3px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
 .ws-map .map-overlay, .ws-map .legend { z-index: 3; }
+
+/* FR-130 run dashboard */
+.page.wide { max-width: 1240px; }
+.chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; }
+.chart { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.chart figcaption { font-weight: 600; font-size: 13px; }
+.chart-wrap { position: relative; }
+.chart-wrap svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { stroke: var(--muted); stroke-width: 1; }
+.chart .ref { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.chart .crosshair { stroke: var(--muted); stroke-width: 1; }
+.chart .tick { fill: var(--muted); font-size: 11px; }
+.chart .axis-label { fill: var(--muted); font-size: 12px; }
+.chart-tip { position: absolute; top: 4px; transform: translateX(8px); background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 8px; pointer-events: none; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.15); z-index: 2; }
+.chart-tip .swatch, .filters .swatch { display: inline-block; width: 10px; height: 10px; vertical-align: middle; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); }
+.chart-status { margin: 0; min-height: 1.4em; }
+.filters fieldset { border: 0; padding: 0; margin: 0; }
+.gap-s { gap: 6px; }

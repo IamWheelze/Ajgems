@@ -6,6 +6,7 @@ import ProjectAreas from "./ProjectAreas";
 import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
+import RunDashboard from "./RunDashboard";
 import Registry from "./Registry";
 import DatasetExplorer from "./DatasetExplorer";
 
@@ -50,7 +51,8 @@ export default function App() {
         <button className="link" onClick={signOut}>Sign out</button>
       </header>
       <main className="content">
-        {section === "models" ? <Registry me={me} />
+        {section === "models" && id === "dashboard" ? <RunDashboard />
+          : section === "models" ? <Registry me={me} />
           : section === "datasets" ? <DatasetExplorer />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
           : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />

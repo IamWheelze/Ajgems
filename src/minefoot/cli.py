@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -110,6 +110,8 @@ def main(argv=None):
     a.add_argument("--split", default="test", choices=["test"]); a.add_argument("--limit", type=int, default=20)
     a.add_argument("--out", required=True)
     a = sub.add_parser("rescore", help="recompute footprint metrics of a stored run with the current definition")
+    a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a = sub.add_parser("curves", help="precision-recall and reliability data for a stored run (curves.json)")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
     a = sub.add_parser("labelling-kit", help="Nigerian labelling kit: imagery per region and a QGIS project to digitise in")
     a.add_argument("config", help="regions YAML, e.g. configs/nigeria_aois.yaml"); a.add_argument("--out", required=True)
@@ -344,6 +346,15 @@ def main(argv=None):
                       f"(touching no label: {a['false_candidates_detached_per_1000km2']:.1f}), "
                       f"false-candidate area {a['false_candidate_ha_per_1000km2']:.0f} ha/1000 km2")
         return 0
+    if x.cmd == "curves":
+        from .baseline import run_curves
+        c = run_curves(x.run, x.prepared_root, x.labels_root, log=lambda t: print(t, file=sys.stderr, flush=True))
+        for name, r in c["models"].items():
+            for k in ("val", "test"):
+                a = r[k]["at_threshold"]
+                print(f"{name} {k}: at threshold {r['threshold_score']:.2f} precision {a['precision']:.3f} recall {a['recall']:.3f} "
+                      f"(matches the run record)")
+        print(Path(x.run) / "curves.json"); return 0
     if x.cmd == "labelling-kit":
         from .labelling_kit import build_kit
         r = build_kit(x.config, x.out, log=lambda t: print(t, file=sys.stderr, flush=True))

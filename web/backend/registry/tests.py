@@ -100,3 +100,22 @@ class RegistryTest(TestCase):
         from projects.pipeline import check_schema
         with self.assertRaises(ValueError):
             check_schema(self.tmp / "runs" / "old")
+
+    def test_dashboard_reads_stored_records(self):
+        """FR-130: chart values are the run's own records; missing curves are reported, not invented."""
+        run = fake_run(self.tmp / "runs", "r1")
+        (run / "history.csv").write_text("epoch,train_loss,val_chip_loss,lr,elapsed_s,checkpoint\n"
+                                         "1,0.9,0.8,0.001,10,True\n2,0.7,0.85,0.0009,20,False\n")
+        pk = self.reg(self.ml1, "r1").json()["id"]
+        self.assertEqual(self.c(self.gis).get(f"/api/models/{pk}/dashboard/").status_code, 403)
+        d = self.c(self.ml1).get(f"/api/models/{pk}/dashboard/").json()
+        self.assertEqual([h["val_chip_loss"] for h in d["history"]], [0.8, 0.85])
+        self.assertEqual(d["metrics"]["strata"]["test"]["all"]["f1"], 0.5)
+        self.assertIsNone(d["curves"])
+        self.assertTrue(any("curves.json" in m for m in d["missing"]))
+        (run / "curves.json").write_text(json.dumps({"created_at": "t", "models": {"unet": {
+            k: {"pr": [{"level": 1, "score": 0.0, "precision": 0.1, "recall": 1.0}], "reliability": [],
+                "at_threshold": {"precision": 0.5, "recall": 0.5}} for k in ("val", "test")}}}))
+        d = self.c(self.ml1).get(f"/api/models/{pk}/dashboard/").json()
+        self.assertEqual(d["curves"]["test"]["pr"][0]["precision"], 0.1)
+        self.assertEqual(d["missing"], [])

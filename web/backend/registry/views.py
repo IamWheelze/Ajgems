@@ -1,5 +1,6 @@
 """Model registry API (FR-101 to FR-104). ML administrators register, compare and propose; a second
 person (ML or admin) approves; rollback is one step. Every action is audited."""
+import json
 from pathlib import Path
 
 from django.conf import settings
@@ -67,3 +68,48 @@ class ModelActionView(APIView):
             return Response({"detail": str(exc)}, status=400)
         mv.refresh_from_db()
         return Response(payload(mv))
+
+
+def run_dashboard(run_dir: Path) -> dict:
+    """FR-130: what the run dashboard charts, read straight from the run's stored records.
+
+    history.csv (training curves), metrics.json (per-stratum metrics with 95% intervals) and, when
+    `minefoot curves` has been run, curves.json (precision-recall and reliability, checked against
+    metrics.json when it was written). Nothing here is recomputed or estimated.
+    """
+    import csv
+    out = {"run": run_dir.name, "history": [], "metrics": None, "curves": None, "missing": []}
+    hist = run_dir / "history.csv"
+    if hist.exists():
+        with hist.open() as f:
+            out["history"] = [{"epoch": int(r["epoch"]), "train_loss": float(r["train_loss"]),
+                               "val_chip_loss": float(r["val_chip_loss"]), "lr": float(r["lr"]),
+                               "checkpoint": r.get("checkpoint") == "True"} for r in csv.DictReader(f)]
+    else:
+        out["missing"].append("history.csv")
+    try:
+        m = json.loads((run_dir / "metrics.json").read_text())
+        u = m["models"]["unet"]
+        out["metrics"] = {"best_epoch": m.get("best_epoch"), "epochs": m.get("epochs"), "runtime_s": m.get("runtime_s"),
+                          "threshold_score": u["threshold_score"],
+                          "strata": {k: u[k]["strata"] for k in ("val", "test")}}
+    except (OSError, KeyError, ValueError):
+        out["missing"].append("metrics.json")
+    try:
+        c = json.loads((run_dir / "curves.json").read_text())
+        out["curves"] = {"created_at": c["created_at"], **{k: c["models"]["unet"][k] for k in ("val", "test")}}
+    except (OSError, KeyError, ValueError):
+        out["missing"].append("curves.json (run `minefoot curves`)")
+    return services.json_safe(out)
+
+
+class ModelDashboardView(APIView):
+    permission_classes = [RolePermission]
+    read_roles = ("ml", "admin")
+
+    def get(self, request, pk):
+        try:
+            mv = ModelVersion.objects.get(pk=pk)
+        except ModelVersion.DoesNotExist:
+            raise Http404
+        return Response({"id": mv.id, "name": mv.name, "state": mv.state, **run_dashboard(Path(mv.run_path))})

@@ -33,6 +33,15 @@ export type ModelVersion = {
   reports: { id: number; split: string; baseline: string | null; sites: number; created_at: string;
     result: { metrics?: Record<string, { a: number | null; b: number | null; b_minus_a: number | null; ci95: [number | null, number | null]; verdict: string }>; note?: string } }[];
 };
+type Stratum = Record<string, number | null> & { sites: number; ci95: Record<string, [number, number]> };
+export type RunDashboard = { id: number; name: string; state: string; run: string; missing: string[];
+  history: { epoch: number; train_loss: number; val_chip_loss: number; lr: number; checkpoint: boolean }[];
+  metrics: { best_epoch: number | null; epochs: number | null; runtime_s: number | null; threshold_score: number;
+    strata: Record<"val" | "test", Record<string, Stratum>> } | null;
+  curves: { created_at: string } & Record<"val" | "test", {
+    at_threshold: { precision: number | null; recall: number | null; f1: number | null };
+    pr: { level: number; score: number; precision: number | null; recall: number }[];
+    reliability: { score_from: number; score_to: number; pixels: number; mean_score: number | null; labelled_fraction: number | null }[] }> | null };
 export type DatasetInfo = { id: number; name: string; version: string; state: string; licence: string; licence_status: string;
   source: string; split_name: string; split_sha256: string; test_lock_sha256: string; samples: number;
   split_check: Record<string, number | boolean>; overlaps: { pairs: number; cross_split: number; by_kind: Record<string, number> } };
@@ -119,6 +128,7 @@ export const api = {
     download(`/api/projects/${projectId}/exports/`, { format, statuses, ...(job ? { job } : {}) },
       `project_${projectId}_${format}_export.zip`),
   models: () => call<ModelVersion[]>("GET", "/api/models/"),
+  modelDashboard: (id: number) => call<RunDashboard>("GET", `/api/models/${id}/dashboard/`),
   modelAction: (id: number, action: string) => call<ModelVersion>("POST", `/api/models/${id}/${action}/`, {}),
   datasets: () => call<DatasetInfo[]>("GET", "/api/datasets/"),
   samples: (id: number, q: string) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, SampleProps> & {

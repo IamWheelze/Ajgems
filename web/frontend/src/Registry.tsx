@@ -23,7 +23,7 @@ export default function Registry({ me }: { me: Me }) {
     <div className="page">
       <h1>Model registry</h1>
       <p className="small muted">Detection jobs use the production model. Promotion needs a comparison on the same locked test
-        sites (FR-103) and approval by a second person (FR-104). Register runs with <code>python manage.py register_model</code>.</p>
+        sites (FR-103) and approval by a second person (FR-104). Register runs with <code>python manage.py register_model</code>. <a href="#/models/dashboard">Run dashboard →</a></p>
       {error && <p className="error" role="alert">{error}</p>}
       {models === null ? <p className="muted">Loading…</p> : models.length === 0 ? <p className="muted">No models registered.</p> : models.map((m) => (
         <div key={m.id} className="card">

@@ -543,6 +543,14 @@ def test_g1_end_to_end_on_synthetic_sites(tmp_path):
     from minefoot.viewer import error_gallery
     g = error_gallery(tmp_path / "run", "random_forest", tmp_path / "prep", tmp_path / "eg.html").read_text()
     assert "s-te" in g and "false alarm" in g and "data:image/jpeg" in g
+    from minefoot.baseline import run_curves                # FR-130: curves agree with the run record
+    c = run_curves(tmp_path / "run", tmp_path / "prep", tmp_path / "labels", log=lambda *_: None)
+    rf = c["models"]["random_forest"]["test"]
+    t_lv = c["models"]["random_forest"]["threshold_level"]
+    pt = next(p for p in rf["pr"] if p["level"] == t_lv)
+    assert pt["recall"] == pytest.approx(rf["at_threshold"]["recall"])
+    assert sum(b["pixels"] for b in rf["reliability"]) == rf["pixels_mining"] + rf["pixels_other"]
+    assert (tmp_path / "run" / "curves.json").exists()
     bad = {**ids, "test": ["s-va"]}                       # a validation site listed as test is refused
     with pytest.raises(ValueError):
         run_g1(bad, tmp_path / "split.gpkg", tmp_path / "prep", tmp_path / "labels", tmp_path / "run2", log=lambda *_: None)

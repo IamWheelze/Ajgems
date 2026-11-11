@@ -512,3 +512,58 @@ def rescore_run(run_dir, prepared_root, labels_root, seed=0, log=print) -> dict:
                                          "footprint_definition": FOOTPRINT_DEFINITION})
     (run_dir / "metrics.json").write_text(json.dumps(m, indent=2, default=float))
     return m
+
+
+def run_curves(run_dir, prepared_root, labels_root, bins=10, log=print) -> dict:
+    """Precision-recall and reliability data for a stored run, from its score maps (FR-130).
+
+    Pools score-level histograms of mining and other usable pixels per split. The point at the run's
+    threshold is checked against the stored per-site counts, so the charts match the run record.
+    Writes curves.json next to metrics.json.
+    """
+    import rasterio
+    run_dir = Path(run_dir)
+    m = json.loads((run_dir / "metrics.json").read_text())
+    out = {"created_at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(), "models": {}}
+    sites = {}
+    for name, r in m["models"].items():
+        for k in ("val", "test"):
+            for row in r[k]["per_site"]:
+                sites.setdefault(row["site_id"], []).append((name, k))
+    pooled = {name: {k: {"pos": np.zeros(SCORE_LEVELS, "int64"), "neg": np.zeros(SCORE_LEVELS, "int64")} for k in ("val", "test")}
+              for name in m["models"]}
+    for i, (sid, entries) in enumerate(sorted(sites.items()), 1):
+        _, valid, label, _ = load_site(Path(prepared_root) / sid, Path(labels_root) / sid / "labels.geojson")
+        for name, k in entries:
+            with rasterio.open(run_dir / "scores" / f"{sid}__{name}.tif") as src:
+                h = histograms(src.read(1), valid, label)
+            pooled[name][k]["pos"] += h["pos"]; pooled[name][k]["neg"] += h["neg"]
+        log(f"curves {i}/{len(sites)} {sid}")
+    for name, r in m["models"].items():
+        t = r["threshold_level"]
+        out["models"][name] = {"threshold_level": t, "threshold_score": r["threshold_score"]}
+        for k in ("val", "test"):
+            pos, neg = pooled[name][k]["pos"], pooled[name][k]["neg"]
+            stored = {c: sum(row[c] for row in r[k]["per_site"]) for c in ("tp", "fp", "fn")}
+            got = counts_at({"pos": pos, "neg": neg}, t)
+            if any(got[c] != stored[c] for c in stored):
+                raise ValueError(f"{name} {k}: recomputed counts {got} differ from the run record {stored}; "
+                                 "score maps or labels changed since the run")
+            tp = np.cumsum(pos[::-1])[::-1]; fp = np.cumsum(neg[::-1])[::-1]
+            with np.errstate(invalid="ignore", divide="ignore"):
+                prec = np.where(tp + fp > 0, tp / (tp + fp), np.nan); rec = tp / max(int(pos.sum()), 1)
+            pr = [{"level": int(L), "score": round(L / (SCORE_LEVELS - 1), 4), "precision": None if np.isnan(prec[L]) else float(prec[L]),
+                   "recall": float(rec[L])} for L in range(1, SCORE_LEVELS)]
+            edges = np.linspace(0, SCORE_LEVELS, bins + 1).astype(int)
+            rel = []
+            for a, b in zip(edges[:-1], edges[1:]):
+                n_pos, n = int(pos[a:b].sum()), int(pos[a:b].sum() + neg[a:b].sum())
+                lv = np.arange(a, b)
+                mean = float(((pos[a:b] + neg[a:b]) * lv).sum() / n / (SCORE_LEVELS - 1)) if n else None
+                rel.append({"score_from": round(a / SCORE_LEVELS, 3), "score_to": round(b / SCORE_LEVELS, 3), "pixels": n,
+                            "mean_score": mean, "labelled_fraction": n_pos / n if n else None})
+            out["models"][name][k] = {"pixels_mining": int(pos.sum()), "pixels_other": int(neg.sum()),
+                                      "at_threshold": {**got, **{x: (None if np.isnan(v) else v) for x, v in prf(got).items() if x in ("precision", "recall", "f1")}},
+                                      "pr": pr, "reliability": rel}
+    (run_dir / "curves.json").write_text(json.dumps(out, indent=1, default=float))
+    return out

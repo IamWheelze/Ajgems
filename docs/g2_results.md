@@ -90,6 +90,21 @@ Caveats:
 
 Digitised hard negatives use the same route: `minefoot rasterize-negatives hard_negatives.gpkg --sites … --out <folder>` adds them to the masks, then `minefoot g2 --negatives-root <folder>`.
 
+## Precision-recall and reliability of `g2_hn` (2026-11-11)
+
+`minefoot curves data/runs/g2_hn …` pooled the stored score maps per split ([`curves.json`](evidence/g2_hn/curves.json)). At the run's threshold, the recomputed pixel counts equal the stored per-site counts exactly: validation precision 0.536, recall 0.576; test 0.404 and 0.588. The web app's run dashboard (FR-130) charts this file.
+
+**The model score is not a probability, and it is overconfident.** Share of pixels that are labelled mining, by score bin:
+
+| Score bin | Validation | Test |
+|---|---|---|
+| 0.0–0.1 | 0.014 | 0.016 |
+| 0.4–0.5 | 0.297 | 0.279 |
+| 0.7–0.8 | 0.442 | 0.359 |
+| 0.9–1.0 | 0.727 | 0.477 |
+
+Scores above about 0.2 overstate the labelled share, and more on test than on validation. Incomplete labels explain part of this (unlabelled mining counts against the model), so it is not a pure calibration error. "Model score" wording therefore stays (FR-084). Calibration needs labels checked for completeness, such as the Nigerian sites under the 1 km protocol.
+
 ## What this means
 
 1. **G2 passed, so G3 is next:** the first test on Nigerian sites with no Nigerian training. It needs the founder's 30 to 50 digitised Nigerian sites, locked first (step 7). It will measure the gap between global and Nigerian performance.
