@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
+from django.contrib.gis.geos import Point
 import rasterio
 from django.conf import settings
 from django.test import TestCase, override_settings
@@ -138,6 +139,36 @@ class JobTest(TestCase):
         shown = px[px[..., 3] > 0]
         self.assertTrue(len(shown) and (np.abs(shown.astype(int) - expect[0, 0].astype(int)).max(axis=1) <= 1).all())
         self.assertEqual(expect[1, 0, 3], 0)   # 0.05 is under the 0.1 floor: transparent, so the imagery shows
+        # FR-128: the pixel inspector matches the source rasters at 20 sampled points.
+        import rasterio
+        from rasterio.warp import transform as warp
+        t = job.tiles.filter(outcome="candidate_found").first()
+        rng = np.random.default_rng(0)
+        with rasterio.open(Path(t.prepared_path) / "reflectance.tif") as src, rasterio.open(Path(t.prepared_path) / "scl.tif") as scl, \
+                rasterio.open(t.score_path) as sc:
+            refl, scl_a, sc_a = src.read(), scl.read(1), sc.read(1)
+            x0, y0, x1, y1 = t.geometry.extent
+            checked = 0
+            for _ in range(500):
+                lon, lat = rng.uniform(x0, x1), rng.uniform(y0, y1)
+                if checked == 20 or not t.geometry.contains(Point(lon, lat, srid=4326)):
+                    continue
+                v = self.c.get(f"/api/detections/{d.pk}/pixel/?lon={lon}&lat={lat}").json()
+                if v.get("tile") != t.grid_id:
+                    continue   # overlapping tiles: the inspector read the other one
+                (x,), (y,) = warp("EPSG:4326", src.crs, [lon], [lat])
+                row, col = src.index(x, y)
+                self.assertEqual((v["row"], v["col"]), (row, col))
+                for i, b in enumerate(("B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12")):
+                    want = float(refl[i, row, col])
+                    if np.isfinite(want):
+                        self.assertAlmostEqual(v["reflectance"][b], want, places=4)
+                    else:
+                        self.assertIsNone(v["reflectance"][b])
+                self.assertEqual(v["scl"], int(scl_a[row, col]))
+                self.assertAlmostEqual(v["model_score"], sc_a[row, col] / 255, places=3)
+                checked += 1
+        self.assertEqual(checked, 20)
 
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()

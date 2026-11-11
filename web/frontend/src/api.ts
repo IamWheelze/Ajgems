@@ -11,6 +11,10 @@ export type DetectionProps = {
   min_mapping_unit_ha: number; model_version: string; masked_fraction: number; mask_status: string;
   evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[];
 };
+export type PixelInfo = { lon: number; lat: number; crs: string; row: number; col: number; tile: string;
+  reflectance: Record<string, number | null>; ndvi: number | null; ndwi: number | null; scl: number; scl_class: string; usable: boolean;
+  suspect_bright: boolean; model_score: number | null; threshold: number;
+  scene: { id: string; provider: string; date: string; processing_baseline: string } | null };
 export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
   scene_date: string | null; added_by: string; at: string; counts_as: string };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
@@ -117,6 +121,7 @@ export const api = {
   missedSites: (id: number) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, MissedProps> & { reasons: string[] }>("GET", `/api/projects/${id}/missed-sites/`),
   addMissedSite: (id: number, geometry: GeoJSON.Polygon, reason_code: string, note: string) =>
     call<GeoJSON.Feature<GeoJSON.Polygon, MissedProps>>("POST", `/api/projects/${id}/missed-sites/`, { geometry, reason_code, note }),
+  pixel: (id: number, lon: number, lat: number) => call<PixelInfo>("GET", `/api/detections/${id}/pixel/?lon=${lon}&lat=${lat}`),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

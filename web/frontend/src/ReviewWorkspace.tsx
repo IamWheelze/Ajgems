@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, Area, DetectionFeature, Me, MissedProps, Project, ReviewOptions } from "./api";
+import { api, Area, DetectionFeature, Me, MissedProps, PixelInfo, Project, ReviewOptions } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
 import SwipeCompare from "./SwipeCompare";
 import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
@@ -39,6 +39,10 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [showScore, setShowScore] = useState(false);   // FR-124 heatmap
   const showScoreRef = useRef(showScore);
   const [scoreMissing, setScoreMissing] = useState(false);
+  const [inspecting, setInspecting] = useState(false);   // FR-128
+  const inspectRef = useRef<((lng: number, lat: number) => void) | null>(null);
+  const [pixel, setPixel] = useState<PixelInfo | null>(null);
+  const [pixelError, setPixelError] = useState("");
   const [cursor, setCursor] = useState<[number, number] | null>(null);   // FR-120 coordinates
   const [editRing, setEditRing] = useState<[number, number][] | null>(null);
   const editRef = useRef<[number, number][] | null>(null);
@@ -114,6 +118,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         paint: { "circle-radius": 4, "circle-color": MISSED.colour, "circle-stroke-color": MISSED.casing, "circle-stroke-width": 2 } });
       m.on("mousemove", (e) => setCursor([e.lngLat.lng, e.lngLat.lat]));
       m.on("mouseout", () => setCursor(null));
+      m.on("click", (e) => { if (inspectRef.current) inspectRef.current(e.lngLat.lng, e.lngLat.lat); });
       m.on("click", (e) => { if (missedRef.current) setMissedPts([...missedRef.current, [e.lngLat.lng, e.lngLat.lat]]); });
       m.addSource("edit", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addLayer({ id: "edit-line", type: "line", source: "edit", filter: ["==", ["geometry-type"], "Polygon"],
@@ -131,7 +136,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       });
       m.on("mouseup", () => { if (drag !== null) { drag = null; m.dragPan.enable(); } });
       m.on("click", "dets-fill", (e) => {
-        if (missedRef.current) return;   // drawing a missed site
+        if (missedRef.current || inspectRef.current) return;   // drawing a missed site, or inspecting pixels
         const id = e.features?.[0]?.properties?.id;
         const f = featuresRef.current.find((x) => x.properties.id === id);
         if (f) select(f);
@@ -191,6 +196,28 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
     const m = map.current;
     if (m && m.getLayer("score")) m.setLayoutProperty("score", "visibility", showScore && !scoreMissing ? "visible" : "none");
   }, [showScore, scoreMissing]);
+
+  useEffect(() => {
+    const m = map.current;
+    inspectRef.current = inspecting && selected ? (lng, lat) => {
+      setPixelError("");
+      api.pixel(selected.properties.id, lng, lat).then(setPixel).catch((e) => { setPixel(null); setPixelError(e.message); });
+      const src = m?.getSource("pixel") as maplibregl.GeoJSONSource | undefined;
+      src?.setData({ type: "Point", coordinates: [lng, lat] });
+    } : null;
+    if (m) {
+      m.getCanvas().style.cursor = inspecting ? "crosshair" : "";
+      whenReady(m, () => {
+        if (!m.getSource("pixel")) {
+          m.addSource("pixel", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+          m.addLayer({ id: "pixel", type: "circle", source: "pixel", paint: { "circle-radius": 5, "circle-color": "rgba(0,0,0,0)",
+            "circle-stroke-color": "#56B4E9", "circle-stroke-width": 2 } });
+        }
+        m.setLayoutProperty("pixel", "visibility", inspecting ? "visible" : "none");
+      });
+    }
+    if (!inspecting) { setPixel(null); setPixelError(""); }
+  }, [inspecting, selected]);
 
   const showNARef = useRef(showNA);
   useEffect(() => {
@@ -379,6 +406,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             {" "}Model-score heatmap{scoreMissing ? " (not stored for this candidate)" : ""}</label>
           {showScore && !scoreMissing && <div className="score-key small"><span>0.1</span><span className="score-ramp" /><span>1.0</span>
             <span className="muted">model score, not a probability; threshold {p ? p.threshold.toFixed(2) : "—"}</span></div>}
+          <label className="small"><input type="checkbox" checked={inspecting} onChange={(e) => { setInspecting(e.target.checked); if (e.target.checked) setMissedPts(null); }} />
+            {" "}Pixel inspector (click the map)</label>
           <label className="small">Swipe compare
             <select value={compare} onChange={(e) => setCompare(e.target.value)} aria-label="Swipe comparison preset">
               <option value="">Off</option>
@@ -389,6 +418,25 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           <label className="small"><input type="checkbox" checked={showOsm} onChange={(e) => setShowOsm(e.target.checked)} /> OpenStreetMap (orientation only)</label>
           {imagery && <div className="small">{imagery.scene_id}<br />{imagery.licence_note}</div>}
         </details>
+        {inspecting && (pixel || pixelError) && (
+          <div className="pixel-panel small" role="status">
+            <div className="row gap"><b className="grow">Pixel</b><button className="link" onClick={() => { setPixel(null); setPixelError(""); }} aria-label="Close">✕</button></div>
+            {pixelError ? <p className="error">{pixelError}</p> : pixel && (
+              <>
+                <div className="muted">{pixel.lat.toFixed(5)}°, {pixel.lon.toFixed(5)}° · tile {pixel.tile}, row {pixel.row}, col {pixel.col}</div>
+                <table className="table"><tbody>
+                  {Object.entries(pixel.reflectance).map(([b, v]) => <tr key={b}><td>{b}</td><td>{v === null ? "no data" : v.toFixed(4)}</td></tr>)}
+                  <tr><td>NDVI</td><td>{pixel.ndvi?.toFixed(3) ?? "—"}</td></tr>
+                  <tr><td>NDWI</td><td>{pixel.ndwi?.toFixed(3) ?? "—"}</td></tr>
+                  <tr><td>Mask</td><td>{pixel.scl_class} (SCL {pixel.scl}) · {pixel.usable ? "usable" : <b>not assessed</b>}{pixel.suspect_bright && " · bright, check"}</td></tr>
+                  <tr><td>Model score</td><td>{pixel.model_score === null ? "not stored" : `${pixel.model_score.toFixed(3)} (threshold ${pixel.threshold.toFixed(2)})`}</td></tr>
+                  <tr><td>Scene</td><td>{pixel.scene ? `${pixel.scene.id}, ${pixel.scene.date}, baseline ${pixel.scene.processing_baseline}` : "—"}</td></tr>
+                </tbody></table>
+                <div className="muted">Reflectance from the job tile, unresampled ({pixel.crs}). Model score, not a probability.</div>
+              </>
+            )}
+          </div>
+        )}
         {cursor && <div className="coords small" aria-live="off">{cursor[1].toFixed(5)}°, {cursor[0].toFixed(5)}° (WGS 84)</div>}
         <div className="legend small">
           {Object.entries(STATUS).map(([s, x]) => (
@@ -404,7 +452,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         {me.roles.includes("gis") && (
           <div className="card missed">
             {missedPts === null ? (
-              <button onClick={() => { setMissedPts([]); setAction(""); }} title="FR-093: record disturbance the model did not find">{MISSED.icon} Add missed site</button>
+              <button onClick={() => { setMissedPts([]); setAction(""); setInspecting(false); }} title="FR-093: record disturbance the model did not find">{MISSED.icon} Add missed site</button>
             ) : (
               <>
                 <h3>{MISSED.icon} Missed site</h3>

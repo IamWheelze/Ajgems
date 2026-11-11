@@ -135,6 +135,7 @@ The explorer page (ML and admin users) shows:
 - **Quality mask:** scene classification of unusable pixels (no data, saturated, cloud shadow, cloud, cirrus, snow), with a key (FR-123).
 - **Model-score heatmap:** the job's stored score map in one hue, light to dark (FR-124). Scores under 0.1 are transparent, and the key gives the job's threshold.
   - Score maps are kept per tile (`Tile.score_path`). The demo project's candidates have none, so the toggle says so.
+- **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
 ## Missed sites and filters (FR-093, FR-094)

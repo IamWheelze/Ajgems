@@ -132,3 +132,9 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
   padding: 2px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
 .map-overlay label:has(> input[type="checkbox"]) { display: flex; gap: 6px; align-items: center; }
 .map-overlay label > input[type="checkbox"] { width: auto; margin: 0; }
+
+/* FR-128 pixel inspector */
+.pixel-panel { position: absolute; right: 10px; top: 84px; z-index: 4; width: 280px; max-height: calc(100% - 140px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.pixel-panel table { width: 100%; } .pixel-panel td { padding: 1px 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pixel-panel td:first-child { white-space: nowrap; color: var(--muted); }

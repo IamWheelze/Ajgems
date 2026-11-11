@@ -332,6 +332,27 @@ class DetectionImageView(APIView):
         return FileResponse(open(path, "rb"), content_type="image/png")
 
 
+class PixelView(APIView):
+    """FR-128 pixel inspector: GET ?lon=&lat= near a detection, values from the job tile's own rasters."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "ml")
+
+    def get(self, request, pk):
+        try:
+            d = DetectionViewSet()._qs(request).select_related("job").get(pk=pk)
+        except Detection.DoesNotExist:
+            raise Http404
+        try:
+            lon, lat = float(request.query_params["lon"]), float(request.query_params["lat"])
+        except (KeyError, ValueError):
+            return Response({"detail": "give lon and lat in degrees"}, status=400)
+        from .imagery import inspect_pixel
+        try:
+            return Response(inspect_pixel(d, lon, lat))
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+
+
 class EditGeometryView(APIView):
     """A valid simplified outline for editing: at most `max` vertices, topology preserved (always valid)."""
     permission_classes = [RolePermission]

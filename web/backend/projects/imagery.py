@@ -165,3 +165,50 @@ def render_detection_png(detection, layer="true_colour"):
         return _render(levels, levels, t, crs, "score", cache)
     arr, scl, t, crs = _read([t.prepared_path for t in tiles])
     return _render(arr, scl, t, crs, layer, cache)
+
+
+SCL_NAMES = {0: "no data", 1: "saturated or defective", 2: "dark area", 3: "cloud shadow", 4: "vegetation", 5: "not vegetated",
+             6: "water", 7: "unclassified", 8: "cloud, medium", 9: "cloud, high", 10: "thin cirrus", 11: "snow or ice"}
+
+
+def inspect_pixel(detection, lon, lat) -> dict:
+    """FR-128: band reflectances, indices, mask flags, model score and source scene at one point, read
+    straight from the job tile's rasters (no resampling)."""
+    import rasterio
+    from rasterio.warp import transform as warp
+    from django.contrib.gis.geos import Point
+    from minefoot.quality import NOT_USABLE, SUSPECT_BRIGHT
+    from minefoot.schema import BANDS
+    pt = Point(lon, lat, srid=4326)
+    tile = (detection.job.tiles.filter(geometry__intersects=pt).exclude(prepared_path="").select_related("scene").first())
+    if tile is None or not (Path(tile.prepared_path) / "reflectance.tif").exists():
+        raise ValueError("no job imagery is stored at this point")
+    prep = Path(tile.prepared_path)
+    with rasterio.open(prep / "reflectance.tif") as src:
+        (x,), (y,) = warp("EPSG:4326", src.crs, [lon], [lat])
+        row, col = src.index(x, y)
+        if not (0 <= row < src.height and 0 <= col < src.width):
+            raise ValueError("this point is outside the tile's imagery")
+        win = rasterio.windows.Window(col, row, 1, 1)
+        vals = src.read(window=win)[:, 0, 0].astype(float)
+        crs = str(src.crs)
+    with rasterio.open(prep / "scl.tif") as s:
+        scl = int(s.read(1, window=win)[0, 0])
+    refl = {b: (None if not np.isfinite(v) else round(float(v), 4)) for b, v in zip(BANDS, vals[:len(BANDS)])}
+    nd = lambda a, b: (None if refl[a] is None or refl[b] is None or refl[a] + refl[b] == 0
+                       else round((refl[a] - refl[b]) / (refl[a] + refl[b]), 4))
+    score = None
+    paths = score_paths([tile])
+    if paths:
+        with rasterio.open(paths[0]) as s:
+            r2, c2 = s.index(x, y)
+            if 0 <= r2 < s.height and 0 <= c2 < s.width:
+                score = round(int(s.read(1, window=rasterio.windows.Window(c2, r2, 1, 1))[0, 0]) / 255, 3)
+    sc = tile.scene
+    return {"lon": lon, "lat": lat, "crs": crs, "row": int(row), "col": int(col), "tile": tile.grid_id,
+            "reflectance": refl, "ndvi": nd("B08", "B04"), "ndwi": nd("B03", "B08"),
+            "scl": scl, "scl_class": SCL_NAMES.get(scl, "unknown"), "usable": scl not in NOT_USABLE,
+            "suspect_bright": scl in SUSPECT_BRIGHT, "model_score": score,
+            "threshold": detection.job.parameters.get("threshold", detection.threshold),
+            "scene": {"id": sc.source_id, "provider": sc.provider, "date": sc.acquired_at.date().isoformat(),
+                      "processing_baseline": sc.processing_baseline} if sc else None}
