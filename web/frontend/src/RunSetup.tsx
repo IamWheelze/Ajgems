@@ -62,6 +62,10 @@ export default function RunSetup({ projectId, areas }: { projectId: number; area
           <p>Model <b>{m.model_version}</b> · threshold {m.threshold.toFixed(2)} · {m.score_type}, not calibrated
             {m.global_test_f1 !== undefined && <> · global test pixel F1 {m.global_test_f1.toFixed(2)}</>}</p>
           {m.domain_warning && <p className="badge warn block">{m.domain_warning}</p>}
+          {job.estimate.domain && (job.estimate.domain.inside   /* FR-014, before the run */
+            ? <p className="small muted">Inside the validated domain: nearest test site {job.estimate.domain.nearest_test_km} km away,
+                {" "}{job.estimate.domain.same_season_test_sites} nearby test scene(s) from the same months. Rule: {job.estimate.domain.rule}.</p>
+            : job.estimate.domain.flags.map((f) => <p key={f} className="badge warn block">{f}</p>))}
           <button className="primary" onClick={go} disabled={busy}>Start job</button>
         </div>
       )}

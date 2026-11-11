@@ -363,3 +363,40 @@ class EditGeometryTest(Base):
         r = self.client_for("A", "gis").get(f"/api/detections/{d.pk}/edit-geometry/").json()
         self.assertTrue(r["valid"]); self.assertLessEqual(r["vertices"], 200); self.assertEqual(r["original_vertices"], 3000)
         self.assertEqual(self.client_for("A", "viewer").get(f"/api/detections/{d.pk}/edit-geometry/").status_code, 403)
+
+
+class RestrictedSitesTest(ExportTest):
+    """FR-005: restricted sites are hidden from viewers and exports without an explicit grant."""
+
+    def test_restricted_hidden_without_grant(self):
+        import json
+        import zipfile
+        from unittest import mock
+        p, d = self.projects["A"], self.dets["A"]
+        Detection.objects.filter(pk=d.pk).update(status="released")
+        url = f"/api/detections/{d.pk}/restrict/"
+        self.assertEqual(self.client_for("A", "field").post(url, {"restricted": True, "reason": "x"}, format="json").status_code, 403)
+        self.assertEqual(self.client_for("A", "gis").post(url, {"restricted": True}, format="json").status_code, 400)   # reason
+        self.assertEqual(self.client_for("A", "gis").post(url, {"restricted": True, "reason": "community request"}, format="json").status_code, 200)
+        self.assertTrue(AuditEvent.objects.filter(action="detection.restrict").exists())
+        viewer = self.client_for("A", "viewer")
+        ids = lambda c: [f["id"] for f in c.get(f"/api/projects/{p.pk}/detections/").json()["features"]]
+        self.assertEqual(ids(viewer), [])
+        self.assertEqual(viewer.get(f"/api/detections/{d.pk}/").status_code, 404)
+        self.assertEqual(ids(self.client_for("A", "gis")), [d.pk])   # reviewers still see it, marked restricted
+        card = {"model_version": "test", "threshold": 0.41, "score_type": "model score", "tested_in_nigeria": False, "domain_warning": None}
+        body = {"format": "geojson", "statuses": ["released"]}
+        man = lambda role: json.loads(zipfile.ZipFile(io.BytesIO(self.export(role, body).content)).read("manifest.json"))
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            m = man("gis")
+            self.assertEqual((m["candidates"], m["restricted_withheld"]), (0, 1))
+            grants = f"/api/projects/{p.pk}/restricted-grants/"
+            self.assertEqual(self.client_for("A", "gis").post(grants, {"user": "A_gis", "reason": "r"}, format="json").status_code, 403)
+            self.assertEqual(self.client_for("A", "admin").post(grants, {"user": "A_gis", "reason": "field partner"}, format="json").status_code, 201)
+            self.assertEqual(self.client_for("A", "admin").post(grants, {"user": "B_gis", "reason": "x"}, format="json").status_code, 400)
+            m = man("gis")
+            self.assertEqual((m["candidates"], m["restricted_withheld"]), (1, 0))
+            self.client_for("A", "admin").post(grants, {"user": "A_viewer", "reason": "client agreement"}, format="json")
+            self.assertEqual(ids(viewer), [d.pk])
+            self.client_for("A", "admin").post(grants, {"user": "A_viewer", "reason": "ended", "revoke": True}, format="json")
+            self.assertEqual(ids(viewer), [])

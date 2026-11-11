@@ -561,6 +561,19 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
                 {nominated && <span className="muted"> {nominated}</span>}
               </div>
             )}
+            {me.roles.some((r) => r === "gis" || r === "admin") && (
+              <div className="small">   {/* FR-005: withhold a sensitive location from viewers and exports */}
+                {p.restricted && <span className="badge warn">Restricted location: hidden from viewers and exports without a grant</span>}{" "}
+                <button className="link" onClick={() => {
+                  const reason = prompt(p.restricted ? "Reason for lifting the restriction?" : "Reason for restricting this location?");
+                  if (!reason) return;
+                  api.restrict(p.id, !p.restricted, reason).then((r) => {
+                    const upd = (f: DetectionFeature) => (f.properties.id === r.id ? { ...f, properties: { ...f.properties, restricted: r.restricted } } : f);
+                    setSelected((s) => (s ? upd(s) : s)); setFeatures((fs) => fs.map(upd));
+                  }).catch((e) => setError(e.message));
+                }}>{p.restricted ? "Lift restriction" : "Mark location restricted"}</button>
+              </div>
+            )}
             {error && <p className="error" role="alert">{error}</p>}
 
             <h3>History</h3>

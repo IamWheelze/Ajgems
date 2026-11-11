@@ -9,7 +9,7 @@ export type ReviewEntry = { action: string; reason_code: string; note: string; r
 export type DetectionProps = {
   id: number; status: string; area_ha: number; score_band: string; score_type: string; threshold: number;
   min_mapping_unit_ha: number; model_version: string; masked_fraction: number; mask_status: string;
-  evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[];
+  evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[]; restricted?: boolean;
 };
 export type PixelInfo = { lon: number; lat: number; crs: string; row: number; col: number; tile: string;
   reflectance: Record<string, number | null>; ndvi: number | null; ndwi: number | null; scl: number; scl_class: string; usable: boolean;
@@ -21,6 +21,8 @@ export type PoolFeature = GeoJSON.Feature<GeoJSON.Polygon, { id: number; project
   kind: string; negative_type: string; scene_id: string; scene_date: string | null; status_at_nomination: string; protocol_version: string;
   nominated_by: string; nominated_at: string; note: string; state: string; can_check: boolean | null;
   decision: { decision: string; reason_code: string; note: string; checker: string; at: string } | null }>;
+export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
+  nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
 export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
   scene_date: string | null; added_by: string; at: string; counts_as: string };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
@@ -32,7 +34,7 @@ export type Job = {
   parameters: Record<string, unknown>;
   estimate: { tiles: number; tiles_with_imagery: number; scenes_found: number; clearest_scene: string; clearest_cloud_pct: number;
     estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard;
-    source?: string; sources_not_approved?: Record<string, string> };
+    source?: string; sources_not_approved?: Record<string, string>; domain?: Domain };
   tiles: { total: number; by_state: Record<string, number>; by_outcome: Record<string, number> };
   progress?: { elapsed_s: number; tiles_done: number; remaining_s: number | null; bytes_fetched: number; compute: string;
     area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };
@@ -144,6 +146,12 @@ export const api = {
   poolDecide: (id: number, decision: string, reason_code: string, note: string) => call<PoolFeature>("POST", `/api/pool/${id}/decide/`, { decision, reason_code, note }),
   poolBounds: (id: number) => call<{ bounds: number[] }>("GET", `/api/pool/${id}/image/?bounds=1`),
   poolImageUrl: (id: number) => `/api/pool/${id}/image/`,
+  restrict: (id: number, restricted: boolean, reason: string) => call<{ id: number; restricted: boolean }>("POST", `/api/detections/${id}/restrict/`, { restricted, reason }),
+  restrictedGrants: (projectId: number) => call<{ id: number; user: string; granted_by: string; reason: string; granted_at: string; revoked_at: string | null }[]>(
+    "GET", `/api/projects/${projectId}/restricted-grants/`),
+  grantRestricted: (projectId: number, user: string, reason: string, revoke = false) =>
+    call<unknown>("POST", `/api/projects/${projectId}/restricted-grants/`, { user, reason, revoke }),
+  areaDomain: (id: number) => call<Domain>("GET", `/api/areas/${id}/domain/`),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

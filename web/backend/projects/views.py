@@ -2,6 +2,7 @@
 scoped to the user's organisation (FR-003)."""
 from django.conf import settings
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.http import FileResponse, Http404
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -131,6 +132,8 @@ class DetectionViewSet(viewsets.ViewSet):
         qs = Detection.objects.filter(organisation=request.user.organisation).select_related("scene", "job")
         if request.user.has_role("viewer") and not request.user.has_role("admin", "gis", "field"):
             qs = qs.filter(status=Detection.Status.RELEASED)
+            qs = qs.filter(Q(restricted=False) | Q(project__restricted_grants__user=request.user,   # FR-005
+                                                   project__restricted_grants__revoked_at=None)).distinct()
         return qs
 
     def list(self, request, project_pk=None):
@@ -355,7 +358,12 @@ class ExportView(APIView):
             raise Http404
         dets = (Detection.objects.filter(project=p, job__in=jobs, status__in=statuses).select_related("scene")
                 .prefetch_related("reviews").order_by("id"))
-        data, manifest = build_package(p, dets, request.user, fmt, statuses, jobs)
+        from .models import RestrictedGrant
+        withheld = 0
+        if not RestrictedGrant.has(request.user, p):   # FR-005: restricted sites leave only with an explicit grant
+            withheld = dets.filter(restricted=True).count()
+            dets = dets.filter(restricted=False)
+        data, manifest = build_package(p, dets, request.user, fmt, statuses, jobs, restricted_withheld=withheld)
         record(request.user, "export.create", p, after={"format": fmt, "statuses": statuses, "candidates": manifest["candidates"],
                                                        "files": {k: v["sha256"] for k, v in manifest["files"].items()}})
         resp = HttpResponse(data, content_type="application/zip")
@@ -469,3 +477,85 @@ class EditGeometryView(APIView):
         return Response({"type": "Polygon", "coordinates": [list(map(list, g.exterior.coords))],
                          "vertices": len(g.exterior.coords) - 1, "original_vertices": len(d.geometry.coords[0]) - 1,
                          "valid": g.is_valid})
+
+
+class RestrictView(APIView):
+    """FR-005: POST {restricted: bool, reason} marks a site's location restricted (GIS or admin). Audited."""
+    permission_classes = [RolePermission]
+    write_roles = ("gis", "admin")
+
+    def post(self, request, pk):
+        try:
+            d = Detection.objects.get(pk=pk, organisation=request.user.organisation)
+        except Detection.DoesNotExist:
+            raise Http404
+        reason = (request.data.get("reason") or "").strip()
+        if not reason:
+            return Response({"detail": "give a reason"}, status=400)
+        before = d.restricted
+        d.restricted = bool(request.data.get("restricted"))
+        d.save(update_fields=["restricted"])
+        record(request.user, "detection.restrict", d, before={"restricted": before}, after={"restricted": d.restricted, "reason": reason})
+        return Response({"id": d.pk, "restricted": d.restricted})
+
+
+class RestrictedGrantView(APIView):
+    """FR-005: administrators grant or revoke a user's permission to see and export a project's restricted sites."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin",)
+    write_roles = ("admin",)
+
+    def _project(self, request, project_pk):
+        try:
+            return Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
+            raise Http404
+
+    def get(self, request, project_pk):
+        from .models import RestrictedGrant
+        p = self._project(request, project_pk)
+        return Response([{"id": g.id, "user": g.user.username, "granted_by": g.granted_by.username, "reason": g.reason,
+                          "granted_at": g.granted_at, "revoked_at": g.revoked_at}
+                         for g in RestrictedGrant.objects.filter(project=p).select_related("user", "granted_by")])
+
+    def post(self, request, project_pk):
+        from accounts.models import User
+        from .models import RestrictedGrant
+        p = self._project(request, project_pk)
+        try:
+            u = User.objects.get(username=request.data.get("user"), organisation=request.user.organisation)
+        except User.DoesNotExist:
+            return Response({"detail": "no such user in your organisation"}, status=400)
+        reason = (request.data.get("reason") or "").strip()
+        if not reason:
+            return Response({"detail": "give a reason"}, status=400)
+        if request.data.get("revoke"):
+            from django.utils import timezone
+            n = RestrictedGrant.objects.filter(project=p, user=u, revoked_at=None).update(revoked_at=timezone.now())
+            record(request.user, "restricted.revoke", p, after={"user": u.username, "reason": reason, "revoked": n})
+            return Response({"revoked": n})
+        g = RestrictedGrant.objects.create(project=p, user=u, granted_by=request.user, reason=reason)
+        record(request.user, "restricted.grant", p, after={"user": u.username, "reason": reason})
+        return Response({"id": g.id}, status=201)
+
+
+class AreaDomainView(APIView):
+    """FR-014: is this area (and optional ?start=&end= window) inside the active model's validated domain?"""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "ml")
+
+    def get(self, request, pk):
+        from datetime import date
+        from .models import AreaOfInterest
+        from .pipeline import domain_check
+        try:
+            a = AreaOfInterest.objects.get(pk=pk, organisation=request.user.organisation)
+        except AreaOfInterest.DoesNotExist:
+            raise Http404
+        start, end = request.query_params.get("start"), request.query_params.get("end")
+        try:
+            if start and end:
+                date.fromisoformat(start); date.fromisoformat(end)
+        except ValueError:
+            return Response({"detail": "dates must be YYYY-MM-DD"}, status=400)
+        return Response(domain_check(a.geometry, start, end))

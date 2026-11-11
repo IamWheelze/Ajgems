@@ -37,3 +37,34 @@ class ExplorerTest(TestCase):
         det = c.get(f"/api/samples/{sid}/").json()
         self.assertIsNotNone(det["labels"]); self.assertEqual(det["overlaps"][0]["other"], "s2")
         self.assertEqual(self.signed_in(self.gis).get("/api/datasets/").status_code, 403)   # internal: ML and admin only
+
+
+class DomainTest(TestCase):
+    """FR-014: an area far from every test site of the model, or in an untested season, is flagged before the run."""
+
+    def test_domain_flags(self):
+        import json
+        import tempfile
+        from datetime import date
+        from pathlib import Path
+        from django.contrib.gis.geos import Polygon
+        from projects.pipeline import domain_check
+        d = DatasetVersion.objects.create(name="ds", version="1", licence="CC BY 4.0", licence_status="ok", source="x",
+                                          split_name="v1", split_sha256="a" * 64)
+        for i, (lon, month, split) in enumerate([(0.0, 1, "test"), (1.0, 7, "test"), (0.5, 3, "train")]):
+            p = Polygon.from_bbox((lon, 6.0, lon + 0.05, 6.05)); p.srid = 4326
+            Sample.objects.create(dataset=d, site_id=f"t{i}", split=split, mine_scale="Artisanal", mine_type="Surface",
+                                  region="africa", footprint=p, labels=MultiPolygon(p), acquired=date(2024, month, 10))
+        run = Path(tempfile.mkdtemp())
+        (run / "config.json").write_text(json.dumps({"sites": {"test": ["t0", "t1"]}}))
+        area = Polygon.from_bbox((0.2, 6.2, 0.3, 6.3)); area.srid = 4326
+        r = domain_check(area, "2026-01-01", "2026-02-28", run_dir=run)
+        self.assertTrue(r["inside"], r)
+        self.assertEqual((r["test_sites"], r["nearest_test_site"], r["same_season_test_sites"]), (2, "t0", 1))
+        self.assertLess(r["nearest_test_km"], 40)
+        r = domain_check(area, "2026-04-01", "2026-05-31", run_dir=run)   # no test scene in Apr-May nearby
+        self.assertFalse(r["inside"]); self.assertIn("Season not tested", r["flags"][0])
+        far = Polygon.from_bbox((20.0, 6.0, 20.1, 6.1)); far.srid = 4326          # about 2,100 km east
+        r = domain_check(far, run_dir=run)
+        self.assertFalse(r["inside"]); self.assertIn("Outside the validated domain", r["flags"][0])
+        self.assertGreater(r["nearest_test_km"], 2000)

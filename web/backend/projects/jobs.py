@@ -53,7 +53,7 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
            "clearest_scene": items[0]["id"], "clearest_cloud_pct": items[0]["properties"].get("eo:cloud_cover"),
            "estimated_minutes": round(len(tiles) * settings.MINEFOOT["SECONDS_PER_TILE"] / 60, 1),
            "estimate_basis": f"{settings.MINEFOOT['SECONDS_PER_TILE']:.0f} s per {settings.MINEFOOT['TILE_KM']:.0f} km tile on CPU",
-           "area_km2": area.area_km2, "model": card, "source": provider, "sources_tried_in_order": allowed,
+           "area_km2": area.area_km2, "model": card, "domain": pipeline.domain_check(area.geometry, start, end), "source": provider, "sources_tried_in_order": allowed,
            "sources_not_approved": refused}
     with transaction.atomic():
         job = Job.objects.create(

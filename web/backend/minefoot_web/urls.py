@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
-from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
 from review.views import MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
@@ -48,6 +48,9 @@ urlpatterns = [
     path("api/detections/<int:pk>/edit-geometry/", EditGeometryView.as_view()),
     path("api/detections/<int:pk>/pixel/", PixelView.as_view()),
     path("api/detections/<int:pk>/dates/", DetectionDatesView.as_view()),
+    path("api/detections/<int:pk>/restrict/", RestrictView.as_view()),
+    path("api/areas/<int:pk>/domain/", AreaDomainView.as_view()),
+    path("api/projects/<int:project_pk>/restricted-grants/", RestrictedGrantView.as_view()),
     path("api/review-options/", ReviewOptionsView.as_view()),
     path("api/projects/<int:project_pk>/missed-sites/", MissedSiteView.as_view()),
     path("api/pool/", PoolView.as_view()),

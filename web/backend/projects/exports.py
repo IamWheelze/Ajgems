@@ -222,7 +222,7 @@ def selected_jobs(project, job_id=None):
     return list(latest.values())
 
 
-def build_package(project, dets, user, fmt, statuses, jobs=None) -> tuple[bytes, dict]:
+def build_package(project, dets, user, fmt, statuses, jobs=None, restricted_withheld=0) -> tuple[bytes, dict]:
     if fmt not in FORMATS:
         raise ValueError(f"format must be one of {FORMATS}")
     dets = list(dets)
@@ -238,7 +238,7 @@ def build_package(project, dets, user, fmt, statuses, jobs=None) -> tuple[bytes,
         files["missed_sites.geojson"] = json.dumps({"type": "FeatureCollection", "features": [missed_feature(m) for m in missed]},
                                                    default=str, indent=1).encode()
     manifest = {"project_id": project.id, "project": project.name, "created_at": datetime.now(timezone.utc).isoformat(),
-                "format": fmt, "status_filter": statuses, "candidates": len(dets), "missed_sites": len(missed), "jobs": [j.pk for j in jobs],
+                "format": fmt, "status_filter": statuses, "candidates": len(dets), "missed_sites": len(missed), "restricted_withheld": restricted_withheld, "jobs": [j.pk for j in jobs],
                 "files": {n: {"sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)} for n, b in files.items()},
                 "signature": None, "note": "Signing (FR-109) is not implemented yet; checksums only."}
     buf = io.BytesIO()

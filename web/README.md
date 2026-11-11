@@ -139,6 +139,17 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Restricted sites and validated domain (FR-005, FR-014)
+
+- **Restricted sites:** GIS users or administrators mark a candidate's location restricted, with a reason; the change is audited. Restricted sites are:
+  - hidden from customer viewers;
+  - left out of every export, with the count in the manifest as `restricted_withheld`.
+  - An administrator can grant a named user explicit access on the project page, and revoke it. Reviewers still see restricted sites, marked as such.
+- **Validated domain:** for each area, and again in the estimate before a run, two measured facts:
+  - the distance to the nearest locked test site of the active model;
+  - whether any test scene within 1,000 km was taken in the same months as the job window.
+  - Provisional rule: outside the domain if no test site is within 500 km, or no nearby test scene is from those months. The Ghana check area is inside (155 km). Jos is outside (1,391 km, and no June to August test scenes nearby). The Nigerian-domain warning on the model card stays until G3.
+
 ## Imagery sources: fallback and licence approval (FR-024, FR-025)
 
 - **Fallback:** the estimate searches the approved catalogues in order and uses the first that answers. The job records which one did (`estimate.source`). A test simulates an outage of the first catalogue.

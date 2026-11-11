@@ -1,6 +1,7 @@
+import RestrictedGrants from "./RestrictedGrants";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
-import { api, Area, Me, Project } from "./api";
+import { api, Domain, Area, Me, Project } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
 import RunSetup from "./RunSetup";
 import ExportPanel from "./ExportPanel";
@@ -8,6 +9,7 @@ import ExportPanel from "./ExportPanel";
 // Areas of interest (FR-011, FR-012): draw by clicking, or upload a file. The server validates
 // geometry, CRS and the size limit, and computes the geodesic area.
 export default function ProjectAreas({ projectId, me }: { projectId: number; me: Me }) {
+  const [domains, setDomains] = useState<Record<number, Domain>>({});   // FR-014
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -19,7 +21,11 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
   const canEdit = me.roles.includes("gis") && project?.status === "active";
 
   const load = () => Promise.all([api.project(projectId), api.areas(projectId)])
-    .then(([p, a]) => { setProject(p); setAreas(a); }).catch((e) => setError(e.message));
+    .then(([p, a]) => {
+      setProject(p); setAreas(a);
+      if (me.roles.some((r) => ["admin", "gis", "ml"].includes(r)))
+        a.forEach((x) => api.areaDomain(x.id).then((d) => setDomains((m) => ({ ...m, [x.id]: d }))).catch(() => undefined));
+    }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, [projectId]);
 
   useEffect(() => {
@@ -101,7 +107,10 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
         <h2>Areas of interest</h2>
         {areas.length === 0 && <p className="muted">No areas yet.</p>}
         <ul className="plain">
-          {areas.map((a) => <li key={a.id}><b>{a.name}</b> · {a.area_km2.toLocaleString(undefined, { maximumFractionDigits: 1 })} km² · {a.source} ({a.source_crs})</li>)}
+          {areas.map((a) => <li key={a.id}><b>{a.name}</b> · {a.area_km2.toLocaleString(undefined, { maximumFractionDigits: 1 })} km² · {a.source} ({a.source_crs})
+            {domains[a.id] && (domains[a.id].inside
+              ? <div className="small muted">Inside the validated domain (nearest test site {domains[a.id].nearest_test_km} km)</div>
+              : <div className="small badge warn">{domains[a.id].flags[0]}</div>)}</li>)}
         </ul>
         {canEdit && (
           <div className="card">
@@ -122,6 +131,7 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
             <p className="small muted">Limit 10,000 km² per job. Area is computed on the ellipsoid.</p>
           </div>
         )}
+        {me.roles.includes("admin") && <RestrictedGrants projectId={projectId} />}
         {error && <p className="error" role="alert">{error}</p>}
         {me.roles.includes("gis") && project?.status === "active" && <RunSetup projectId={projectId} areas={areas} />}
         {me.roles.some((r) => ["gis", "admin", "viewer"].includes(r)) && <ExportPanel projectId={projectId} me={me} />}

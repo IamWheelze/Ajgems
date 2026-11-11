@@ -173,3 +173,49 @@ def embargoed(area_geom_4326) -> str | None:
             return (f"this area overlaps the Nigerian test region '{r['name']}'. Jobs there are refused until the "
                     f"Nigerian test labels are locked, so model output cannot influence labelling (ML-07).")
     return None
+
+
+# ---------- validated domain (FR-014, FR-083) ----------
+
+DOMAIN_MAX_KM = 500        # provisional: an area this far from every test site is outside the validated domain
+SEASON_RADIUS_KM = 1000    # look for test scenes from the same months within this distance
+
+
+def domain_check(area_geom_4326, start=None, end=None, run_dir=None) -> dict:
+    """Where the active model was tested, compared with this area and date window. Measured facts only:
+    distance to the nearest locked test site of the model's run, and whether any nearby test scene was taken
+    in the same months. Warnings are provisional rules (DOMAIN_MAX_KM, SEASON_RADIUS_KM), not calibrated."""
+    from datetime import date
+    from django.contrib.gis.db.models.functions import Distance
+    from datasets.models import Sample
+    run = Path(run_dir or active_model()[0])
+    try:
+        sites = json.loads((run / "config.json").read_text())["sites"]["test"]
+    except (OSError, KeyError, ValueError):
+        sites = None
+    qs = Sample.objects.filter(split="test")
+    if sites:
+        qs = qs.filter(site_id__in=sites)
+    c = area_geom_4326.centroid
+    rows = list(qs.annotate(d=Distance("footprint", c)).order_by("d").values("site_id", "region", "acquired", "d")[:400])
+    out = {"model_run": run.name, "test_sites": qs.count(), "flags": [], "inside": None,
+           "rule": f"inside if a locked test site of the model is within {DOMAIN_MAX_KM} km and a test scene within "
+                   f"{SEASON_RADIUS_KM} km was taken in the same months (provisional)"}
+    if not rows:
+        out["flags"].append("No test sites are recorded for this model, so its domain is unknown. Import the dataset version.")
+        return out
+    near = rows[0]
+    out.update({"nearest_test_site": near["site_id"], "nearest_test_km": round(near["d"].km), "nearest_region": near["region"]})
+    if near["d"].km > DOMAIN_MAX_KM:
+        out["flags"].append(f"Outside the validated domain: the nearest test site of this model is {near['d'].km:,.0f} km away "
+                            f"({near['region']}). Results here are unverified.")
+    if start and end:
+        d0, d1 = date.fromisoformat(start), date.fromisoformat(end)
+        months = {(d0.month + i - 1) % 12 + 1 for i in range(min(12, (d1.year - d0.year) * 12 + d1.month - d0.month + 1))}
+        same = [r for r in rows if r["d"].km <= SEASON_RADIUS_KM and r["acquired"] and r["acquired"].month in months]
+        out["same_season_test_sites"] = len(same)
+        if not same:
+            out["flags"].append(f"Season not tested nearby: no test scene within {SEASON_RADIUS_KM:,} km was taken in "
+                                f"{', '.join(date(2000, m, 1).strftime('%b') for m in sorted(months))}.")
+    out["inside"] = not out["flags"]
+    return out

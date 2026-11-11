@@ -160,7 +160,22 @@ class Detection(models.Model):
     mask_status = models.CharField(max_length=20)
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.UNREVIEWED)
     evidence_grade = models.CharField(max_length=2, default="E0")
+    restricted = models.BooleanField(default=False, help_text="FR-005: location withheld from viewers and exports without a grant")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-score_mean", "id"]
+
+
+class RestrictedGrant(models.Model):
+    """FR-005: explicit permission for one user to see and export a project's restricted sites."""
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="restricted_grants")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    granted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    reason = models.TextField()
+    granted_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True)
+
+    @staticmethod
+    def has(user, project) -> bool:
+        return RestrictedGrant.objects.filter(project=project, user=user, revoked_at=None).exists()
