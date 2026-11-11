@@ -632,3 +632,28 @@ class UploadView(APIView):
         except UploadError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response(payload(u))
+
+
+class SigningKeyView(APIView):
+    """FR-109: the organisation's export-signing public key, to verify packages independently."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer", "ml")
+
+    def get(self, request):
+        from .signing import public_info
+        return Response(public_info())
+
+
+class VerifyExportView(APIView):
+    """POST a package zip (multipart 'package'): checks its signature and every file against this server's key."""
+    permission_classes = [RolePermission]
+    write_roles = ("admin", "gis", "field", "viewer", "ml")
+
+    def post(self, request):
+        from .signing import public_key, verify
+        f = request.FILES.get("package")
+        if f is None:
+            return Response({"detail": "attach the package as 'package'"}, status=400)
+        if f.size > 2 * 1024 ** 3:
+            return Response({"detail": "package larger than 2 GB"}, status=400)
+        return Response(verify(f.read(), public_key()))

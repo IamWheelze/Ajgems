@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
-from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, SigningKeyView, VerifyExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
 from review.views import AnnotationTaskListView, AnnotationTaskView, FieldPhotoView, FieldTasksView, FieldVisitListView, FieldVisitSyncView, MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
@@ -52,6 +52,8 @@ urlpatterns = [
     path("api/areas/<int:pk>/domain/", AreaDomainView.as_view()),
     path("api/projects/<int:project_pk>/uploads/", UploadListView.as_view()),
     path("api/uploads/<int:pk>/", UploadView.as_view()),
+    path("api/signing-key/", SigningKeyView.as_view()),
+    path("api/exports/verify/", VerifyExportView.as_view()),
     path("api/projects/<int:project_pk>/restricted-grants/", RestrictedGrantView.as_view()),
     path("api/review-options/", ReviewOptionsView.as_view()),
     path("api/projects/<int:project_pk>/missed-sites/", MissedSiteView.as_view()),

@@ -167,3 +167,5 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
 .field-page { max-width: 640px; }
 .blur-canvas { width: 100%; height: auto; touch-action: none; cursor: crosshair; border-radius: 6px; }
 .field-thumb { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; }
+
+.wrap-anywhere { overflow-wrap: anywhere; word-break: break-all; }

@@ -285,7 +285,8 @@ class ExportTest(Base):
                 self.assertEqual(r.status_code, 200, r.content[:200])
                 z = self.unzip(r)
                 names = set(z.namelist())
-                self.assertEqual(names, {f"candidates.{fmt}", "report.pdf", "LICENCE_AND_ATTRIBUTION.txt", "manifest.json"})
+                self.assertEqual(names, {f"candidates.{fmt}", "report.pdf", "LICENCE_AND_ATTRIBUTION.txt", "manifest.json",
+                                         "verify_export.py", "HOW_TO_VERIFY.txt"})
                 man = json.loads(z.read("manifest.json"))
                 for n, info in man["files"].items():
                     self.assertEqual(hashlib.sha256(z.read(n)).hexdigest(), info["sha256"])   # FR-109: alteration detectable
@@ -400,3 +401,62 @@ class RestrictedSitesTest(ExportTest):
             self.assertEqual(ids(viewer), [d.pk])
             self.client_for("A", "admin").post(grants, {"user": "A_viewer", "reason": "ended", "revoke": True}, format="json")
             self.assertEqual(ids(viewer), [])
+
+
+class SignedExportTest(ExportTest):
+    """FR-109: a signed package verifies; altering, adding or removing any file, or the manifest, fails."""
+
+    def rezip(self, data, change):
+        import zipfile
+        src = zipfile.ZipFile(io.BytesIO(data))
+        files = {n: src.read(n) for n in src.namelist()}
+        change(files)
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, "w") as z:
+            for n, b in files.items():
+                z.writestr(n, b)
+        return out.getvalue()
+
+    def test_signature_and_tampering(self):
+        import subprocess, sys, tempfile, zipfile
+        from pathlib import Path
+        from unittest import mock
+        from projects.signing import public_info, public_key, verify
+        card = {"model_version": "test", "threshold": 0.41, "score_type": "model score", "tested_in_nigeria": False, "domain_warning": None}
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            data = self.export("gis", {"format": "geojson"}).content
+        pk = public_key()
+        self.assertEqual(verify(data, pk), {**verify(data, pk), "ok": True, "problems": []})
+        bad = {
+            "altered file": lambda f: f.update({"candidates.geojson": f["candidates.geojson"].replace(b"model score", b"probability!")}),
+            "missing file": lambda f: f.pop("report.pdf"),
+            "file not in the manifest": lambda f: f.update({"extra.csv": b"x"}),
+            "signature does not match": lambda f: f.update({"manifest.json": f["manifest.json"].replace(b'"candidates": 1', b'"candidates": 2')}),
+        }
+        for problem, change in bad.items():
+            r = verify(self.rezip(data, change), pk)
+            self.assertFalse(r["ok"], problem)
+            self.assertTrue(any(problem in p for p in r["problems"]), (problem, r["problems"]))
+        # Re-hashing an altered file in the manifest does not help: the signature then fails.
+        def forge(f):
+            m = json.loads(f["manifest.json"]); import hashlib
+            f["candidates.geojson"] = b"{}"
+            m["files"]["candidates.geojson"] = {"sha256": hashlib.sha256(b"{}").hexdigest(), "bytes": 2}
+            f["manifest.json"] = json.dumps(m).encode()
+        r = verify(self.rezip(data, forge), pk)
+        self.assertFalse(r["ok"]); self.assertTrue(any("signature does not match" in p for p in r["problems"]))
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        self.assertFalse(verify(data, Ed25519PrivateKey.generate().public_key())["ok"])   # someone else's key
+        # The standalone script inside the package gives the same answer.
+        tmp = Path(tempfile.mkdtemp()); (tmp / "p.zip").write_bytes(data)
+        (tmp / "verify_export.py").write_bytes(zipfile.ZipFile(io.BytesIO(data)).read("verify_export.py"))
+        run = lambda zipname: subprocess.run([sys.executable, str(tmp / "verify_export.py"), str(tmp / zipname), "--public-key",
+                                               public_info()["public_key"]], capture_output=True, text=True)
+        self.assertEqual(run("p.zip").returncode, 0)
+        (tmp / "bad.zip").write_bytes(self.rezip(data, bad["altered file"]))
+        r = run("bad.zip"); self.assertEqual(r.returncode, 1); self.assertIn("altered file", r.stdout)
+        # And through the API.
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        c = self.client_for("A", "viewer")
+        self.assertEqual(c.get("/api/signing-key/").json()["key_id"], public_info()["key_id"])
+        self.assertTrue(c.post("/api/exports/verify/", {"package": SimpleUploadedFile("p.zip", data)}, format="multipart").json()["ok"])

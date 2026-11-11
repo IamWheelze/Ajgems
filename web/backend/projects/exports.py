@@ -3,7 +3,7 @@
 One zip per request. Fields follow FRD 9.2. The report always contains the coverage
 map and the limits section (FR-107): they cannot be switched off. Every package
 carries the Copernicus credit for each scene year (FR-108) and a manifest with a
-SHA-256 for every file (FR-109; signing comes later).
+SHA-256 for every file, signed with Ed25519 (FR-109, see signing.py).
 """
 from __future__ import annotations
 import csv
@@ -239,11 +239,14 @@ def build_package(project, dets, user, fmt, statuses, jobs=None, restricted_with
                                                    default=str, indent=1).encode()
     manifest = {"project_id": project.id, "project": project.name, "created_at": datetime.now(timezone.utc).isoformat(),
                 "format": fmt, "status_filter": statuses, "candidates": len(dets), "missed_sites": len(missed), "restricted_withheld": restricted_withheld, "jobs": [j.pk for j in jobs],
-                "files": {n: {"sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)} for n, b in files.items()},
-                "signature": None, "note": "Signing (FR-109) is not implemented yet; checksums only."}
+                "files": {n: {"sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)} for n, b in files.items()}}
+    from .signing import VERIFIER, how_to_verify, public_info, sign
+    manifest = sign(manifest)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for n, b in files.items():
             z.writestr(n, b)
         z.writestr("manifest.json", json.dumps(manifest, indent=2))
+        z.writestr("verify_export.py", VERIFIER.read_bytes())
+        z.writestr("HOW_TO_VERIFY.txt", how_to_verify(public_info()))
     return buf.getvalue(), manifest

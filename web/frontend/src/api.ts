@@ -200,6 +200,8 @@ export const api = {
   annotationState: (id: number, state: string) => call<AnnotationTask>("POST", `/api/annotation-tasks/${id}/state/`, { state }),
   annotationBounds: (id: number, layer: string) => call<{ bounds: number[] }>("GET", `/api/annotation-tasks/${id}/image/?layer=${layer}&bounds=1`),
   annotationImageUrl: (id: number, layer: string) => `/api/annotation-tasks/${id}/image/?layer=${layer}`,
+  signingKey: () => call<{ key_id: string; public_key: string; development_key: boolean; pem: string }>("GET", "/api/signing-key/"),
+  verifyExport: (f: File) => { const d = new FormData(); d.append("package", f); return call<{ ok: boolean; problems: string[]; files_checked: number }>("POST", "/api/exports/verify/", d); },
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

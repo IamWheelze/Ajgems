@@ -1,3 +1,4 @@
+import VerifyPackage from "./VerifyPackage";
 import { useEffect, useState } from "react";
 import { api, Job, Me } from "./api";
 import { STATUS } from "./status";
@@ -48,9 +49,10 @@ export default function ExportPanel({ projectId, me }: { projectId: number; me: 
         </>
       )}
       <p className="small muted">The zip holds the data, a PDF report (coverage map, method, limits, versions, evidence grades), the
-        licence notice and a manifest of checksums.</p>
+        licence notice and a signed manifest of checksums.</p>
       <button className="primary" onClick={go} disabled={busy || (!viewerOnly && statuses.length === 0)}>{busy ? "Preparing…" : "Download package"}</button>
       {error && <p className="error small" role="alert">{error}</p>}
+      <VerifyPackage />
     </div>
   );
 }

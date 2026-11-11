@@ -243,9 +243,18 @@ What to compare with: any band preset, on the **same date** or on **another date
 
 The review header has a **Job** picker, so an earlier job's candidates and reviews stay reachable after a newer job over the same area. By default you see the latest job for each area.
 
+## Signed exports (FR-109, Commercial)
+
+Every export package's manifest lists each file's SHA-256 and size. It is signed with Ed25519 over canonical JSON (sorted keys, every field except the signature).
+- **In the package:** `verify_export.py`, a standalone verifier that needs only `cryptography`, and `HOW_TO_VERIFY.txt`.
+  - Recipients use the public key from the server (`/api/signing-key/`, shown in the export panel), never one from the package. A key inside the package would prove nothing.
+  - On the project page, **Signed packages: verify one** checks a returned package against this server's key.
+- **Production key:** set `MINEFOOT_SIGNING_KEY` to base64 of a random 32-byte seed. Generate one with `python -c "import os,base64;print(base64.b64encode(os.urandom(32)).decode())"`, and keep it secret and backed up.
+  - Without it, a development key derived from `DJANGO_SECRET_KEY` is used, and every signature, the verifier and the UI say "development key".
+- **Tested:** a valid package verifies. An altered file, a missing or added file, an edited manifest, a manifest re-hashed after altering a file, and a different key all fail. The standalone script gives the same answers, and so does the browser on a real package.
+
 ## Not built yet (next slices)
 
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Signed export manifests** (FR-109, Commercial). Checksums exist; signatures do not.
 - **Ingesting accepted pool labels** into a minefoot dataset version for training. Exports exist; the adapter does not.
 - **Automatic face and number-plate detection** in field photos. Blurring is manual.
