@@ -929,3 +929,19 @@ def test_vectorise_smooths_stair_steps_keeping_area(tmp_path):
     assert len(g) == 1 and g.geometry.iloc[0].is_valid
     assert len(g.geometry.iloc[0].exterior.coords) < 200           # stair-steps removed (a raw trace has ~640)
     assert abs(g.geometry.iloc[0].area / 1e4 - (disc > 0).sum() * 0.01) / ((disc > 0).sum() * 0.01) < 0.01
+
+
+def test_cdse_radiometry_and_missing_keys(monkeypatch):
+    """Copernicus Data Space: STAC raster v2 asset fields give the offset; pixels need S3 keys (clear refusal)."""
+    from minefoot.catalog import MissingCredentials, _reader_env, default_providers
+    from minefoot.reflectance import resolve
+    r = resolve({"processing:version": "05.12"}, {"raster:scale": 0.0001, "raster:offset": -0.1})
+    assert (r.offset_dn, r.quantification, r.rule, r.baseline) == (-1000, 10000, "asset_raster_fields", "05.12")
+    r = resolve({"processing:version": "03.01"}, {})               # old baseline, no asset fields: no offset
+    assert r.offset_dn == 0 and r.rule == "processing_baseline"
+    monkeypatch.delenv("CDSE_S3_ACCESS_KEY", raising=False); monkeypatch.delenv("CDSE_S3_SECRET_KEY", raising=False)
+    assert default_providers() == ("planetary", "earth-search")
+    with pytest.raises(MissingCredentials, match="CDSE_S3_ACCESS_KEY"):
+        _reader_env("cdse")
+    monkeypatch.setenv("CDSE_S3_ACCESS_KEY", "a"); monkeypatch.setenv("CDSE_S3_SECRET_KEY", "b")
+    assert default_providers()[0] == "cdse"

@@ -148,7 +148,7 @@ def main(argv=None):
                 missing = [v for v in c["assets"].values() if v not in items[0].assets]
                 from .reflectance import resolve
                 r = resolve(items[0].properties, items[0].assets[c["assets"]["B04"]].to_dict())
-                print(f"{p}: OK {items[0].id} baseline={items[0].properties.get('s2:processing_baseline')} "
+                print(f"{p}: OK {items[0].id} baseline={r.baseline} "
                       f"offset={r.offset_dn} rule={r.rule} missing_assets={missing}")
                 ok = ok or not missing
             except Exception as e:

@@ -17,7 +17,43 @@ PROVIDERS = {
                      "assets": {"B02": "blue", "B03": "green", "B04": "red", "B05": "rededge1", "B06": "rededge2",
                                 "B07": "rededge3", "B08": "nir", "B8A": "nir08", "B11": "swir16", "B12": "swir22",
                                 "SCL": "scl"}, "sign": False},
+    # Copernicus Data Space Ecosystem (the FRD's primary source). Search needs no account; pixels are JPEG 2000 on
+    # its S3 store and need free S3 keys (CDSE_S3_ACCESS_KEY, CDSE_S3_SECRET_KEY). Verified 2026-11-11: search,
+    # asset names and radiometry fields. Not yet verified: pixel reads (no keys in this environment).
+    "cdse": {"url": "https://stac.dataspace.copernicus.eu/v1", "collection": "sentinel-2-l2a",
+             "assets": {"B02": "B02_10m", "B03": "B03_10m", "B04": "B04_10m", "B08": "B08_10m", "B05": "B05_20m",
+                        "B06": "B06_20m", "B07": "B07_20m", "B8A": "B8A_20m", "B11": "B11_20m", "B12": "B12_20m",
+                        "SCL": "SCL_20m"}, "sign": False, "s3_endpoint": "eodata.dataspace.copernicus.eu"},
 }
+
+
+class MissingCredentials(RuntimeError):
+    """A provider needs keys that are not set."""
+
+
+def cdse_keys():
+    import os
+    k, s = os.environ.get("CDSE_S3_ACCESS_KEY"), os.environ.get("CDSE_S3_SECRET_KEY")
+    return (k, s) if k and s else None
+
+
+def default_providers():
+    """Copernicus Data Space first when its keys are set (FRD primary source), then the STAC mirrors."""
+    return ("cdse", "planetary", "earth-search") if cdse_keys() else ("planetary", "earth-search")
+
+
+def _reader_env(provider):
+    """GDAL settings for reading a provider's pixels."""
+    import rasterio
+    cfg = PROVIDERS[provider]
+    if "s3_endpoint" not in cfg:
+        return rasterio.Env()
+    keys = cdse_keys()
+    if keys is None:
+        raise MissingCredentials("Copernicus Data Space pixels need S3 keys: set CDSE_S3_ACCESS_KEY and CDSE_S3_SECRET_KEY "
+                                 "(free account at dataspace.copernicus.eu), or use --provider planetary or earth-search")
+    return rasterio.Env(AWS_S3_ENDPOINT=cfg["s3_endpoint"], AWS_VIRTUAL_HOSTING="FALSE", AWS_HTTPS="YES",
+                        AWS_ACCESS_KEY_ID=keys[0], AWS_SECRET_ACCESS_KEY=keys[1], GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR")
 
 
 def _client(provider: str):
@@ -30,9 +66,10 @@ def _client(provider: str):
     return Client.open(cfg["url"], modifier=modifier)
 
 
-def search(bbox, start: str, end: str, max_cloud: float = 40.0, providers=("planetary", "earth-search"),
+def search(bbox, start: str, end: str, max_cloud: float = 40.0, providers=None,
            limit: int = 200, attempts: int = 3):
     """Search in provider order. Falls back if one fails and records which one answered."""
+    providers = providers or default_providers()
     errors = {}
     for p in providers:
         for attempt in range(attempts):
@@ -79,9 +116,10 @@ def fetch_scene(item, provider: str, bbox_wgs84, out_dir, name: str | None = Non
     out = Path(out_dir) / (name or item.id)
     out.mkdir(parents=True, exist_ok=True)
     arrays, radiometry, dst = {}, {}, None
+    _reader_env(provider)   # fail early, before any download, if keys are missing
     for band in BANDS_10M + tuple(b for b in (*BANDS, "SCL") if b not in BANDS_10M):
         asset = item.assets[cfg["assets"][band]]
-        with rasterio.open(asset.href) as src:
+        with _reader_env(provider), rasterio.open(asset.href) as src:
             b = transform_bounds("EPSG:4326", src.crs, *bbox_wgs84, densify_pts=21)
             if dst is None:
                 # 10 m grid snapped to the source pixels, so no shift is introduced.

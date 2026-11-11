@@ -36,7 +36,7 @@ Verified: 25 tests pass and the gallery was checked visually, all on **synthetic
 - **Founder decision, 2026-11-06:** keep the current mask, and report how much of each polygon (candidate, label or area) it removed. Built: `quality.polygon_coverage`, `labels.polygon_mask_report`, `minefoot mask-report`, gallery warning and per-polygon table, masked pixels in magenta, and mask columns in the exported `labels.gpkg`. Thresholds are provisional: partly masked at 5%, mostly masked at 50%. Candidates from a future model must go through `polygon_mask_report` before they are shown or exported. Changing the mask itself (options 1 and 2 in the findings doc) is still open.
 
 Still unverified:
-1. Copernicus Data Space is the FRD's stated primary source but is not implemented; only Planetary Computer and Earth Search are. Add it or update the FRD.
+1. Copernicus Data Space (FRD primary source) added 2026-11-11 as provider `cdse`. Verified with `minefoot doctor`: search, asset names, and offset −1000 on baseline 05.12 from asset fields `raster:offset`/`raster:scale` (scene of 2026-02-27, the same as Planetary Computer's). **Not verified: pixel reads.** Pixels are JPEG 2000 on CDSE's S3 store and need free S3 keys (`CDSE_S3_ACCESS_KEY`, `CDSE_S3_SECRET_KEY`), which this environment does not have. When both are set, CDSE becomes the first provider; without them, fetches refuse with a clear message.
 2. Legal review of share-alike (CC BY-SA 4.0) labels: Global ML-ready and Maus v2. Licences were read from source records on 2026-11-03, see `docs/licence_register.csv`. Planetary Computer's terms limit it to evaluation and testing, not business-critical use.
 
 ## Next steps (FRD section 15)

@@ -32,7 +32,8 @@ def baseline_at_least(baseline: str, major: int, minor: int = 0) -> bool:
 
 def resolve(properties: Mapping[str, Any], asset: Mapping[str, Any] | None = None) -> Radiometry:
     """Work out the offset from STAC metadata, most explicit evidence first."""
-    baseline = properties.get("s2:processing_baseline")
+    # Planetary Computer and Earth Search use s2:processing_baseline; Copernicus Data Space uses processing:version.
+    baseline = properties.get("s2:processing_baseline") or properties.get("processing:version")
     if properties.get("earthsearch:boa_offset_applied") is True:
         # Provider states the pixels were already shifted.
         return Radiometry(0, QUANTIFICATION, "provider_offset_already_applied", baseline)
@@ -40,6 +41,10 @@ def resolve(properties: Mapping[str, Any], asset: Mapping[str, Any] | None = Non
         if "offset" in band and "scale" in band and band["scale"]:
             return Radiometry(round(band["offset"] / band["scale"]), round(1 / band["scale"]),
                               "asset_raster_bands", baseline)
+    a = asset or {}
+    if "raster:offset" in a and a.get("raster:scale"):   # STAC raster v2 (Copernicus Data Space): asset-level fields
+        return Radiometry(round(a["raster:offset"] / a["raster:scale"]), round(1 / a["raster:scale"]),
+                          "asset_raster_fields", baseline)
     if baseline is None:
         raise MissingRadiometry("no processing baseline or asset offset in metadata")
     offset = -1000 if baseline_at_least(baseline, 4, 0) else 0
