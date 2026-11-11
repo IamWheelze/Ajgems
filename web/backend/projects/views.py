@@ -195,6 +195,7 @@ class JobViewSet(viewsets.ViewSet):
     permission_classes = [RolePermission]
     read_roles = ("admin", "gis")
     write_roles = ("gis",)
+    action_roles = {"preview": ("admin", "gis", "ml")}
 
     def _job(self, request, pk):
         from .models import Job
@@ -259,6 +260,26 @@ class JobViewSet(viewsets.ViewSet):
     def resume(self, request, pk=None):
         from .jobs import resume
         return self._act(request, pk, resume)
+
+    def preview(self, request, pk=None):
+        """FR-126: GET ?threshold=&mmu_ha= -> candidates added, kept and removed, nothing saved."""
+        from .jobs import JobError, preview
+        job = self._job(request, pk)
+        q = request.query_params
+        try:
+            return Response(preview(job, q.get("threshold", job.parameters.get("threshold")), q.get("mmu_ha", job.parameters.get("mmu_ha"))))
+        except JobError as exc:
+            return Response({"detail": str(exc)}, status=400)
+
+    def rethreshold(self, request, pk=None):
+        """POST {threshold, mmu_ha}: save the previewed settings as a new job; the original is unchanged."""
+        from .jobs import JobError, rethreshold
+        job = self._job(request, pk)
+        try:
+            new = rethreshold(request.user, job, request.data.get("threshold"), request.data.get("mmu_ha"))
+        except JobError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(job_payload(new), status=201)
 
 
 class ModelCardView(APIView):

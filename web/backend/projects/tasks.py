@@ -87,15 +87,7 @@ def process_tile(job, tile, items, provider, work):
     score = pipeline.score_prepared(prep, job.parameters.get("model_run"))   # the model frozen at start
     score_path = pipeline.write_score(score, prep, Path(work) / f"{tile.grid_id}_score.tif")
     tile.score_path = str(score_path); tile.save(update_fields=["score_path"])
-    threshold = job.parameters["threshold"]
-    g = vectorise(score_path, threshold, job.parameters["mmu_ha"], prepared_dir=prep)
-    area = wkt.loads(job.area.geometry.wkt)
-    if len(g):
-        g["geometry"] = g.geometry.intersection(area).intersection(tg)
-        g = g[~g.geometry.is_empty & g.geometry.geom_type.isin(["Polygon", "MultiPolygon"])].explode(index_parts=False)
-        g = g[g.geometry.geom_type == "Polygon"]
-        g["scene_pk"] = scene.pk
-        g["tile"] = tile.grid_id
+    g = tile_candidates(tile, job.area.geometry, job.parameters["threshold"], job.parameters["mmu_ha"])
     tile.candidates = int(len(g))
     tile.outcome = Tile.Outcome.CANDIDATE_FOUND if len(g) else Tile.Outcome.NO_CANDIDATE
     tile.state = Tile.State.DONE
@@ -105,15 +97,30 @@ def process_tile(job, tile, items, provider, work):
     return g
 
 
-def merge_candidates(job, work):
-    """Join candidates that touch across tile edges, then save them as detections (FR-062)."""
+def tile_candidates(tile, area_geom, threshold, mmu_ha):
+    """Candidate polygons of one scored tile at the given settings, clipped to the area and the tile.
+    Used by the job and by the threshold preview (FR-126), so both give the same polygons."""
+    from shapely import wkt
+    from minefoot.vectorise import vectorise
+    g = vectorise(Path(tile.score_path), threshold, mmu_ha, prepared_dir=Path(tile.prepared_path))
+    if len(g):
+        g["geometry"] = g.geometry.intersection(wkt.loads(area_geom.wkt)).intersection(wkt.loads(tile.geometry.wkt))
+        g = g[~g.geometry.is_empty & g.geometry.geom_type.isin(["Polygon", "MultiPolygon"])].explode(index_parts=False)
+        g = g[g.geometry.geom_type == "Polygon"]
+        g["scene_pk"] = tile.scene_id
+        g["tile"] = tile.grid_id
+    return g
+
+
+def merge_parts(parts, threshold, mmu):
+    """Join candidates that touch across tile edges (FR-062). Returns one dict per merged candidate."""
     import geopandas as gpd
     import pandas as pd
     from shapely.ops import unary_union
     from minefoot.vectorise import score_band
-    parts = [gpd.read_file(p) for p in sorted(Path(work).glob("*_candidates.gpkg"))]
+    parts = [p for p in parts if len(p)]
     if not parts:
-        return 0
+        return []
     g = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), crs=4326)
     eq = g.to_crs(6933)   # equal-area, for area weights
     g["w"] = eq.area
@@ -121,32 +128,41 @@ def merge_candidates(job, work):
     geoms = list(merged.geoms) if merged.geom_type == "MultiPolygon" else [merged]
     merged_eq = gpd.GeoDataFrame(geometry=geoms, crs=6933)
     joined = gpd.sjoin(eq.assign(i=range(len(eq))), merged_eq.reset_index(names="m"), predicate="intersects")
+    out = []
+    for m, grp in joined.groupby("m"):
+        rows = g.iloc[grp["i"].values]
+        w = rows["w"].values
+        geom = merged_eq.geometry.iloc[m].buffer(-0.5)
+        area_ha = geom.area / 1e4
+        if area_ha < mmu or geom.is_empty:
+            continue
+        geom4326 = gpd.GeoSeries([geom], crs=6933).to_crs(4326).iloc[0]
+        if geom4326.geom_type == "MultiPolygon":
+            geom4326 = max(geom4326.geoms, key=lambda p: p.area)
+        mean = float((rows["score_mean"].values * w).sum() / w.sum())
+        masked = float((rows["masked_fraction"].values * w).sum() / w.sum())
+        out.append({"geometry": geom4326, "area_ha": area_ha, "score_mean": mean, "score_band": score_band(mean, threshold),
+                    "masked_fraction": masked,
+                    "mask_status": "mostly_masked" if masked >= 0.5 else "partly_masked" if masked >= 0.05 else "assessed",
+                    "scene_pk": int(rows.loc[rows["w"].idxmax(), "scene_pk"])})
+    return out
+
+
+def merge_candidates(job, work):
+    """Merge the tiles' saved candidates and store them as the job's detections."""
+    import geopandas as gpd
     threshold, mmu = job.parameters["threshold"], job.parameters["mmu_ha"]
-    n = 0
+    cands = merge_parts([gpd.read_file(p) for p in sorted(Path(work).glob("*_candidates.gpkg"))], threshold, mmu)
     with transaction.atomic():
         Detection.objects.filter(job=job).delete()   # rebuilt on resume; no reviews exist before success
-        for m, grp in joined.groupby("m"):
-            rows = g.iloc[grp["i"].values]
-            w = rows["w"].values
-            geom = merged_eq.geometry.iloc[m].buffer(-0.5)
-            area_ha = geom.area / 1e4
-            if area_ha < mmu or geom.is_empty:
-                continue
-            geom4326 = gpd.GeoSeries([geom], crs=6933).to_crs(4326).iloc[0]
-            if geom4326.geom_type == "MultiPolygon":
-                geom4326 = max(geom4326.geoms, key=lambda p: p.area)
-            mean = float((rows["score_mean"].values * w).sum() / w.sum())
-            masked = float((rows["masked_fraction"].values * w).sum() / w.sum())
-            status = "mostly_masked" if masked >= 0.5 else "partly_masked" if masked >= 0.05 else "assessed"
-            scene_pk = int(rows.loc[rows["w"].idxmax(), "scene_pk"])
-            gg = GEOSGeometry(geom4326.wkt, srid=4326)
+        for c in cands:
+            gg = GEOSGeometry(c["geometry"].wkt, srid=4326)
             Detection.objects.create(
-                organisation=job.organisation, project=job.project, job=job, scene_id=scene_pk, geometry=gg,
-                original_geometry=gg, area_ha=area_ha, score_mean=mean, score_band=score_band(mean, threshold),
+                organisation=job.organisation, project=job.project, job=job, scene_id=c["scene_pk"], geometry=gg,
+                original_geometry=gg, area_ha=c["area_ha"], score_mean=c["score_mean"], score_band=c["score_band"],
                 threshold=threshold, min_mapping_unit_ha=mmu, model_version=job.model_version,
-                input_schema_version="s2-l2a-10band-v1", masked_fraction=masked, mask_status=status)
-            n += 1
-    return n
+                input_schema_version="s2-l2a-10band-v1", masked_fraction=c["masked_fraction"], mask_status=c["mask_status"])
+    return len(cands)
 
 
 @shared_task(bind=True)

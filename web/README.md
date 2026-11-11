@@ -138,6 +138,13 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Threshold and minimum-size preview (FR-126)
+
+On a finished job's page, choose a threshold and a minimum size, then **Preview**. The candidates are recomputed from the job's stored score maps with the job's own vectorise-and-merge code. The map shows candidates kept, added and removed; nothing is saved.
+- At the job's own settings, the preview gives the job's result (tested; on the Ghana job it gave the same 18 candidates and 6,236.5 ha).
+- **Save as a new job** (GIS) records the settings as a job derived from this one, with the same scenes and score maps. The original job, its candidates and its reviews are unchanged. The new job becomes the area's latest result for review and export.
+- Jobs run before score maps were recorded per tile are backfilled by migration `projects.0005`.
+
 ## Missed sites and filters (FR-093, FR-094)
 
 - **Add missed site** (GIS role, review workspace): outline disturbance the model did not find, with a reason.

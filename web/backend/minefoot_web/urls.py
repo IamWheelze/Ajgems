@@ -25,6 +25,8 @@ jobs = JobViewSet.as_view({"get": "list", "post": "create"})
 job = JobViewSet.as_view({"get": "retrieve"})
 job_tiles = JobViewSet.as_view({"get": "tiles"})
 job_start = JobViewSet.as_view({"post": "start"})
+job_preview = JobViewSet.as_view({"get": "preview"})
+job_rethreshold = JobViewSet.as_view({"post": "rethreshold"})
 job_cancel = JobViewSet.as_view({"post": "cancel"})
 job_resume = JobViewSet.as_view({"post": "resume"})
 
@@ -61,6 +63,8 @@ urlpatterns = [
     path("api/jobs/<int:pk>/", job),
     path("api/jobs/<int:pk>/tiles/", job_tiles),
     path("api/jobs/<int:pk>/start/", job_start),
+    path("api/jobs/<int:pk>/preview/", job_preview),
+    path("api/jobs/<int:pk>/rethreshold/", job_rethreshold),
     path("api/jobs/<int:pk>/cancel/", job_cancel),
     path("api/jobs/<int:pk>/resume/", job_resume),
 ]

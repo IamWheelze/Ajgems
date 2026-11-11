@@ -122,6 +122,10 @@ export const api = {
   addMissedSite: (id: number, geometry: GeoJSON.Polygon, reason_code: string, note: string) =>
     call<GeoJSON.Feature<GeoJSON.Polygon, MissedProps>>("POST", `/api/projects/${id}/missed-sites/`, { geometry, reason_code, note }),
   pixel: (id: number, lon: number, lat: number) => call<PixelInfo>("GET", `/api/detections/${id}/pixel/?lon=${lon}&lat=${lat}`),
+  jobPreview: (id: number, threshold: number, mmu_ha: number) =>
+    call<GeoJSON.FeatureCollection & { summary: { candidates: number; kept: number; added: number; removed: number; area_ha: number; job_candidates: number } }>(
+      "GET", `/api/jobs/${id}/preview/?threshold=${threshold}&mmu_ha=${mmu_ha}`),
+  jobRethreshold: (id: number, threshold: number, mmu_ha: number) => call<Job>("POST", `/api/jobs/${id}/rethreshold/`, { threshold, mmu_ha }),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

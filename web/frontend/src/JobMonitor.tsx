@@ -14,6 +14,12 @@ function hatchImage(): ImageData {
   return g.getImageData(0, 0, n, n);
 }
 
+// FR-126 preview: what changes at other settings. Colour, line style and label together, never colour alone.
+const CHANGE: Record<string, { label: string; colour: string; dash?: number[] }> = {
+  kept: { label: "Kept", colour: "#0072B2" }, added: { label: "Added", colour: "#E69F00", dash: [3, 2] },
+  removed: { label: "Removed", colour: "#D55E00", dash: [1, 2] },
+};
+
 export default function JobMonitor({ projectId, jobId, me }: { projectId: number; jobId: number; me: Me }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -23,6 +29,35 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
   const [picked, setPicked] = useState<TileProps | null>(null);
   const [error, setError] = useState("");
   const canAct = me.roles.includes("gis");
+  const [pv, setPv] = useState<{ threshold: number; mmu: number } | null>(null);
+  const [preview, setPreview] = useState<Awaited<ReturnType<typeof api.jobPreview>> | null>(null);
+  const [pvBusy, setPvBusy] = useState(false);
+  useEffect(() => { if (job && !pv) setPv({ threshold: Number(job.parameters.threshold), mmu: Number(job.parameters.mmu_ha) }); }, [job, pv]);
+  const runPreview = async () => {
+    if (!pv) return;
+    setPvBusy(true); setError("");
+    try { setPreview(await api.jobPreview(jobId, pv.threshold, pv.mmu)); } catch (e) { setError((e as Error).message); }
+    finally { setPvBusy(false); }
+  };
+  const savePreview = async () => {
+    if (!pv || !confirm(`Save threshold ${pv.threshold.toFixed(2)} and minimum ${pv.mmu} ha as a new job? Job ${jobId}, its candidates and reviews stay as they are.`)) return;
+    setPvBusy(true);
+    try { const j = await api.jobRethreshold(jobId, pv.threshold, pv.mmu); location.hash = `#/projects/${projectId}/jobs/${j.id}`; }
+    catch (e) { setError((e as Error).message); } finally { setPvBusy(false); }
+  };
+  useEffect(() => {
+    const m = map.current;
+    if (!m) return;
+    whenReady(m, () => {
+      if (!m.getSource("preview")) {
+        m.addSource("preview", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+        for (const [k, c] of Object.entries(CHANGE))
+          m.addLayer({ id: `preview-${k}`, type: "line", source: "preview", filter: ["==", ["get", "change"], k],
+            paint: { "line-color": c.colour, "line-width": 2, ...(c.dash ? { "line-dasharray": c.dash } : {}) } });
+      }
+      (m.getSource("preview") as maplibregl.GeoJSONSource).setData(preview ?? { type: "FeatureCollection", features: [] });
+    });
+  }, [preview]);
 
   const load = () => Promise.all([api.job(jobId), api.jobTiles(jobId)]).then(([j, t]) => { setJob(j); setTiles(t); })
     .catch((e) => setError(e.message));
@@ -114,6 +149,29 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
                 <a className="button primary" href={`#/projects/${projectId}/review`}>Review candidates</a>}
             </div>
           </>
+        )}
+        {job && ["succeeded", "succeeded_with_warnings"].includes(job.state) && pv && (
+          <div className="card small">
+            <h3>Threshold and minimum size preview</h3>
+            <p className="muted">Recomputed from this job's stored score maps. Nothing is saved until you choose to.</p>
+            <label>Threshold (model score): <b>{pv.threshold.toFixed(2)}</b>
+              <input type="range" min="0.05" max="0.95" step="0.01" value={pv.threshold} onChange={(e) => setPv({ ...pv, threshold: Number(e.target.value) })} /></label>
+            <label>Minimum size, ha<input type="number" min="0.1" step="0.5" value={pv.mmu} onChange={(e) => setPv({ ...pv, mmu: Number(e.target.value) })} /></label>
+            <div className="actions wrap">
+              <button className="primary" disabled={pvBusy} onClick={runPreview}>{pvBusy ? "Working…" : "Preview"}</button>
+              {preview && <button onClick={() => setPreview(null)}>Clear</button>}
+            </div>
+            {preview && (
+              <>
+                <ul className="plain legend-list">
+                  {Object.entries(CHANGE).map(([k, c]) => <li key={k}><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke={c.colour} strokeWidth="2"
+                    strokeDasharray={c.dash?.map((d) => d * 2).join(" ")} /></svg> {c.label}: <b>{preview.summary[k as "kept" | "added" | "removed"]}</b></li>)}
+                </ul>
+                <span>{preview.summary.candidates} candidates, {preview.summary.area_ha.toLocaleString()} ha (job: {preview.summary.job_candidates})</span>
+                {canAct && <button disabled={pvBusy} onClick={savePreview}>Save as a new job</button>}
+              </>
+            )}
+          </div>
         )}
         {picked && (
           <div className="card small">

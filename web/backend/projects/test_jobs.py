@@ -170,6 +170,29 @@ class JobTest(TestCase):
                 checked += 1
         self.assertEqual(checked, 20)
 
+    def test_threshold_preview_matches_job_and_saves_as_new_job(self):
+        """FR-126: preview at the job's own settings reproduces the job; saving makes a new job and keeps the old."""
+        job = self.run_job(self.estimate()["id"])
+        n = Detection.objects.filter(job=job).count()
+        self.assertGreater(n, 0)
+        same = self.c.get(f"/api/jobs/{job.pk}/preview/").json()
+        self.assertEqual(same["summary"], {**same["summary"], "candidates": n, "kept": n, "added": 0, "removed": 0})
+        total = sum(d.area_ha for d in Detection.objects.filter(job=job))
+        self.assertAlmostEqual(same["summary"]["area_ha"], total, delta=0.1)
+        none = self.c.get(f"/api/jobs/{job.pk}/preview/?threshold=0.95&mmu_ha=1").json()   # fake scores are 0.9 at most
+        self.assertEqual((none["summary"]["candidates"], none["summary"]["removed"]), (0, n))
+        self.assertEqual(self.c.get(f"/api/jobs/{job.pk}/preview/?threshold=2").status_code, 400)
+        big = self.c.get(f"/api/jobs/{job.pk}/preview/?threshold=0.5&mmu_ha=50").json()["summary"]["candidates"]
+        self.assertLessEqual(big, n)
+        r = self.c.post(f"/api/jobs/{job.pk}/rethreshold/", {"threshold": 0.5, "mmu_ha": 50}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        new = Job.objects.get(pk=r.json()["id"])
+        self.assertEqual(new.parameters["derived_from"], job.pk)
+        self.assertEqual(Detection.objects.filter(job=new).count(), big)
+        self.assertEqual(Detection.objects.filter(job=job).count(), n)   # the original is untouched
+        from projects.exports import selected_jobs
+        self.assertEqual([j.pk for j in selected_jobs(self.project)], [new.pk])   # the area's latest result
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])
