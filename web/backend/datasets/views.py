@@ -24,6 +24,7 @@ class DatasetListView(APIView):
             out.append({"id": d.id, "name": d.name, "version": d.version, "state": d.state, "licence": d.licence,
                         "licence_status": d.licence_status, "source": d.source, "split_name": d.split_name,
                         "split_sha256": d.split_sha256, "test_lock_sha256": d.test_lock_sha256, "split_check": d.split_check,
+                        "negatives": d.negatives,
                         "samples": d.samples.count(),
                         "overlaps": {"pairs": ov.count(), "cross_split": ov.filter(cross_split=True).count(),
                                      "by_kind": dict(Counter(ov.values_list("kind", flat=True)))}})

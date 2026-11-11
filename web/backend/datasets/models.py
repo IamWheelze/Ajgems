@@ -17,6 +17,8 @@ class DatasetVersion(models.Model):
     split_sha256 = models.CharField(max_length=64)
     test_lock_sha256 = models.CharField(max_length=64, blank=True)
     split_check = models.JSONField(default=dict, help_text="minefoot check-split result at import")
+    negatives = models.JSONField(default=dict, blank=True,
+                                 help_text="FR-074: digitised hard negatives per type, from minefoot check_negatives at import")
     imported_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

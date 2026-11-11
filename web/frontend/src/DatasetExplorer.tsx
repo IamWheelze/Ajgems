@@ -91,6 +91,9 @@ export default function DatasetExplorer() {
             <span>Licence {d.licence}: {d.licence_status}</span>
             <span>Split check: {d.split_check.ok ? "no leakage" : "LEAKAGE"} ({String(d.split_check.units_in_two_splits)} units
               across splits, {String(d.split_check.sites_within_buffer_across_splits)} pairs within 10 km)</span>
+            <span>Hard negatives (FR-074): {d.negatives?.features ? Object.entries(d.negatives.by_type).filter(([, n]) => n)
+              .map(([t, n]) => `${t.replace(/_/g, " ")} ${n}`).join(" · ") : d.negatives?.note ?? "none recorded"}
+              {d.negatives?.problems?.length ? <span className="error"> · {d.negatives.problems.join("; ")}</span> : null}</span>
             <span className={d.overlaps.cross_split ? "error" : ""}>Overlaps: {d.overlaps.pairs} pairs, {d.overlaps.cross_split} across splits</span>
             <span className="muted">Test lock {d.test_lock_sha256.slice(0, 12) || "none"} · split {d.split_sha256.slice(0, 12)}</span>
           </div>

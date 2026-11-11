@@ -68,3 +68,34 @@ class DomainTest(TestCase):
         r = domain_check(far, run_dir=run)
         self.assertFalse(r["inside"]); self.assertIn("Outside the validated domain", r["flags"][0])
         self.assertGreater(r["nearest_test_km"], 2000)
+
+
+class NegativeCountsTest(TestCase):
+    """FR-074: hard-negative counts per type are recorded and reported for each dataset version."""
+
+    def test_import_records_negatives_per_type(self):
+        import tempfile
+        from pathlib import Path
+        import geopandas as gpd
+        from django.core.management import call_command
+        from shapely.geometry import box
+        from accounts.models import Organisation, User
+        from rest_framework.test import APIClient
+        tmp = Path(tempfile.mkdtemp())
+        sites = gpd.GeoDataFrame({"site_id": ["a", "b", "c"], "split": ["train", "val", "test"], "source": ["t"] * 3,
+                                  "mine_scale": ["Artisanal"] * 3, "mine_type": ["Surface"] * 3},
+                                 geometry=[box(i, 6, i + 0.05, 6.05) for i in (0, 2, 4)], crs=4326)
+        sites.to_file(tmp / "split.gpkg", layer="sites", driver="GPKG")
+        neg = gpd.GeoDataFrame({"neg_type": ["farmland", "farmland", "riverbank"], "protocol_version": ["0.1"] * 3,
+                                "scene_id": ["S"] * 3, "image_date": ["2026-01-01"] * 3, "annotator": ["x"] * 3,
+                                "evidence_grade": ["E1"] * 3, "notes": [""] * 3},
+                               geometry=[box(0, 6, 0.01, 6.01), box(0.02, 6, 0.03, 6.01), box(2, 6, 2.01, 6.01)], crs=4326)
+        neg.to_file(tmp / "neg.gpkg", layer="hard_negatives", driver="GPKG")
+        call_command("import_dataset", split=str(tmp / "split.gpkg"), name="t_ds", dataset_version="1", negatives=str(tmp / "neg.gpkg"))
+        call_command("import_dataset", split=str(tmp / "split.gpkg"), name="t_ds", dataset_version="0")
+        org = Organisation.objects.create(name="O")
+        u = User.objects.create_user("ml", password="pw-long-enough", organisation=org, roles=["ml"], mfa_enabled=True)
+        c = APIClient(); c.force_login(u); s = c.session; s["mfa_verified"] = True; s.save()
+        rows = {d["version"]: d["negatives"] for d in c.get("/api/datasets/").json()}
+        self.assertEqual((rows["1"]["by_type"]["farmland"], rows["1"]["by_type"]["riverbank"], rows["1"]["features"]), (2, 1, 3))
+        self.assertIn("no digitised hard negatives", rows["0"]["note"])

@@ -70,7 +70,8 @@ export type RunDashboard = { id: number; name: string; state: string; run: strin
     reliability: { score_from: number; score_to: number; pixels: number; mean_score: number | null; labelled_fraction: number | null }[] }> | null };
 export type DatasetInfo = { id: number; name: string; version: string; state: string; licence: string; licence_status: string;
   source: string; split_name: string; split_sha256: string; test_lock_sha256: string; samples: number;
-  split_check: Record<string, number | boolean>; overlaps: { pairs: number; cross_split: number; by_kind: Record<string, number> } };
+  split_check: Record<string, number | boolean>; overlaps: { pairs: number; cross_split: number; by_kind: Record<string, number> };
+  negatives?: { features: number; by_type: Record<string, number>; problems?: string[]; note?: string; source?: string } };
 export type SampleProps = { id: number; site_id: string; split: string; mine_scale: string; mine_type: string; region: string; locked_test: boolean };
 export type SampleDetail = SampleProps & { source_split: string; unit_id: string; block_id: string; scene_id: string; acquired: string | null;
   footprint: GeoJSON.Polygon; labels: GeoJSON.MultiPolygon | null; overlaps: { other: string; kind: string; cross_split: boolean; iou: number | null }[] };

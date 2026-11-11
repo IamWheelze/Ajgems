@@ -26,6 +26,15 @@ def licence_status(name):
     return "unknown", "NOT IN LICENCE REGISTER: do not train on it"
 
 
+def _negatives(path):
+    """Counts per type and problems for a digitised hard-negative layer, or a note that none was given."""
+    if not path:
+        return {"by_type": {}, "features": 0, "note": "no digitised hard negatives recorded for this version"}
+    from minefoot.negatives import check_negatives
+    r = check_negatives(path)
+    return {**r, "source": Path(path).name, "sha256": hashlib.sha256(Path(path).read_bytes()).hexdigest()}
+
+
 class Command(BaseCommand):
     help = __doc__
 
@@ -33,8 +42,9 @@ class Command(BaseCommand):
         for a in ("--split", "--name", "--dataset-version"):
             p.add_argument(a, required=True)
         p.add_argument("--overlaps"); p.add_argument("--lock"); p.add_argument("--source", default="")
+        p.add_argument("--negatives", help="digitised hard_negatives.gpkg for this version (FR-074)")
 
-    def handle(self, split, name, dataset_version, overlaps, lock, source, **_):
+    def handle(self, split, name, dataset_version, overlaps, lock, source, negatives=None, **_):
         version = dataset_version
         import geopandas as gpd
         from minefoot.datasets import _region
@@ -55,7 +65,8 @@ class Command(BaseCommand):
                 state=DatasetVersion.State.LICENCE_REVIEW if "review" in status.lower() else DatasetVersion.State.INGESTED,
                 split_name=Path(split).stem, split_sha256=hashlib.sha256(Path(split).read_bytes()).hexdigest(),
                 test_lock_sha256=json.loads(Path(lock).read_text())["sha256"] if lock else "",
-                split_check={k: (v if isinstance(v, bool) else len(v)) for k, v in check.items()})
+                split_check={k: (v if isinstance(v, bool) else len(v)) for k, v in check.items()},
+                negatives=_negatives(negatives))
             objs = []
             for (_, r), x, y in zip(sites.iterrows(), c.x, c.y):
                 lab = None
