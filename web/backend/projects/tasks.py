@@ -100,7 +100,9 @@ def process_tile(job, tile, items, provider, work):
         tile.save(); return None
     from minefoot.conditions import tile_flags
     tile.conditions = tile_flags(prep)   # FR-054: prompts for review, never a mask
-    tile.state = Tile.State.RUNNING; tile.save(update_fields=["state", "usable_pct", "quality_decision", "conditions"])
+    from minefoot.drift import input_stats
+    tile.input_stats = input_stats(prep)   # FR-105: compared with the model's training statistics
+    tile.state = Tile.State.RUNNING; tile.save(update_fields=["state", "usable_pct", "quality_decision", "conditions", "input_stats"])
     _set(job, state=Job.State.RUNNING)
     score = pipeline.score_prepared(prep, job.parameters.get("model_run"))   # the model frozen at start
     score_path = pipeline.write_score(score, prep, Path(work) / f"{tile.grid_id}_score.tif")

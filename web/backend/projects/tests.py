@@ -460,3 +460,51 @@ class SignedExportTest(ExportTest):
         c = self.client_for("A", "viewer")
         self.assertEqual(c.get("/api/signing-key/").json()["key_id"], public_info()["key_id"])
         self.assertTrue(c.post("/api/exports/verify/", {"package": SimpleUploadedFile("p.zip", data)}, format="multipart").json()["ok"])
+
+
+class MonitoringTest(Base):
+    """FR-105: a simulated shift in inputs, outputs or review rejections raises an alert, and normal data does not."""
+
+    def test_simulated_shift_raises_alerts(self):
+        import tempfile
+        from datetime import datetime, timezone
+        from pathlib import Path
+        from django.contrib.gis.geos import MultiPolygon, Polygon
+        from django.core.management import call_command
+        from projects.models import AreaOfInterest, Tile
+        run = Path(tempfile.mkdtemp())
+        bands = ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12"]
+        mean, sd = [0.1] * 10, [0.05] * 10
+        (run / "normalisation.json").write_text(json.dumps({"bands": bands, "mean": mean, "std": sd}))
+        # validation: 100,000 predicted pixels (10 km2) over 1,000 km2 usable -> 10 km2 per 1,000 km2
+        (run / "metrics.json").write_text(json.dumps({"models": {"unet": {"val": {"per_site": [{"tp": 60000, "fp": 40000, "valid_km2": 1000}]}}}}))
+        p, gis = self.projects["A"], self.users[("A", "gis")]
+        scene = Scene.objects.first()
+
+        def job_with(name, means, cand_ha, statuses):
+            box = Polygon.from_bbox((8.0, 9.0, 8.9, 9.9)); box.srid = 4326   # about 100 km x 100 km
+            a = AreaOfInterest.objects.create(organisation=p.organisation, project=p, name=name, geometry=MultiPolygon(box),
+                                              area_km2=9800, created_by=gis)
+            j = Job.objects.create(organisation=p.organisation, project=p, area=a, model_version="t", created_by=gis,
+                                   state="succeeded", parameters={"model_run": str(run)})
+            Tile.objects.create(job=j, grid_id="t", geometry=box, state="done", scene=scene, usable_pct=100.0,
+                                outcome="candidate_found", input_stats={"usable_pixels": 1, "means": dict(zip(bands, means))})
+            for i, st in enumerate(statuses):
+                g = Polygon.from_bbox((8.0 + i / 100, 9.0, 8.005 + i / 100, 9.005)); g.srid = 4326
+                Detection.objects.create(organisation=p.organisation, project=p, job=j, scene=scene, geometry=g, original_geometry=g,
+                                         area_ha=cand_ha, score_mean=0.6, score_band="medium", threshold=0.4, min_mapping_unit_ha=1,
+                                         model_version="t", input_schema_version="s", masked_fraction=0, mask_status="assessed", status=st)
+        # normal: inputs at the training mean, about 10 km2 of candidates per 1,000 km2, few rejections
+        job_with("Normal", mean, 980, ["confirmed"] * 10)
+        # shifted: hazy (all bands +2 SD), far more candidate area, most reviewed candidates rejected
+        job_with("Shifted", [m + 2 * s for m, s in zip(mean, sd)], 9800, ["rejected"] * 8 + ["confirmed"] * 2)
+        ml = self.client_for("A", "ml")
+        self.assertEqual(self.client_for("A", "gis").get("/api/monitoring/").status_code, 403)
+        r = ml.get("/api/monitoring/").json()
+        kinds = {(a["area"], a["kind"]) for a in r["alerts"]}
+        self.assertEqual(kinds, {("Shifted", "input_drift"), ("Shifted", "output_drift"), ("Shifted", "review_rejections")})
+        normal = next(g for g in r["groups"] if g["area"] == "Normal")
+        self.assertAlmostEqual(normal["output_ratio"], 1.0, delta=0.1)
+        self.assertEqual(normal["reference_km2_per_1000km2"], 10.0)
+        call_command("check_drift", stdout=io.StringIO())
+        self.assertEqual(AuditEvent.objects.filter(action="monitoring.alert").count(), 3)

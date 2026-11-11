@@ -125,6 +125,7 @@ class Tile(models.Model):
     score_path = models.CharField(max_length=500, blank=True, help_text="the tile's model-score map (uint8 levels)")
     checksums = models.JSONField(default=dict, blank=True, help_text="SHA-256 of the fetched and prepared rasters (FR-021)")
     conditions = models.JSONField(default=dict, blank=True, help_text="FR-054 review prompts: haze or smoke, burn scar, water")
+    input_stats = models.JSONField(default=dict, blank=True, help_text="FR-105: mean reflectance per band of usable pixels")
     bytes_fetched = models.BigIntegerField(null=True, help_text="size of the windowed download")
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 

@@ -30,6 +30,13 @@ export type AnnotationTask = { id: number; project: number; job: number; tile: s
 export type Correction = { id: number; detection: number; project: number; kind: string; description: string; contact: string;
   requested_by: string; owner: string | null; state: string; outcome: string; review: number | null; created_at: string;
   events: { action: string; state_after: string; actor: string; note: string; at: string }[] };
+export type MonitoringReport = {
+  groups: { area: string; season: string; jobs: number[]; tiles: number; model_runs: string[]; usable_km2: number; input_shift: Record<string, number>;
+    candidate_km2_per_1000km2: number | null; reference_km2_per_1000km2: number | null; output_ratio: number | null;
+    reviewed: number; rejection_rate: number | null }[];
+  alerts: { area: string; season: string; kind: string; message: string }[];
+  thresholds: { input_shift_max_sd: number; output_ratio_range: [number, number]; output_min_usable_km2: number;
+    rejection_rate_max: number; rejection_min_reviewed: number } };
 export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
@@ -208,6 +215,7 @@ export const api = {
   corrections: () => call<Correction[]>("GET", "/api/corrections/"),
   requestCorrection: (detection: number, kind: string, description: string) => call<Correction>("POST", "/api/corrections/", { detection, kind, description }),
   correctionAction: (id: number, action: string, body: Record<string, unknown>) => call<Correction>("POST", `/api/corrections/${id}/${action}/`, body),
+  monitoring: () => call<MonitoringReport>("GET", "/api/monitoring/"),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

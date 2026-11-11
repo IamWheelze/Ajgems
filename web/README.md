@@ -243,6 +243,18 @@ What to compare with: any band preset, on the **same date** or on **another date
 
 The review header has a **Job** picker, so an earlier job's candidates and reviews stay reachable after a newer job over the same area. By default you see the latest job for each area.
 
+## Drift monitoring (FR-105, Commercial)
+
+**Monitoring** (ML and admin) groups finished jobs by area and season (Dec-Feb, Mar-May, Jun-Aug, Sep-Nov) and reports three signals:
+- **Input drift:** each tile's mean reflectance per band, as a shift in training standard deviations from the training mean. The training statistics come from the model's `normalisation.json`, fitted on training pixels only.
+- **Output drift:** candidate area per 1,000 km² of usable imagery, against the model's own rate on its validation sites (`minefoot.drift.reference_rate`).
+- **Review drift:** the share of reviewed candidates that reviewers rejected.
+
+Alerts use provisional rules: an input shift over 1 SD; a candidate rate outside ⅓× to 3× the validation rate (with at least 50 km² usable); rejections at or above 50% of at least 10 reviewed.
+- `python manage.py check_drift` writes each alert to the audit trail; schedule it daily.
+- **Tested:** a simulated shift (inputs +2 SD, 10× the candidate area, 80% rejected) raises all three alerts, and the unshifted area raises none.
+- **On the real Ghana area:** no alerts. The largest input shift is +0.76 SD (B07, forest), and the candidate rate is 2.7× the validation rate, which is plausible for a heavily mined area but close to the limit.
+
 ## Correction requests (FR-096, Commercial)
 
 Anyone who can see a released candidate, customer viewers included, can **Request a correction** in review. The kinds are: not mining disturbance, boundary wrong, location sensitive, imagery out of date, or other.

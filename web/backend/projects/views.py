@@ -657,3 +657,13 @@ class VerifyExportView(APIView):
         if f.size > 2 * 1024 ** 3:
             return Response({"detail": "package larger than 2 GB"}, status=400)
         return Response(verify(f.read(), public_key()))
+
+
+class MonitoringView(APIView):
+    """FR-105: drift and review-rejection rates per area and season, with alerts (ML and admin)."""
+    permission_classes = [RolePermission]
+    read_roles = ("ml", "admin")
+
+    def get(self, request):
+        from .monitoring import report
+        return Response(report(request.user.organisation))
