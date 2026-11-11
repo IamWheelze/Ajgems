@@ -136,9 +136,17 @@ In review, **Swipe compare** puts a second band preset (for example SWIR false c
 - **Same overlays:** candidate outlines in their status styles and the "not assessed" hatch are drawn on both sides.
 - **Same interactions:** clicks, keyboard review and boundary editing all go to the main map.
 
+## Run dashboard (FR-130, internal)
+
+**Models → Run dashboard** (ML and admin) charts each registered model's stored records:
+- **Training curves** from `history.csv`, with the kept checkpoint marked.
+- **Per-stratum metrics** (F1, precision, recall, footprints found, false-alarm area) with 95% site-bootstrap intervals, from `metrics.json`.
+- **Precision-recall and reliability** from `curves.json`. Make one with `minefoot curves <run> --prepared-root … --labels-root …`; it refuses if its counts at the run's threshold differ from the run record.
+
+You can switch between validation and test sites, show models side by side, hover any chart for values, and open a table view.
+
 ## Not built yet (next slices)
 
 - **Side-by-side and blink comparison, and comparing dates** (FR-127, Pilot). Swipe between band presets of one scene is built.
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
-- **Experiment dashboard** (FR-130).
 - **Signed export manifests** (FR-109). Checksums exist; signatures do not.

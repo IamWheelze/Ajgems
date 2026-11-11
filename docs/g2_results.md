@@ -103,7 +103,7 @@ Digitised hard negatives use the same route: `minefoot rasterize-negatives hard_
 | 0.7–0.8 | 0.442 | 0.359 |
 | 0.9–1.0 | 0.727 | 0.477 |
 
-Scores above about 0.2 overstate the labelled share, and more on test than on validation. Incomplete labels explain part of this (unlabelled mining counts against the model), so it is not a pure calibration error. "Model score" wording therefore stays (FR-084). Calibration needs labels checked for completeness, such as the Nigerian sites under the 1 km protocol.
+`g2_v1` is more overconfident still (top bin 0.52 validation, 0.35 test; [`curves.json`](evidence/g2_v1/curves.json)). Scores above about 0.2 overstate the labelled share, and more on test than on validation. Incomplete labels explain part of this (unlabelled mining counts against the model), so it is not a pure calibration error. "Model score" wording therefore stays (FR-084). Calibration needs labels checked for completeness, such as the Nigerian sites under the 1 km protocol.
 
 ## What this means
 
