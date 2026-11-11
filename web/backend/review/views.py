@@ -234,3 +234,94 @@ class FieldPhotoView(APIView):
         except FieldPhoto.DoesNotExist:
             raise Http404
         return FileResponse(open(p.path, "rb"), content_type="image/jpeg")
+
+
+class AnnotationTaskListView(APIView):
+    """FR-076: GET tasks; POST {tile} creates a task on a job tile's imagery (GIS or ML)."""
+    permission_classes = [RolePermission]
+    read_roles = ("gis", "ml", "admin")
+    write_roles = ("gis", "ml")
+
+    def get(self, request):
+        from .annotation import payload
+        from .models import AnnotationTask
+        qs = AnnotationTask.objects.filter(organisation=request.user.organisation).select_related("tile__scene", "created_by")
+        return Response([payload(t) for t in qs.order_by("-created_at")])
+
+    def post(self, request):
+        from projects.models import Tile
+        from .annotation import create, payload
+        try:
+            return Response(payload(create(request.user, request.data.get("tile"))), status=201)
+        except Tile.DoesNotExist:
+            raise Http404
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)
+
+
+class AnnotationTaskView(APIView):
+    """GET the task with its current labels; POST edit/ {op, class, coordinates?, radius_m?, indices?, index?};
+    POST state/ {state}; GET mask/ (zip: mask.tif, labels.geojson, summary.json); GET image/?layer=."""
+    permission_classes = [RolePermission]
+    read_roles = ("gis", "ml", "admin")
+    write_roles = ("gis", "ml")
+
+    def _task(self, request, pk):
+        from .models import AnnotationTask
+        try:
+            return AnnotationTask.objects.select_related("tile__scene", "tile__job", "created_by").get(pk=pk, organisation=request.user.organisation)
+        except AnnotationTask.DoesNotExist:
+            raise Http404
+
+    def get(self, request, pk, part=None):
+        import io
+        import json
+        import zipfile
+        from django.http import FileResponse, HttpResponse
+        from .annotation import export_mask, features, payload
+        from .models import LABEL_CLASSES
+        task = self._task(request, pk)
+        if part == "mask":
+            tif, gj, summary = export_mask(task)
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+                z.writestr("mask.tif", tif); z.writestr("labels.geojson", gj)
+                z.writestr("summary.json", json.dumps({**summary, "classes": {i + 1: c for i, c in enumerate(LABEL_CLASSES)},
+                                                       "protocol_version": task.protocol_version, "tile": task.tile.grid_id}, indent=1))
+            r = HttpResponse(buf.getvalue(), content_type="application/zip")
+            r["Content-Disposition"] = f'attachment; filename="annotation_{task.pk}_{task.tile.grid_id}.zip"'
+            return r
+        if part == "image":
+            from types import SimpleNamespace
+            from projects.imagery import render_detection_png
+            t = task.tile
+            try:
+                path, bounds = render_detection_png(SimpleNamespace(job=t.job, geometry=t.geometry, scene=t.scene),
+                                                    request.query_params.get("layer", "true_colour"), only_tiles=[t])
+            except ValueError as exc:
+                return Response({"detail": str(exc)}, status=400)
+            if request.query_params.get("bounds") == "1":
+                return Response({"bounds": bounds})
+            return FileResponse(open(path, "rb"), content_type="image/png")
+        return Response({**payload(task), "labels": features(task), "classes": LABEL_CLASSES})
+
+    def post(self, request, pk, part=None):
+        from .annotation import edit, payload
+        task = self._task(request, pk)
+        if part == "state":
+            st = request.data.get("state")
+            if st not in ("open", "done"):
+                return Response({"detail": "state must be open or done"}, status=400)
+            task.state = st; task.save(update_fields=["state"])
+            from audit.models import record
+            record(request.user, f"annotation.{st}", task)
+            return Response(payload(task))
+        if part != "edit":
+            raise Http404
+        d = request.data
+        try:
+            return Response(edit(request.user, pk, d.get("op", ""), d.get("class", "mining"), d))
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)

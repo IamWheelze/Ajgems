@@ -6,6 +6,7 @@ import ProjectAreas from "./ProjectAreas";
 import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
+import Annotate from "./Annotate";
 import ErrorMaps from "./ErrorMaps";
 import Field from "./Field";
 import Pool from "./Pool";
@@ -59,6 +60,7 @@ export default function App() {
           : section === "models" ? <Registry me={me} />
           : section === "datasets" ? <DatasetExplorer />
           : section === "pool" ? <Pool me={me} />
+          : section === "annotate" && id ? <Annotate taskId={Number(id)} />
           : section === "field" ? <Field me={me} />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
           : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />

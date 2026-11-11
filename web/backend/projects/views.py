@@ -269,7 +269,7 @@ class JobViewSet(viewsets.ViewSet):
         job = self._job(request, pk)
         return Response({"type": "FeatureCollection", "features": [
             {"type": "Feature", "id": t.id, "geometry": json.loads(t.geometry.geojson),
-             "properties": {"grid_id": t.grid_id, "state": t.state, "outcome": t.outcome, "usable_pct": t.usable_pct,
+             "properties": {"tile_id": t.id, "grid_id": t.grid_id, "state": t.state, "outcome": t.outcome, "usable_pct": t.usable_pct,
                             "quality_decision": t.quality_decision, "candidates": t.candidates,
                             "failure_reason": t.failure_reason, "checksums": t.checksums,
                             "scene": t.scene.source_id if t.scene_id else None,

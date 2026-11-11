@@ -320,6 +320,57 @@ class JobTest(TestCase):
             bad = self.c.post(f"/api/projects/{self.project.pk}/uploads/", {"filename": "x.tif", "size": 10}, format="json")
             self.assertEqual(bad.status_code, 400)
 
+    def test_annotation_tools_and_valid_mask(self):
+        """FR-076: polygon, brush, split, merge, erase, classes, undo; the exported mask is valid and on the tile grid."""
+        import io, zipfile
+        job = self.run_job(self.estimate()["id"])
+        t = job.tiles.exclude(prepared_path="").exclude(outcome="insufficient_usable_imagery").first()
+        self.assertEqual(APIClient().post("/api/annotation-tasks/", {"tile": t.pk}, format="json").status_code, 403)
+        r = self.c.post("/api/annotation-tasks/", {"tile": t.pk}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        tid = r.json()["id"]
+        from rasterio.warp import transform_bounds
+        with rasterio.open(Path(t.prepared_path) / "reflectance.tif") as ref:   # the test tiles share one raster
+            rb = transform_bounds(ref.crs, "EPSG:4326", *ref.bounds)
+        tb = t.geometry.extent
+        x0, y0, x1, y1 = max(tb[0], rb[0]), max(tb[1], rb[1]), min(tb[2], rb[2]), min(tb[3], rb[3])
+        X = lambda f: x0 + (x1 - x0) * f; Y = lambda f: y0 + (y1 - y0) * f
+        sq = lambda a, b, c, d: [[X(a), Y(b)], [X(c), Y(b)], [X(c), Y(d)], [X(a), Y(d)]]
+        ed = lambda **k: self.c.post(f"/api/annotation-tasks/{tid}/edit/", k, format="json")
+        n = lambda r, cls="mining": [f for f in r.json()["features"] if f["properties"]["class"] == cls]
+        self.assertEqual(len(n(ed(op="polygon", coordinates=sq(.2, .2, .4, .4)))), 1)
+        r = ed(op="brush", coordinates=[[X(.4), Y(.3)], [X(.6), Y(.3)]], radius_m=20)       # paint, joined to the square
+        self.assertEqual(len(n(r)), 1)
+        r = ed(op="split", coordinates=[[X(.3), Y(.1)], [X(.3), Y(.5)]])                      # cut across
+        self.assertEqual(len(n(r)), 2)
+        self.assertEqual(len(n(ed(op="merge", indices=[0, 1]))), 1)                           # and back together
+        r = ed(op="erase", coordinates=[[X(.25), Y(.25)]], radius_m=15)                        # a hole
+        self.assertEqual(len(n(r)), 1)
+        bow = [[X(.7), Y(.7)], [X(.9), Y(.9)], [X(.9), Y(.7)], [X(.7), Y(.9)]]                 # self-crossing outline
+        r = ed(op="polygon", coordinates=bow, **{"class": "farmland"})
+        self.assertEqual(r.status_code, 200)
+        self.assertGreaterEqual(len(n(r, "farmland")), 1)                                     # repaired, not refused
+        r = ed(op="undo")                                                                     # removes the farmland again
+        self.assertEqual((len(n(r)), len(n(r, "farmland"))), (1, 0))
+        r = ed(op="polygon", coordinates=bow, **{"class": "farmland"})
+        self.assertEqual(ed(op="split", coordinates=[[X(.0), Y(.0)], [X(.01), Y(.01)]]).status_code, 400)   # misses everything
+        self.assertEqual(ed(op="polygon", coordinates=sq(.2, .2, .4, .4), **{"class": "gold"}).status_code, 400)
+        z = zipfile.ZipFile(io.BytesIO(self.c.get(f"/api/annotation-tasks/{tid}/mask/").content))
+        with rasterio.open(io.BytesIO(z.read("mask.tif"))) as m, rasterio.open(Path(t.prepared_path) / "reflectance.tif") as ref:
+            self.assertEqual((m.transform, m.crs, m.shape), (ref.transform, ref.crs, ref.shape))   # pixel for pixel
+            vals = set(np.unique(m.read(1)).tolist())
+        self.assertEqual(vals, {0, 1, 2}, (vals, json.loads(z.read("summary.json"))))   # background, mining, farmland
+        summary = json.loads(z.read("summary.json"))
+        self.assertGreater(summary["pixels"]["mining"], 0)
+        from shapely.geometry import shape as shp
+        for f in json.loads(z.read("labels.geojson"))["features"]:
+            self.assertTrue(shp(f["geometry"]).is_valid)
+        self.c.post(f"/api/annotation-tasks/{tid}/state/", {"state": "done"}, format="json")
+        self.assertEqual(ed(op="polygon", coordinates=sq(.5, .5, .6, .6)).status_code, 400)
+        from review.models import AnnotationVersion
+        with self.assertRaises(PermissionError):
+            AnnotationVersion.objects.first().delete()
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])

@@ -166,3 +166,29 @@ class FieldPhoto(AppendOnly):
     sha256 = models.CharField(max_length=64)
     blurred_regions = models.IntegerField(default=0, help_text="areas the observer blurred before upload (people, plates)")
     width = models.IntegerField(); height = models.IntegerField()
+
+
+LABEL_CLASSES = ["mining", "farmland", "settlement", "riverbank", "bare_ground", "quarry_or_borrow_pit", "burn_scar", "other_land_use"]
+
+
+class AnnotationTask(models.Model):
+    """FR-076: label one job tile on its own imagery. The working labels are the latest AnnotationVersion."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    project = models.ForeignKey("projects.Project", on_delete=models.PROTECT, related_name="annotation_tasks")
+    tile = models.ForeignKey("projects.Tile", on_delete=models.PROTECT, related_name="+")
+    protocol_version = models.CharField(max_length=20, default="0.1")
+    state = models.CharField(max_length=20, default="open", choices=[("open", "open"), ("done", "done")])
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+class AnnotationVersion(AppendOnly):
+    """Every edit appends a version: {class: GeoJSON MultiPolygon in EPSG:4326}. Undo appends the earlier state."""
+    task = models.ForeignKey(AnnotationTask, on_delete=models.PROTECT, related_name="versions")
+    labels = models.JSONField(default=dict)
+    op = models.CharField(max_length=20)
+    editor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]

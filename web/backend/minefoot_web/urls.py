@@ -7,7 +7,7 @@ from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
-from review.views import FieldPhotoView, FieldTasksView, FieldVisitListView, FieldVisitSyncView, MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
+from review.views import AnnotationTaskListView, AnnotationTaskView, FieldPhotoView, FieldTasksView, FieldVisitListView, FieldVisitSyncView, MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
 
 # FR-001: the Django admin is for administrators, so it also requires a session whose second factor was
 # verified through the app's sign-in (/api/auth/login/ then /api/auth/mfa/verify/).
@@ -59,6 +59,9 @@ urlpatterns = [
     path("api/field/visits/", FieldVisitSyncView.as_view()),
     path("api/field/photos/<int:pk>/", FieldPhotoView.as_view()),
     path("api/detections/<int:pk>/field-visits/", FieldVisitListView.as_view()),
+    path("api/annotation-tasks/", AnnotationTaskListView.as_view()),
+    path("api/annotation-tasks/<int:pk>/", AnnotationTaskView.as_view()),
+    path("api/annotation-tasks/<int:pk>/<str:part>/", AnnotationTaskView.as_view()),
     path("api/pool/", PoolView.as_view()),
     path("api/pool/export/", PoolExportView.as_view()),
     path("api/pool/<int:pk>/decide/", PoolDecideView.as_view()),

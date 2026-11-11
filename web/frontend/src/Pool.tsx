@@ -19,6 +19,8 @@ export default function Pool({ me }: { me: Me }) {
   const [sel, setSel] = useState<PoolFeature | null>(null);
   const [decision, setDecision] = useState(""); const [reason, setReason] = useState(""); const [note, setNote] = useState("");
   const [error, setError] = useState(""); const [busy, setBusy] = useState(false);
+  const [tasks, setTasks] = useState<Awaited<ReturnType<typeof api.annotationTasks>>>([]);
+  useEffect(() => { if (me.roles.some((r) => ["gis", "ml", "admin"].includes(r))) api.annotationTasks().then(setTasks).catch(() => setTasks([])); }, []);
   const load = () => api.pool().then((r) => { setItems(r.features); setDecisions(r.decisions); }).catch((e) => setError(e.message));
   useEffect(() => { load(); }, []);
 
@@ -69,7 +71,7 @@ export default function Pool({ me }: { me: Me }) {
   return (
     <div className="split">
       <aside className="panel">
-        <h1>Annotation QC</h1>
+        <h1>Annotation</h1>
         <p className="small muted">Reviewed candidates nominated as training examples. Each becomes a label only after an independent
           check by someone who did not nominate or review it (FR-075). Examples from the Nigerian test regions are never accepted into the pool.</p>
         <div className="row gap">
@@ -77,6 +79,11 @@ export default function Pool({ me }: { me: Me }) {
             {human(s)} ({(items ?? []).filter((f) => f.properties.state === s).length})</button>)}
         </div>
         {me.roles.includes("ml") && <a className="button" href="/api/pool/export/">Download accepted labels (.zip)</a>}
+        <details className="small" open={tasks.length > 0}>
+          <summary>Annotation tasks ({tasks.length})</summary>
+          <p className="muted">Label a job tile with polygon, brush, split and merge tools (FR-076). Start one from a job's tile with "Annotate this tile".</p>
+          <ul className="plain">{tasks.map((t) => <li key={t.id}><a href={`#/annotate/${t.id}`}>Tile {t.tile}</a> · job {t.job} · {t.date} · {t.state} · {t.versions} edit(s)</li>)}</ul>
+        </details>
         {error && <p className="error small" role="alert">{error}</p>}
         <ol className="queue" aria-label="Nominations">
           {shown.map((f) => (

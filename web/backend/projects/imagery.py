@@ -165,13 +165,14 @@ def parse_stretch(layer, value):
     return round(lo, 3), round(hi, 3)
 
 
-def render_detection_png(detection, layer="true_colour", stretch=None):
+def render_detection_png(detection, layer="true_colour", stretch=None, only_tiles=None):
     """The imagery under a detection: a mosaic of its job's tiles that touch it, or its scene's folder."""
     if layer not in LAYERS:
         raise ValueError(f"layer must be one of {LAYERS}")
     stretch = parse_stretch(layer, stretch) if isinstance(stretch, str) or stretch is None else stretch
-    tiles = [t for t in detection.job.tiles.filter(geometry__intersects=detection.geometry).exclude(prepared_path="")
-             if (Path(t.prepared_path) / "reflectance.tif").exists()]
+    tiles = [t for t in (only_tiles if only_tiles is not None else
+                         detection.job.tiles.filter(geometry__intersects=detection.geometry).exclude(prepared_path=""))
+             if t.prepared_path and (Path(t.prepared_path) / "reflectance.tif").exists()]
     if not tiles:
         if stretch is not None:
             raise ValueError("a custom stretch needs the job's tile imagery")

@@ -24,6 +24,8 @@ export type PoolFeature = GeoJSON.Feature<GeoJSON.Polygon, { id: number; project
 export type UploadInfo = { id: number; project: number; filename: string; size: number; received: number; state: string; sha256: string;
   error: string; scene_id: string | null; acquired_at: string | null; cloud_pct: number | null; processing_baseline: string | null;
   chunk_bytes: number; created_at: string };
+export type AnnotationTask = { id: number; project: number; job: number; tile: string; tile_id: number; scene: string | null; date: string | null;
+  state: string; protocol_version: string; created_by: string; versions: number; labels: GeoJSON.FeatureCollection; classes: string[] };
 export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
@@ -47,7 +49,7 @@ export type Job = {
     area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };
 };
 export type TileProps = { grid_id: string; state: string; outcome: string; usable_pct: number | null; quality_decision: string;
-  candidates: number; failure_reason: string; scene: string | null; date: string | null; checksums?: Record<string, string> };
+  candidates: number; failure_reason: string; scene: string | null; date: string | null; checksums?: Record<string, string>; tile_id?: number };
 export type ModelVersion = {
   id: number; name: string; state: string; input_schema: string; code_commit: string; threshold: number;
   dataset: Record<string, string>; licences: { item: string; licence: string }[];
@@ -188,6 +190,13 @@ export const api = {
   fieldVisits: (id: number) => call<{ id: number; observer: string; observer_name: string; visited_at: string; lat: number | null; lon: number | null;
     accuracy_m: number | null; notes: string; decision: { action: string; reason_code: string } | null;
     photos: { id: number; blurred_regions: number }[] }[]>("GET", `/api/detections/${id}/field-visits/`),
+  annotationTasks: () => call<Omit<AnnotationTask, "labels" | "classes">[]>("GET", "/api/annotation-tasks/"),
+  createAnnotationTask: (tile: number) => call<AnnotationTask>("POST", "/api/annotation-tasks/", { tile }),
+  annotationTask: (id: number) => call<AnnotationTask>("GET", `/api/annotation-tasks/${id}/`),
+  annotationEdit: (id: number, body: Record<string, unknown>) => call<GeoJSON.FeatureCollection>("POST", `/api/annotation-tasks/${id}/edit/`, body),
+  annotationState: (id: number, state: string) => call<AnnotationTask>("POST", `/api/annotation-tasks/${id}/state/`, { state }),
+  annotationBounds: (id: number, layer: string) => call<{ bounds: number[] }>("GET", `/api/annotation-tasks/${id}/image/?layer=${layer}&bounds=1`),
+  annotationImageUrl: (id: number, layer: string) => `/api/annotation-tasks/${id}/image/?layer=${layer}`,
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),
