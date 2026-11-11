@@ -218,9 +218,11 @@ def rethreshold(user, job, threshold, mmu_ha) -> Job:
                                 candidates=0 if g is None else len(g), failure_reason=x.failure_reason,
                                 prepared_path=x.prepared_path, score_path=x.score_path, outcome=outcome)
         from .models import Detection
+        from .tasks import candidate_conditions
+        new_tiles = list(new.tiles.exclude(prepared_path=""))
         for c in cands:
             gg = GEOSGeometry(c["geometry"].wkt, srid=4326)
-            Detection.objects.create(
+            Detection.objects.create(conditions=candidate_conditions(new_tiles, c, gg),
                 organisation=job.organisation, project=job.project, job=new, scene_id=c["scene_pk"], geometry=gg,
                 original_geometry=gg, area_ha=c["area_ha"], score_mean=c["score_mean"], score_band=c["score_band"],
                 threshold=t, min_mapping_unit_ha=m, model_version=job.model_version,

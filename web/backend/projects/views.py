@@ -272,6 +272,7 @@ class JobViewSet(viewsets.ViewSet):
              "properties": {"tile_id": t.id, "grid_id": t.grid_id, "state": t.state, "outcome": t.outcome, "usable_pct": t.usable_pct,
                             "quality_decision": t.quality_decision, "candidates": t.candidates,
                             "failure_reason": t.failure_reason, "checksums": t.checksums,
+                            "conditions": t.conditions.get("flags", []),
                             "scene": t.scene.source_id if t.scene_id else None,
                             "date": t.scene.acquired_at.date().isoformat() if t.scene_id else None}}
             for t in job.tiles.select_related("scene").order_by("grid_id")]})

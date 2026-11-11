@@ -138,6 +138,9 @@ class JobTest(TestCase):
         cov = prog["area_coverage"]   # FR-051: one tile fully clouded, so part of the area is not assessed
         self.assertAlmostEqual(cov["usable_pct"] + cov["not_assessed_pct"], 100, places=0)
         self.assertGreater(cov["not_assessed_pct"], 0)
+        # FR-054: prompts recorded per tile and per candidate.
+        self.assertTrue(all("share" in t.conditions for t in job.tiles.filter(state="done").exclude(outcome="insufficient_usable_imagery")))
+        self.assertIn("usable_pixels", Detection.objects.filter(job=job).first().conditions)
         fc = self.c.get(f"/api/jobs/{job.pk}/tiles/").json()
         self.assertEqual(len(fc["features"]), job.tiles.count())
         self.assertEqual(fc["features"][0]["properties"]["date"], "2026-01-03")

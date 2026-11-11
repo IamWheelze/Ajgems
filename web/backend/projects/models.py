@@ -124,6 +124,7 @@ class Tile(models.Model):
     prepared_path = models.CharField(max_length=500, blank=True, help_text="minefoot prepared folder for this tile")
     score_path = models.CharField(max_length=500, blank=True, help_text="the tile's model-score map (uint8 levels)")
     checksums = models.JSONField(default=dict, blank=True, help_text="SHA-256 of the fetched and prepared rasters (FR-021)")
+    conditions = models.JSONField(default=dict, blank=True, help_text="FR-054 review prompts: haze or smoke, burn scar, water")
     bytes_fetched = models.BigIntegerField(null=True, help_text="size of the windowed download")
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 
@@ -162,6 +163,7 @@ class Detection(models.Model):
     status = models.CharField(max_length=30, choices=Status.choices, default=Status.UNREVIEWED)
     evidence_grade = models.CharField(max_length=2, default="E0")
     restricted = models.BooleanField(default=False, help_text="FR-005: location withheld from viewers and exports without a grant")
+    conditions = models.JSONField(default=dict, blank=True, help_text="FR-054 review prompts within the polygon")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

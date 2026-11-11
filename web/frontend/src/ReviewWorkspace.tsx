@@ -534,6 +534,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
               <dt>Settings</dt><dd className="small">threshold {p.threshold.toFixed(2)} · min. unit {p.min_mapping_unit_ha} ha</dd>
             </dl>
             <p className="statement small">{p.statement}</p>
+            {(p.conditions ?? []).map((c) => <p key={c.condition} className="badge warn block small" title="FR-054 prompt; it never changes the score">
+              Check: {c.message} ({Math.round(c.share * 100)}% of the polygon)</p>)}
 
             {allowed.length > 0 && (
               <div className="card decide">

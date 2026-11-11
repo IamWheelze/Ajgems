@@ -139,6 +139,20 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Condition prompts: haze or smoke, burn scars, water (FR-054)
+
+Each processed tile, and each candidate, gets review prompts from `minefoot.conditions`, using simple spectral rules on usable pixels.
+- **The rules:**
+  - haze or smoke: a high haze-optimised transform over vegetation;
+  - burn scar: dark ground with low NIR and a negative burn ratio;
+  - water: NDWI above 0.1.
+- **What they do:** they are prompts only. They never mask pixels and never change a score. They appear in the review evidence panel ("Check: …") and on the job monitor's tile card.
+- **Measured** (`minefoot conditions-eval`, 120 Global ML-ready validation and test sites, `docs/evidence/conditions_v1.json`):
+  - water against ESA WorldCover water and wetland: precision 0.98, recall 0.63;
+  - haze could not be evaluated: these scenes contain no thin-cirrus pixels to compare with;
+  - burn scars have no labelled examples, so only the firing rate is known: 5.0% of usable pixels overall, 8.2% of labelled mining pixels and 4.8% elsewhere. Dark wet mine ground often looks burn-like, so treat this prompt as "look closer", never as a reason to reject.
+- **Thresholds** are provisional. Tile prompts fire at 20% (haze), 10% (burn) and 2% (water) of usable pixels; candidate prompts at 30% of the polygon. With these, 20 and 11 of the 120 sites get burn and water prompts.
+
 ## Field visits, offline (FR-095)
 
 **Field visits** (field role) is a phone page that works without a connection.

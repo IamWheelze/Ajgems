@@ -996,3 +996,23 @@ def test_uploaded_safe_matches_the_catalogue_path(tmp_path):
     (tmp_path / "bad.zip").write_bytes(b"not a zip")
     with pytest.raises(NotCompatible, match="zip"):
         read_safe(tmp_path / "bad.zip")
+
+
+def test_condition_flags_are_prompts_on_the_right_ground(tmp_path):
+    """FR-054: the water prompt finds the synthetic river; clear vegetation raises no prompt; nothing is masked."""
+    import rasterio
+    from shapely.geometry import box as sbox
+    from minefoot.conditions import masks, polygon_flags, tile_flags
+    raw = make_scene(tmp_path / "raw", size=256, seed=4, scene_id="SYN", cloud=False)
+    prepare_scene(raw, tmp_path / "p")
+    with rasterio.open(tmp_path / "p" / "reflectance.tif") as s, rasterio.open(tmp_path / "p" / "scl.tif") as q:
+        arr, scl, tr, crs = s.read(), q.read(1), s.transform, s.crs
+    m = masks(arr, scl)
+    river = scl == 6
+    assert m["water"][river].mean() > 0.9 and m["water"][scl == 4].mean() < 0.01
+    t = tile_flags(tmp_path / "p")
+    assert "water" in [f["condition"] for f in t["flags"]]
+    assert t["usable_pixels"] == int(m["valid"].sum())                  # prompts never remove pixels
+    import geopandas as gpd
+    veg = gpd.GeoSeries([sbox(*rasterio.transform.xy(tr, 60, 10), *rasterio.transform.xy(tr, 40, 30))], crs=crs).to_crs(4326).iloc[0]
+    assert polygon_flags(tmp_path / "p", veg.envelope)["flags"] == []

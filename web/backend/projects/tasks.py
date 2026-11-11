@@ -98,7 +98,9 @@ def process_tile(job, tile, items, provider, work):
     if cov.decision == "block":
         tile.state, tile.outcome = Tile.State.DONE, Tile.Outcome.INSUFFICIENT
         tile.save(); return None
-    tile.state = Tile.State.RUNNING; tile.save(update_fields=["state", "usable_pct", "quality_decision"])
+    from minefoot.conditions import tile_flags
+    tile.conditions = tile_flags(prep)   # FR-054: prompts for review, never a mask
+    tile.state = Tile.State.RUNNING; tile.save(update_fields=["state", "usable_pct", "quality_decision", "conditions"])
     _set(job, state=Job.State.RUNNING)
     score = pipeline.score_prepared(prep, job.parameters.get("model_run"))   # the model frozen at start
     score_path = pipeline.write_score(score, prep, Path(work) / f"{tile.grid_id}_score.tif")
@@ -164,6 +166,16 @@ def merge_parts(parts, threshold, mmu):
     return out
 
 
+def candidate_conditions(tiles, c, gg):
+    """FR-054 prompts within a candidate, read on the tile its scene came from. Never blocks a job."""
+    from minefoot.conditions import polygon_flags
+    home = next((t for t in tiles if t.scene_id == c["scene_pk"] and t.geometry.intersects(gg)), None)
+    try:
+        return polygon_flags(home.prepared_path, c["geometry"]) if home else {}
+    except Exception as exc:
+        return {"error": str(exc)[:200]}
+
+
 def merge_candidates(job, work):
     """Merge the tiles' saved candidates and store them as the job's detections."""
     import geopandas as gpd
@@ -171,9 +183,11 @@ def merge_candidates(job, work):
     cands = merge_parts([gpd.read_file(p) for p in sorted(Path(work).glob("*_candidates.gpkg"))], threshold, mmu)
     with transaction.atomic():
         Detection.objects.filter(job=job).delete()   # rebuilt on resume; no reviews exist before success
+        tiles = list(job.tiles.exclude(prepared_path=""))
         for c in cands:
             gg = GEOSGeometry(c["geometry"].wkt, srid=4326)
-            Detection.objects.create(
+            Detection.objects.create(conditions=candidate_conditions(tiles, c, gg),
+                
                 organisation=job.organisation, project=job.project, job=job, scene_id=c["scene_pk"], geometry=gg,
                 original_geometry=gg, area_ha=c["area_ha"], score_mean=c["score_mean"], score_band=c["score_band"],
                 threshold=threshold, min_mapping_unit_ha=mmu, model_version=job.model_version,

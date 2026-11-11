@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -111,6 +111,10 @@ def main(argv=None):
     a.add_argument("--out", required=True)
     a = sub.add_parser("rescore", help="recompute footprint metrics of a stored run with the current definition")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a = sub.add_parser("conditions-eval", help="measure the FR-054 condition flags against labelled references")
+    a.add_argument("--prepared-root", required=True); a.add_argument("--worldcover-root", required=True)
+    a.add_argument("--sites", required=True, help="sites.json from a run (uses its test and validation sites)"); a.add_argument("--out")
+    a.add_argument("--labels-root", help="mining labels, to measure how often each prompt fires on mining ground")
     a = sub.add_parser("curves", help="precision-recall and reliability data for a stored run (curves.json)")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
     a = sub.add_parser("labelling-kit", help="Nigerian labelling kit: imagery per region and a QGIS project to digitise in")
@@ -347,6 +351,12 @@ def main(argv=None):
                 print(f"{name} {k}: false candidates/1000 km2 {a['false_candidates_per_1000km2']:.1f} "
                       f"(touching no label: {a['false_candidates_detached_per_1000km2']:.1f}), "
                       f"false-candidate area {a['false_candidate_ha_per_1000km2']:.0f} ha/1000 km2")
+        return 0
+    if x.cmd == "conditions-eval":
+        from .conditions import evaluate
+        ids = json.loads(Path(x.sites).read_text())
+        ids = ids["val"] + ids["test"] if isinstance(ids, dict) else ids
+        print(json.dumps({k: v for k, v in evaluate(x.prepared_root, x.worldcover_root, ids, x.out, x.labels_root).items() if k != "site_ids"}, indent=1))
         return 0
     if x.cmd == "curves":
         from .baseline import run_curves

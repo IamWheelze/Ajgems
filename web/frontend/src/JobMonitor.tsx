@@ -198,6 +198,7 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
             {picked.usable_pct !== null && <span>Usable imagery {Number(picked.usable_pct).toFixed(1)}% ({picked.quality_decision})</span>}
             <span>{picked.candidates} candidate piece(s)</span>
             {picked.failure_reason && <span className="error">{picked.failure_reason}</span>}
+            {(picked.conditions ?? []).map((c) => <span key={c.condition} className="badge warn">Check: {c.message} ({Math.round(c.share * 100)}% of usable pixels)</span>)}
             {picked.tile_id && me.roles.some((r) => r === "gis" || r === "ml") && picked.outcome !== "insufficient_usable_imagery" && picked.state === "done" &&
               <button onClick={() => api.createAnnotationTask(picked.tile_id!).then((t) => { location.hash = `#/annotate/${t.id}`; }).catch((e) => setError(e.message))}>
                 Annotate this tile</button>}

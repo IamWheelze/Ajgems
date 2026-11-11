@@ -10,6 +10,7 @@ export type DetectionProps = {
   id: number; status: string; area_ha: number; score_band: string; score_type: string; threshold: number;
   min_mapping_unit_ha: number; model_version: string; masked_fraction: number; mask_status: string;
   evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[]; restricted?: boolean;
+  conditions?: { condition: string; share: number; message: string }[];
 };
 export type PixelInfo = { lon: number; lat: number; crs: string; row: number; col: number; tile: string;
   reflectance: Record<string, number | null>; ndvi: number | null; ndwi: number | null; scl: number; scl_class: string; usable: boolean;
@@ -49,7 +50,8 @@ export type Job = {
     area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };
 };
 export type TileProps = { grid_id: string; state: string; outcome: string; usable_pct: number | null; quality_decision: string;
-  candidates: number; failure_reason: string; scene: string | null; date: string | null; checksums?: Record<string, string>; tile_id?: number };
+  candidates: number; failure_reason: string; scene: string | null; date: string | null; checksums?: Record<string, string>; tile_id?: number;
+  conditions?: { condition: string; share: number; message: string }[] };
 export type ModelVersion = {
   id: number; name: string; state: string; input_schema: string; code_commit: string; threshold: number;
   dataset: Record<string, string>; licences: { item: string; licence: string }[];
