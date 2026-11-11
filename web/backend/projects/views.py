@@ -377,7 +377,7 @@ class DetectionImageView(APIView):
         layer = request.query_params.get("layer", "true_colour")
         from .imagery import render_detection_png
         try:
-            path, bounds = render_detection_png(d, layer)
+            path, bounds = render_detection_png(d, layer, request.query_params.get("stretch") or None)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         if request.query_params.get("bounds") == "1":

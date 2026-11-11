@@ -151,6 +151,13 @@ class JobTest(TestCase):
         shown = px[px[..., 3] > 0]
         self.assertTrue(len(shown) and (np.abs(shown.astype(int) - expect[0, 0].astype(int)).max(axis=1) <= 1).all())
         self.assertEqual(expect[1, 0, 3], 0)   # 0.05 is under the 0.1 floor: transparent, so the imagery shows
+        # FR-122: an optional per-view stretch changes the picture; bad values are refused with a reason.
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "cache"}):
+            img = lambda q: np.asarray(Image.open(BytesIO(b"".join(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour{q}").streaming_content))))
+            fixed, tight = img(""), img("&stretch=0,0.1")
+            self.assertGreater(tight[..., :3].mean(), fixed[..., :3].mean())   # a tighter range is brighter
+            self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=ndvi&stretch=0,0.1").status_code, 400)
+            self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour&stretch=0.5,0.2").status_code, 400)
         # FR-128: the pixel inspector matches the source rasters at 20 sampled points.
         import rasterio
         from rasterio.warp import transform as warp

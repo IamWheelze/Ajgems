@@ -145,7 +145,7 @@ export const api = {
   detectionBounds: (id: number, layer: string) =>
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
       "GET", `/api/detections/${id}/image/?bounds=1&layer=${layer}`),
-  detectionImageUrl: (id: number, layer: string) => `/api/detections/${id}/image/?layer=${layer}`,
+  detectionImageUrl: (id: number, layer: string, stretch = "") => `/api/detections/${id}/image/?layer=${layer}${stretch ? `&stretch=${stretch}` : ""}`,
   editGeometry: (id: number) => call<GeoJSON.Polygon & { vertices: number; original_vertices: number; valid: boolean }>(
     "GET", `/api/detections/${id}/edit-geometry/`),
   exportPackage: (projectId: number, format: string, statuses: string[], job?: number) =>

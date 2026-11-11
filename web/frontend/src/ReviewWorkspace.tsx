@@ -37,6 +37,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [showOsm, setShowOsm] = useState(false);
   const [showNA, setShowNA] = useState(true);
   const [showScore, setShowScore] = useState(false);   // FR-124 heatmap
+  const [custom, setCustom] = useState<{ on: boolean; lo: number; hi: number }>({ on: false, lo: 0, hi: 0.25 });   // FR-122
+  const stretch = custom.on && custom.lo >= 0 && custom.lo < custom.hi && custom.hi <= 1 && ["true_colour", "swir_false_colour", "nir_false_colour"].includes(layer) ? `${custom.lo},${custom.hi}` : "";
   const showScoreRef = useRef(showScore);
   const [scoreMissing, setScoreMissing] = useState(false);
   const [inspecting, setInspecting] = useState(false);   // FR-128
@@ -258,7 +260,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         setImagery(meta);
         const [w, s, e, n] = meta.bounds;
         const corners: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]];
-        const url = api.detectionImageUrl(detId, layer);
+        const url = api.detectionImageUrl(detId, layer, stretch);
         const src = m.getSource("scene") as maplibregl.ImageSource | undefined;
         if (src) src.updateImage({ url, coordinates: corners });
         else {
@@ -298,7 +300,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       } catch (e) { setError((e as Error).message); }
     };
     whenReady(m, run);
-  }, [selected?.properties.id, layer]);
+  }, [selected?.properties.id, layer, stretch]);
 
   const allowed = useMemo(() => {
     if (!selected) return [];
@@ -400,7 +402,17 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           <select value={layer} onChange={(e) => setLayer(e.target.value)} aria-label="Band preset">
             {Object.entries(LAYERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <div className="small muted stretch-note">{STRETCH_NOTE[layer]}</div>
+          <div className="small muted stretch-note">{stretch ? <span className="badge warn">Custom stretch, this view only: {custom.lo} to {custom.hi}</span> : STRETCH_NOTE[layer]}</div>
+          {["true_colour", "swir_false_colour", "nir_false_colour"].includes(layer) && (
+            <div className="stretch-row small">
+              <label><input type="checkbox" checked={custom.on} onChange={(e) => setCustom({ ...custom, on: e.target.checked })} /> Custom stretch</label>
+              {custom.on && <>
+                <input type="number" aria-label="Stretch low" min="0" max="1" step="0.01" value={custom.lo} onChange={(e) => setCustom({ ...custom, lo: Number(e.target.value) })} />
+                <span>to</span>
+                <input type="number" aria-label="Stretch high" min="0" max="1" step="0.01" value={custom.hi} onChange={(e) => setCustom({ ...custom, hi: Number(e.target.value) })} />
+              </>}
+            </div>
+          )}
           {layer === "quality" && <div className="quality-key small">{QUALITY_KEY.map(([c, l]) => <span key={l}><span className="swatch" style={{ background: c }} /> {l}</span>)}</div>}
           <label className="small"><input type="checkbox" checked={showScore} onChange={(e) => setShowScore(e.target.checked)} disabled={scoreMissing} />
             {" "}Model-score heatmap{scoreMissing ? " (not stored for this candidate)" : ""}</label>

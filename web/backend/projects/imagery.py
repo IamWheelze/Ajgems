@@ -51,7 +51,7 @@ def score_paths(tiles):
     return out
 
 
-def _render(arr, scl, t, crs, layer, cache):
+def _render(arr, scl, t, crs, layer, cache, stretch=None):
     """Display layer (or the not-assessed hatch) warped to WGS 84 as RGBA PNG; returns (path, bounds)."""
     import rasterio
     from PIL import Image
@@ -62,7 +62,12 @@ def _render(arr, scl, t, crs, layer, cache):
         rgba = not_assessed_rgba(scl) if layer == "not_assessed" else score_rgba(arr)
         img, alpha_src = rgba[..., :3], rgba[..., 3]
     else:
-        img, alpha_src = build_layers(arr, scl)[layer], None              # (H, W, 3) uint8
+        if stretch is not None:   # FR-122 optional per-view stretch, labelled as such in the app
+            from minefoot.schema import BANDS
+            from minefoot.viewer import STRETCH, rgb
+            img, alpha_src = rgb(arr, list(BANDS), STRETCH[layer][0], stretch), None
+        else:
+            img, alpha_src = build_layers(arr, scl)[layer], None              # (H, W, 3) uint8
     dst_t, w, h = calculate_default_transform(crs, "EPSG:4326", shape[1], shape[0],
                                               *rasterio.transform.array_bounds(shape[0], shape[1], t))
     out = np.zeros((4, h, w), "uint8")
@@ -144,16 +149,36 @@ def render_scene_png(scene, layer="true_colour"):
     return _render(arr, scl, t, crs, layer, cache)
 
 
-def render_detection_png(detection, layer="true_colour"):
+def parse_stretch(layer, value):
+    """'lo,hi' reflectance for an RGB preset, or None for the documented fixed stretch."""
+    if not value:
+        return None
+    from minefoot.viewer import STRETCH
+    if layer not in STRETCH:
+        raise ValueError("a custom stretch applies to the true-colour and false-colour presets only")
+    try:
+        lo, hi = (float(v) for v in value.split(","))
+    except ValueError:
+        raise ValueError("stretch must be two reflectance values, e.g. 0,0.25")
+    if not (0 <= lo < hi <= 1):
+        raise ValueError("stretch must satisfy 0 <= low < high <= 1")
+    return round(lo, 3), round(hi, 3)
+
+
+def render_detection_png(detection, layer="true_colour", stretch=None):
     """The imagery under a detection: a mosaic of its job's tiles that touch it, or its scene's folder."""
     if layer not in LAYERS:
         raise ValueError(f"layer must be one of {LAYERS}")
+    stretch = parse_stretch(layer, stretch) if isinstance(stretch, str) or stretch is None else stretch
     tiles = [t for t in detection.job.tiles.filter(geometry__intersects=detection.geometry).exclude(prepared_path="")
              if (Path(t.prepared_path) / "reflectance.tif").exists()]
     if not tiles:
+        if stretch is not None:
+            raise ValueError("a custom stretch needs the job's tile imagery")
         return render_scene_png(detection.scene, layer)
     key = "_".join(sorted(str(t.pk) for t in tiles))
-    cache = settings.MINEFOOT["IMAGE_CACHE"] / f"tiles_{key}_{layer}.png"
+    tag = layer if stretch is None else f"{layer}_s{stretch[0]}-{stretch[1]}"
+    cache = settings.MINEFOOT["IMAGE_CACHE"] / f"tiles_{key}_{tag}.png"
     hit = _cached(cache)
     if hit:
         return hit
@@ -164,7 +189,7 @@ def render_detection_png(detection, layer="true_colour"):
         levels, t, crs = _read_scores(paths)
         return _render(levels, levels, t, crs, "score", cache)
     arr, scl, t, crs = _read([t.prepared_path for t in tiles])
-    return _render(arr, scl, t, crs, layer, cache)
+    return _render(arr, scl, t, crs, layer, cache, stretch)
 
 
 SCL_NAMES = {0: "no data", 1: "saturated or defective", 2: "dark area", 3: "cloud shadow", 4: "vegetation", 5: "not vegetated",

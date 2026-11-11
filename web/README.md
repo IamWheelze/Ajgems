@@ -132,6 +132,7 @@ The explorer page (ML and admin users) shows:
 ## Map layers in review (FR-120 to FR-124)
 
 - **Band presets:** true colour, SWIR false colour, NIR false colour, NDVI and NDWI. Each uses a fixed, documented stretch, shown under the preset (FR-122).
+- **Custom stretch:** an optional stretch for the colour presets, for this view only. It is labelled with a warning badge and never stored.
 - **Quality mask:** scene classification of unusable pixels (no data, saturated, cloud shadow, cloud, cirrus, snow), with a key (FR-123).
 - **Model-score heatmap:** the job's stored score map in one hue, light to dark (FR-124). Scores under 0.1 are transparent, and the key gives the job's threshold.
   - Score maps are kept per tile (`Tile.score_path`). The demo project's candidates have none, so the toggle says so.
