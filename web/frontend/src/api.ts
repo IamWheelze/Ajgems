@@ -15,6 +15,8 @@ export type PixelInfo = { lon: number; lat: number; crs: string; row: number; co
   reflectance: Record<string, number | null>; ndvi: number | null; ndwi: number | null; scl: number; scl_class: string; usable: boolean;
   suspect_bright: boolean; model_score: number | null; threshold: number;
   scene: { id: string; provider: string; date: string; processing_baseline: string } | null };
+export type ErrorSite = { site_id: string; f1: number | null; precision: number | null; recall: number | null; mine_scale: string;
+  mine_type: string; region: string; false_candidates: number; label_footprints: number; tp: number; fp: number; fn: number };
 export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
   scene_date: string | null; added_by: string; at: string; counts_as: string };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
@@ -126,6 +128,10 @@ export const api = {
     call<GeoJSON.FeatureCollection & { summary: { candidates: number; kept: number; added: number; removed: number; area_ha: number; job_candidates: number } }>(
       "GET", `/api/jobs/${id}/preview/?threshold=${threshold}&mmu_ha=${mmu_ha}`),
   jobRethreshold: (id: number, threshold: number, mmu_ha: number) => call<Job>("POST", `/api/jobs/${id}/rethreshold/`, { threshold, mmu_ha }),
+  errorSites: (id: number) => call<{ model: string; split: string; sites: ErrorSite[] }>("GET", `/api/models/${id}/errors/`),
+  errorBounds: (id: number, site: string, layer: string) => call<{ bounds: number[] }>("GET", `/api/models/${id}/errors/${encodeURIComponent(site)}/image/?layer=${layer}&bounds=1`),
+  errorImageUrl: (id: number, site: string, layer: string, classes = "") =>
+    `/api/models/${id}/errors/${encodeURIComponent(site)}/image/?layer=${layer}${classes ? `&classes=${classes}` : ""}`,
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

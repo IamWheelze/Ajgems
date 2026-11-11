@@ -30,6 +30,7 @@ export default function Registry({ me }: { me: Me }) {
           <div className="row gap">
             <h2 className="grow">{m.name}</h2>
             <span className={`badge ${m.state === "production" ? "" : m.state === "rolled_back" ? "warn" : ""}`}>{human(m.state)}</span>
+            <a className="small" href={`#/models/errors/${m.id}`}>Error maps →</a>
           </div>
           <dl className="facts small">
             <dt>Commit</dt><dd><code>{m.code_commit.slice(0, 10)}</code></dd>

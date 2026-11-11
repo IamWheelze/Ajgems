@@ -113,3 +113,42 @@ class ModelDashboardView(APIView):
         except ModelVersion.DoesNotExist:
             raise Http404
         return Response({"id": mv.id, "name": mv.name, "state": mv.state, **run_dashboard(Path(mv.run_path))})
+
+
+class ErrorSitesView(APIView):
+    """FR-129: a registered model's test sites ranked by worst pixel F1, with their error maps."""
+    permission_classes = [RolePermission]
+    read_roles = ("ml", "admin")
+
+    def get(self, request, pk):
+        from .errors import site_rows
+        try:
+            mv = ModelVersion.objects.get(pk=pk)
+        except ModelVersion.DoesNotExist:
+            raise Http404
+        try:
+            rows = site_rows(mv, request.query_params.get("split", "test"))
+        except (OSError, KeyError) as exc:
+            return Response({"detail": f"error maps unavailable: {exc}"}, status=400)
+        return Response({"model": mv.name, "split": "test", "sites": services.json_safe(rows)})
+
+
+class ErrorImageView(APIView):
+    permission_classes = [RolePermission]
+    read_roles = ("ml", "admin")
+
+    def get(self, request, pk, site_id):
+        from django.http import FileResponse
+        from .errors import render
+        try:
+            mv = ModelVersion.objects.get(pk=pk)
+        except ModelVersion.DoesNotExist:
+            raise Http404
+        classes = request.query_params.get("classes", "hit,false_alarm,missed,not_assessed").split(",")
+        try:
+            path, bounds = render(mv, site_id, request.query_params.get("layer", "errors"), classes)
+        except (ValueError, OSError) as exc:
+            return Response({"detail": str(exc)}, status=400)
+        if request.query_params.get("bounds") == "1":
+            return Response({"bounds": bounds})
+        return FileResponse(open(path, "rb"), content_type="image/png")

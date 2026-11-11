@@ -138,3 +138,10 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
   background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .pixel-panel table { width: 100%; } .pixel-panel td { padding: 1px 4px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .pixel-panel td:first-child { white-space: nowrap; color: var(--muted); }
+
+/* FR-129 error maps */
+.err-list li { align-items: center; gap: 8px; }
+.err-thumb { width: 56px; height: 56px; object-fit: contain; background: var(--map-bg); border-radius: 4px; flex: none; }
+.err-map { position: relative; min-height: 0; height: 100%; }
+.err-map .map-overlay { z-index: 3; }
+.err-map .map-overlay label { display: flex; gap: 6px; align-items: center; }

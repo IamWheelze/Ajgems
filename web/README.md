@@ -170,6 +170,10 @@ In review, **Swipe compare** puts a second band preset (for example SWIR false c
 
 You can switch between validation and test sites, show models side by side, hover any chart for values, and open a table view.
 
+## Evaluation error maps (FR-129, internal)
+
+**Models → Error maps** (ML and admin) lists a registered model's locked test sites, worst pixel F1 first, with thumbnails. Clicking one moves the map to it: hits, false alarms and missed pixels from the run's stored error maps, with not-assessed pixels hatched, over the true-colour scene. Each class has its own toggle and label, and the colours are checked for colour-vision separation. Labels are the dataset's and are incomplete, so some "false alarms" are real unlabelled mining.
+
 ## Not built yet (next slices)
 
 - **Side-by-side and blink comparison, and comparing dates** (FR-127, Pilot). Swipe between band presets of one scene is built.

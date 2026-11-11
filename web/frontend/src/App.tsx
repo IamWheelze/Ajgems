@@ -6,6 +6,7 @@ import ProjectAreas from "./ProjectAreas";
 import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
+import ErrorMaps from "./ErrorMaps";
 import RunDashboard from "./RunDashboard";
 import Registry from "./Registry";
 import DatasetExplorer from "./DatasetExplorer";
@@ -52,6 +53,7 @@ export default function App() {
       </header>
       <main className="content">
         {section === "models" && id === "dashboard" ? <RunDashboard />
+          : section === "models" && id === "errors" && page ? <ErrorMaps modelId={Number(page)} />
           : section === "models" ? <Registry me={me} />
           : section === "datasets" ? <DatasetExplorer />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />

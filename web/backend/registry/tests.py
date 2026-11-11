@@ -119,3 +119,35 @@ class RegistryTest(TestCase):
         d = self.c(self.ml1).get(f"/api/models/{pk}/dashboard/").json()
         self.assertEqual(d["curves"]["test"]["pr"][0]["precision"], 0.1)
         self.assertEqual(d["missing"], [])
+
+    def test_error_maps_ranked_and_rendered(self):
+        """FR-129: test sites ranked by worst F1; the image shows the stored error classes, each one switchable."""
+        import numpy as np
+        import rasterio
+        from rasterio.transform import from_origin
+        run = fake_run(self.tmp / "runs", "r1")
+        (run / "error_maps").mkdir()
+        e = np.zeros((40, 40), "uint8"); e[:10] = 1; e[10:20] = 2; e[20:30] = 3; e[30:] = 4
+        for sid in ("s0", "s5"):
+            with rasterio.open(run / "error_maps" / f"{sid}__unet.tif", "w", driver="GTiff", width=40, height=40, count=1,
+                               dtype="uint8", crs="EPSG:32631", transform=from_origin(500000, 1000000, 10, 10)) as d:
+                d.write(e, 1)
+        pk = self.reg(self.ml1, "r1").json()["id"]
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "DATA_ROOT": self.tmp, "IMAGE_CACHE": self.tmp / "cache"}):
+            c = self.c(self.ml1)
+            self.assertEqual(self.c(self.gis).get(f"/api/models/{pk}/errors/").status_code, 403)
+            sites = c.get(f"/api/models/{pk}/errors/").json()["sites"]
+            self.assertEqual([s["site_id"] for s in sites], ["s0", "s5"])   # only sites with maps; s0 has the lower F1
+            self.assertLessEqual(sites[0]["f1"], sites[1]["f1"])
+            self.assertEqual(c.get(f"/api/models/{pk}/errors/../../x/image/").status_code, 404)
+            self.assertEqual(c.get(f"/api/models/{pk}/errors/nope/image/").status_code, 400)
+            from io import BytesIO
+            from PIL import Image
+            def colours(q):
+                r = c.get(f"/api/models/{pk}/errors/s0/image/?{q}")
+                px = np.asarray(Image.open(BytesIO(b"".join(r.streaming_content))))
+                return {tuple(v[:3]) for v in px.reshape(-1, 4) if v[3] > 200}
+            allc = colours("classes=hit,false_alarm,missed")
+            self.assertEqual(allc, {(0, 114, 178), (230, 159, 0), (204, 121, 167)})
+            self.assertEqual(colours("classes=missed"), {(204, 121, 167)})
+            self.assertEqual(len(c.get(f"/api/models/{pk}/errors/s0/image/?bounds=1").json()["bounds"]), 4)
