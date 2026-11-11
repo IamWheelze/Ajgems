@@ -138,6 +138,12 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Provenance and progress (FR-021, FR-023, FR-053, FR-132)
+
+- Each tile records SHA-256 checksums and the size of its fetched and prepared rasters. Each scene records when it was first retrieved.
+- The coverage thresholds are settings: `MINEFOOT_COVERAGE_WARN_BELOW` (default 0.80) and `MINEFOOT_COVERAGE_BLOCK_BELOW` (default 0.40). Both are provisional.
+- The job monitor shows time so far, an estimate of time left from tiles done, and the imagery fetched. Jobs run on your own CPU and Sentinel-2 imagery is free, so there is no money cost to show.
+
 ## Threshold and minimum-size preview (FR-126)
 
 On a finished job's page, choose a threshold and a minimum size, then **Preview**. The candidates are recomputed from the job's stored score maps with the job's own vectorise-and-merge code. The map shows candidates kept, added and removed; nothing is saved.

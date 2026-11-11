@@ -125,6 +125,15 @@ class JobTest(TestCase):
         self.assertEqual(d.score_type, "model score")
         self.assertIn(d.mask_status, ("assessed", "partly_masked", "mostly_masked"))
         self.assertTrue(d.scene.source_id == "S2_SYN" and tiles_hit >= 1)
+        # FR-021/FR-023: checksums of fetched rasters, retrieval time, and FR-132 progress.
+        import hashlib
+        t0 = job.tiles.exclude(prepared_path="").first()
+        self.assertEqual(t0.checksums["reflectance.tif"],
+                         hashlib.sha256((Path(t0.prepared_path) / "reflectance.tif").read_bytes()).hexdigest())
+        self.assertIsNotNone(t0.scene.retrieved_at)
+        prog = self.c.get(f"/api/jobs/{job.pk}/").json()["progress"]
+        self.assertEqual(prog["tiles_done"], job.tiles.count())
+        self.assertGreater(prog["bytes_fetched"], 0)
         fc = self.c.get(f"/api/jobs/{job.pk}/tiles/").json()
         self.assertEqual(len(fc["features"]), job.tiles.count())
         self.assertEqual(fc["features"][0]["properties"]["date"], "2026-01-03")

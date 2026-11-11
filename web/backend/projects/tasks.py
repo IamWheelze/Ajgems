@@ -44,6 +44,15 @@ def _check_cancel(job):
         raise Cancelled()
 
 
+def _sha256(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _scene_for(provider, item):
     p = item["properties"]
     from datetime import datetime
@@ -73,11 +82,17 @@ def process_tile(job, tile, items, provider, work):
     tile.save(update_fields=["scene", "scene_cover", "state"])
     _set(job, state=Job.State.FETCHING)
     prep = pipeline.fetch_tile(provider, item, list(tg.bounds), work, tile.grid_id)
-    tile.prepared_path = str(prep); tile.save(update_fields=["prepared_path"])
+    tile.prepared_path = str(prep)
+    tile.checksums = {f: _sha256(prep / f) for f in ("reflectance.tif", "scl.tif") if (prep / f).exists()}
+    tile.bytes_fetched = sum((prep / f).stat().st_size for f in ("reflectance.tif", "scl.tif") if (prep / f).exists())
+    tile.save(update_fields=["prepared_path", "checksums", "bytes_fetched"])
+    if scene.retrieved_at is None:
+        Scene.objects.filter(pk=scene.pk, retrieved_at=None).update(retrieved_at=timezone.now())
     tile.state = Tile.State.CHECKING; tile.save(update_fields=["state"])
     _set(job, state=Job.State.CHECKING)
     with rasterio.open(prep / "scl.tif") as s:
-        cov = coverage(s.read(1))
+        cov = coverage(s.read(1), warn_below=settings.MINEFOOT["COVERAGE_WARN_BELOW"],
+                       block_below=settings.MINEFOOT["COVERAGE_BLOCK_BELOW"])
     tile.usable_pct, tile.quality_decision = cov.usable_fraction * 100, cov.decision
     if cov.decision == "block":
         tile.state, tile.outcome = Tile.State.DONE, Tile.Outcome.INSUFFICIENT

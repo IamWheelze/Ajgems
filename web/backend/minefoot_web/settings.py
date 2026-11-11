@@ -96,6 +96,9 @@ MINEFOOT = {
     "MMU_HA": float(os.environ.get("MINEFOOT_MMU_HA", "1.0")),
     # Measured 2026-11-09: 13 s per 10 km tile on 4 CPU cores (fetch, prepare, score, vectorise). 20 s is cautious.
     "SECONDS_PER_TILE": float(os.environ.get("MINEFOOT_SECONDS_PER_TILE", "20")),
+    # FR-053 coverage thresholds (provisional): warn below 80% usable pixels, block below 40%.
+    "COVERAGE_WARN_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_WARN_BELOW", "0.80")),
+    "COVERAGE_BLOCK_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_BLOCK_BELOW", "0.40")),
     "NIGERIA_AOIS": Path(os.environ.get("MINEFOOT_NIGERIA_AOIS", REPO_ROOT / "configs" / "nigeria_aois.yaml")),
     "NIGERIA_TEST_LOCK": Path(os.environ.get("MINEFOOT_NIGERIA_TEST_LOCK",
                                              REPO_ROOT / "docs" / "evidence" / "nigeria_test_lock_v1.json")),

@@ -48,6 +48,7 @@ class Scene(models.Model):
     processing_baseline = models.CharField(max_length=10)
     cloud_pct = models.FloatField(null=True)
     licence_note = models.CharField(max_length=200)
+    retrieved_at = models.DateTimeField(null=True, help_text="when this product was first fetched (FR-023)")
     footprint = models.PolygonField(srid=4326, null=True)
     prepared_path = models.CharField(max_length=500, blank=True, help_text="minefoot prepared folder on the server")
 
@@ -102,6 +103,8 @@ class Tile(models.Model):
     failure_reason = models.CharField(max_length=80, blank=True)
     prepared_path = models.CharField(max_length=500, blank=True, help_text="minefoot prepared folder for this tile")
     score_path = models.CharField(max_length=500, blank=True, help_text="the tile's model-score map (uint8 levels)")
+    checksums = models.JSONField(default=dict, blank=True, help_text="SHA-256 of the fetched and prepared rasters (FR-021)")
+    bytes_fetched = models.BigIntegerField(null=True, help_text="size of the windowed download")
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 
     class Meta:

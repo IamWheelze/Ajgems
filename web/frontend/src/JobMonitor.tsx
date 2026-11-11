@@ -20,6 +20,8 @@ const CHANGE: Record<string, { label: string; colour: string; dash?: number[] }>
   removed: { label: "Removed", colour: "#D55E00", dash: [1, 2] },
 };
 
+const mins = (s: number) => (s < 90 ? `${Math.round(s)} s` : `${(s / 60).toFixed(1)} min`);
+
 export default function JobMonitor({ projectId, jobId, me }: { projectId: number; jobId: number; me: Me }) {
   const mapEl = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -126,6 +128,12 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
               {JOB_STATE[job.state] ?? job.state}</span> {ACTIVE_JOB.has(job.state) && <span className="small muted">updating…</span>}</p>
             <progress max={job.tiles.total} value={done} style={{ width: "100%" }} />
             <p className="small">{done} of {job.tiles.total} tiles · {job.candidates} candidate footprints</p>
+            {job.progress && job.started_at && (   // FR-132: time and data so far
+              <p className="small muted">{ACTIVE_JOB.has(job.state) ? "Running for" : "Took"} {mins(job.progress.elapsed_s)}
+                {job.progress.remaining_s !== null && ` · about ${mins(job.progress.remaining_s)} left`}
+                {job.progress.bytes_fetched > 0 && ` · ${(job.progress.bytes_fetched / 1e6).toFixed(1)} MB imagery fetched`}
+                {` · compute: ${job.progress.compute}, no imagery charges`}</p>
+            )}
             {job.message && <p className="small">{job.message}</p>}
             <dl className="facts small">
               <dt>Model</dt><dd>{job.model_version}</dd>
@@ -181,6 +189,7 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
             {picked.usable_pct !== null && <span>Usable imagery {Number(picked.usable_pct).toFixed(1)}% ({picked.quality_decision})</span>}
             <span>{picked.candidates} candidate piece(s)</span>
             {picked.failure_reason && <span className="error">{picked.failure_reason}</span>}
+            {picked.checksums && Object.entries(picked.checksums).map(([f, h]) => <span key={f} className="muted" title={h}>{f} SHA-256 {h.slice(0, 12)}…</span>)}
           </div>
         )}
         {error && <p className="error small" role="alert">{error}</p>}

@@ -187,7 +187,22 @@ def job_payload(job):
             "parameters": {k: v for k, v in job.parameters.items() if k not in ("items",)},
             "tiles": {"total": len(tiles), "by_state": Counter(t.state for t in tiles),
                       "by_outcome": Counter(t.outcome for t in tiles)},
-            "candidates": job.detections.count()}
+            "candidates": job.detections.count(),
+            "progress": _progress(job, tiles)}
+
+
+def _progress(job, tiles):
+    """FR-132: time so far, a remaining-time estimate from tiles done, and data fetched. There is no money cost:
+    jobs run on the organisation's own CPU and the imagery is free, so compute time is the cost shown."""
+    from django.utils import timezone
+    done = [t for t in tiles if t.state in ("done", "skipped", "failed")]
+    end = job.finished_at or (timezone.now() if job.started_at else None)
+    elapsed = (end - job.started_at).total_seconds() if job.started_at and end else 0.0
+    left = len(tiles) - len(done)
+    per_tile = elapsed / len(done) if done and elapsed else None
+    return {"elapsed_s": round(elapsed), "tiles_done": len(done),
+            "remaining_s": round(per_tile * left) if per_tile and not job.finished_at else None,
+            "bytes_fetched": sum(t.bytes_fetched or 0 for t in tiles), "compute": "CPU, own server"}
 
 
 class JobViewSet(viewsets.ViewSet):
@@ -235,7 +250,7 @@ class JobViewSet(viewsets.ViewSet):
             {"type": "Feature", "id": t.id, "geometry": json.loads(t.geometry.geojson),
              "properties": {"grid_id": t.grid_id, "state": t.state, "outcome": t.outcome, "usable_pct": t.usable_pct,
                             "quality_decision": t.quality_decision, "candidates": t.candidates,
-                            "failure_reason": t.failure_reason,
+                            "failure_reason": t.failure_reason, "checksums": t.checksums,
                             "scene": t.scene.source_id if t.scene_id else None,
                             "date": t.scene.acquired_at.date().isoformat() if t.scene_id else None}}
             for t in job.tiles.select_related("scene").order_by("grid_id")]})

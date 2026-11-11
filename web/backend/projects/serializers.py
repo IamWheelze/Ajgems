@@ -52,7 +52,7 @@ class SceneSerializer(serializers.ModelSerializer):
     class Meta:
         model = Scene
         fields = ["id", "source_id", "provider", "sensor", "acquired_at", "processing_baseline", "cloud_pct",
-                  "licence_note"]
+                  "licence_note", "retrieved_at"]
 
 
 SCORE_STATEMENT = ("Candidate footprint of visible land disturbance resembling surface mining. It does not establish "
