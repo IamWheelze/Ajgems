@@ -142,6 +142,10 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
               <dt>Min. unit</dt><dd>{String(job.parameters.mmu_ha)} ha</dd>
             </dl>
             {job.estimate.model?.domain_warning && <p className="badge warn block small">{job.estimate.model.domain_warning}</p>}
+            {job.progress?.area_coverage?.usable_pct != null && (   // FR-051 per area
+              <p className="small">Usable imagery over the area: <b>{job.progress.area_coverage.usable_pct}%</b>
+                {" "}· not assessed: <b>{job.progress.area_coverage.not_assessed_pct}%</b></p>
+            )}
             <h3>Tile outcomes</h3>
             <ul className="plain small legend-list">
               {Object.entries(OUTCOME).map(([k, v]) => (

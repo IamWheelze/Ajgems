@@ -29,7 +29,8 @@ export type Job = {
   estimate: { tiles: number; tiles_with_imagery: number; scenes_found: number; clearest_scene: string; clearest_cloud_pct: number;
     estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard };
   tiles: { total: number; by_state: Record<string, number>; by_outcome: Record<string, number> };
-  progress?: { elapsed_s: number; tiles_done: number; remaining_s: number | null; bytes_fetched: number; compute: string };
+  progress?: { elapsed_s: number; tiles_done: number; remaining_s: number | null; bytes_fetched: number; compute: string;
+    area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };
 };
 export type TileProps = { grid_id: string; state: string; outcome: string; usable_pct: number | null; quality_decision: string;
   candidates: number; failure_reason: string; scene: string | null; date: string | null; checksums?: Record<string, string> };

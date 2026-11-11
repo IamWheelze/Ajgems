@@ -202,7 +202,25 @@ def _progress(job, tiles):
     per_tile = elapsed / len(done) if done and elapsed else None
     return {"elapsed_s": round(elapsed), "tiles_done": len(done),
             "remaining_s": round(per_tile * left) if per_tile and not job.finished_at else None,
-            "bytes_fetched": sum(t.bytes_fetched or 0 for t in tiles), "compute": "CPU, own server"}
+            "bytes_fetched": sum(t.bytes_fetched or 0 for t in tiles), "compute": "CPU, own server",
+            "area_coverage": area_coverage(job, tiles)}
+
+
+def area_coverage(job, tiles):
+    """FR-051 per area: usable share of the area, weighting each tile by how much of the area it holds.
+    Tiles never checked (skipped, failed, not yet run) count as not assessed, never as clear."""
+    if job.area is None or not tiles:
+        return None
+    from shapely import wkt
+    area = wkt.loads(job.area.geometry.wkt)
+    total = usable = 0.0
+    for t in tiles:
+        w = wkt.loads(t.geometry.wkt).intersection(area).area   # degrees squared; only ratios are used
+        total += w
+        if t.usable_pct is not None:
+            usable += w * t.usable_pct / 100
+    return {"usable_pct": round(100 * usable / total, 1) if total else None,
+            "not_assessed_pct": round(100 * (1 - usable / total), 1) if total else None}
 
 
 class JobViewSet(viewsets.ViewSet):

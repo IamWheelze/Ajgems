@@ -142,7 +142,8 @@ The explorer page (ML and admin users) shows:
 
 - Each tile records SHA-256 checksums and the size of its fetched and prepared rasters. Each scene records when it was first retrieved.
 - The coverage thresholds are settings: `MINEFOOT_COVERAGE_WARN_BELOW` (default 0.80) and `MINEFOOT_COVERAGE_BLOCK_BELOW` (default 0.40). Both are provisional.
-- The job monitor shows time so far, an estimate of time left from tiles done, and the imagery fetched. Jobs run on your own CPU and Sentinel-2 imagery is free, so there is no money cost to show.
+- The job monitor shows the usable share of the whole area (FR-051), with unchecked tiles counted as not assessed.
+- It also shows time so far, an estimate of time left from tiles done, and the imagery fetched. Jobs run on your own CPU and Sentinel-2 imagery is free, so there is no money cost to show.
 
 ## Threshold and minimum-size preview (FR-126)
 

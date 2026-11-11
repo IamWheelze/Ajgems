@@ -134,6 +134,9 @@ class JobTest(TestCase):
         prog = self.c.get(f"/api/jobs/{job.pk}/").json()["progress"]
         self.assertEqual(prog["tiles_done"], job.tiles.count())
         self.assertGreater(prog["bytes_fetched"], 0)
+        cov = prog["area_coverage"]   # FR-051: one tile fully clouded, so part of the area is not assessed
+        self.assertAlmostEqual(cov["usable_pct"] + cov["not_assessed_pct"], 100, places=0)
+        self.assertGreater(cov["not_assessed_pct"], 0)
         fc = self.c.get(f"/api/jobs/{job.pk}/tiles/").json()
         self.assertEqual(len(fc["features"]), job.tiles.count())
         self.assertEqual(fc["features"][0]["properties"]["date"], "2026-01-03")
