@@ -128,6 +128,11 @@ export default function JobMonitor({ projectId, jobId, me }: { projectId: number
               {JOB_STATE[job.state] ?? job.state}</span> {ACTIVE_JOB.has(job.state) && <span className="small muted">updating…</span>}</p>
             <progress max={job.tiles.total} value={done} style={{ width: "100%" }} />
             <p className="small">{done} of {job.tiles.total} tiles · {job.candidates} candidate footprints</p>
+            {job.actual?.seconds && job.estimate.cost && (   // FR-086: actual against estimate
+              <p className="small">Actual: {mins(job.actual.seconds)} (estimate {mins(job.estimate.cost.seconds)}
+                {job.actual.seconds_vs_estimate ? `, ${Math.round(job.actual.seconds_vs_estimate * 100)}% of it` : ""}) · {(job.actual.storage_bytes / 1e6).toFixed(0)} MB kept
+                {job.actual.money ? ` · ${job.actual.money.compute.toFixed(2)} ${job.actual.money.currency} compute` : ""}</p>
+            )}
             {job.progress && job.started_at && (   // FR-132: time and data so far
               <p className="small muted">{ACTIVE_JOB.has(job.state) ? "Running for" : "Took"} {mins(job.progress.elapsed_s)}
                 {job.progress.remaining_s !== null && ` · about ${mins(job.progress.remaining_s)} left`}

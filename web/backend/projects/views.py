@@ -191,7 +191,7 @@ def job_payload(job):
             "tiles": {"total": len(tiles), "by_state": Counter(t.state for t in tiles),
                       "by_outcome": Counter(t.outcome for t in tiles)},
             "candidates": job.detections.count(),
-            "progress": _progress(job, tiles)}
+            "progress": _progress(job, tiles), "actual": job.actual}
 
 
 def _progress(job, tiles):

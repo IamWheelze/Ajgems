@@ -219,7 +219,10 @@ def run_detection_job(self, job_id):
             state, msg = Job.State.SUCCEEDED, f"{n} candidates"
         _set(job, state=state, message=msg, finished_at=timezone.now(),
              failure_reason=FAILURE_REASONS["quality"] if state == Job.State.BLOCKED_BY_QUALITY else "")
-        record(job.created_by, "job.finished", job, after={"state": state, "candidates": n})
+        from .costs import record_actual
+        job.refresh_from_db()
+        actual = record_actual(job)   # FR-086: measured time, storage and money
+        record(job.created_by, "job.finished", job, after={"state": state, "candidates": n, "actual": actual})
     except Cancelled:
         _set(job, state=Job.State.CANCELLED, finished_at=timezone.now(), message="cancelled; finished tiles are kept")
         record(job.created_by, "job.cancelled", job)

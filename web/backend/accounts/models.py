@@ -18,6 +18,10 @@ class Organisation(models.Model):
     name = models.CharField(max_length=200, unique=True)
     region = models.CharField(max_length=100, blank=True)
     max_aoi_km2 = models.FloatField(null=True, blank=True, help_text="Overrides the default FR-013 limit")
+    # FR-087 quotas; empty means no limit.
+    quota_km2_per_month = models.FloatField(null=True, blank=True, help_text="area processed by jobs started this month")
+    quota_jobs_per_month = models.IntegerField(null=True, blank=True)
+    quota_storage_gb = models.FloatField(null=True, blank=True, help_text="job imagery and score maps kept on disk")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

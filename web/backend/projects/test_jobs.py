@@ -246,6 +246,29 @@ class JobTest(TestCase):
             self.assertEqual(r.status_code, 400)
             self.assertIn("evaluation and testing", r.json()["detail"])
 
+    def test_cost_recorded_and_quotas_enforced(self):
+        """FR-086: the job records measured time and storage against its estimate. FR-087: a job over quota is refused."""
+        job = self.run_job(self.estimate()["id"])
+        est, act = job.estimate["cost"], job.actual
+        self.assertGreater(act["storage_bytes"], 0)
+        self.assertEqual(act["tiles_processed"], job.tiles.exclude(prepared_path="").count())
+        self.assertIsNotNone(act["seconds_vs_estimate"])
+        self.assertIn("defaults", est["basis"])   # fewer than three measured jobs yet
+        self.assertIsNone(act["money"])           # no rates configured
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "CPU_COST_PER_HOUR": 0.5, "STORAGE_COST_PER_GB_MONTH": 0.02,
+                                         "JOB_ROOT": self.tmp / "jobs"}):
+            from projects.costs import money
+            self.assertEqual(money(3600, 2e9), {"compute": 0.5, "storage_per_month": 0.04, "currency": "USD"})
+        Organisation.objects.filter(pk=self.org.pk).update(quota_jobs_per_month=1)
+        est2 = self.estimate()
+        self.assertFalse(est2["estimate"]["quota"]["ok"])
+        r = self.c.post(f"/api/jobs/{est2['id']}/start/")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("quota", r.json()["detail"])
+        Organisation.objects.filter(pk=self.org.pk).update(quota_jobs_per_month=None, quota_km2_per_month=0.001)
+        r = self.c.post(f"/api/jobs/{est2['id']}/start/")
+        self.assertIn("monthly quota", r.json()["detail"])
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])

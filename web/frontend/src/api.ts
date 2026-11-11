@@ -21,6 +21,7 @@ export type PoolFeature = GeoJSON.Feature<GeoJSON.Polygon, { id: number; project
   kind: string; negative_type: string; scene_id: string; scene_date: string | null; status_at_nomination: string; protocol_version: string;
   nominated_by: string; nominated_at: string; note: string; state: string; can_check: boolean | null;
   decision: { decision: string; reason_code: string; note: string; checker: string; at: string } | null }>;
+export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
 export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
@@ -34,7 +35,10 @@ export type Job = {
   parameters: Record<string, unknown>;
   estimate: { tiles: number; tiles_with_imagery: number; scenes_found: number; clearest_scene: string; clearest_cloud_pct: number;
     estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard;
-    source?: string; sources_not_approved?: Record<string, string>; domain?: Domain };
+    source?: string; sources_not_approved?: Record<string, string>; domain?: Domain;
+    cost?: Cost & { seconds_per_tile: number; bytes_per_tile: number; basis: string };
+    quota?: { ok: boolean; reason?: string; km2_this_month?: number; jobs_this_month?: number; storage_gb?: number } };
+  actual?: Cost & { tiles_processed?: number; seconds_vs_estimate?: number | null };
   tiles: { total: number; by_state: Record<string, number>; by_outcome: Record<string, number> };
   progress?: { elapsed_s: number; tiles_done: number; remaining_s: number | null; bytes_fetched: number; compute: string;
     area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };

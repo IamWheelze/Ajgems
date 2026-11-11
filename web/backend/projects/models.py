@@ -92,6 +92,7 @@ class Job(models.Model):
     scenes = models.ManyToManyField(Scene, blank=True)
     failure_reason = models.CharField(max_length=80, blank=True)
     estimate = models.JSONField(default=dict, help_text="Tiles, scenes and time estimated before starting")
+    actual = models.JSONField(default=dict, blank=True, help_text="FR-086: measured time, storage and cost at the end")
     message = models.TextField(blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)

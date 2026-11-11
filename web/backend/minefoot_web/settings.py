@@ -96,6 +96,10 @@ MINEFOOT = {
     "MMU_HA": float(os.environ.get("MINEFOOT_MMU_HA", "1.0")),
     # Measured 2026-11-09: 13 s per 10 km tile on 4 CPU cores (fetch, prepare, score, vectorise). 20 s is cautious.
     "SECONDS_PER_TILE": float(os.environ.get("MINEFOOT_SECONDS_PER_TILE", "20")),
+    # FR-086 money rates; 0 means not priced (own CPU, free Sentinel-2 imagery). Set them to show money costs.
+    "CPU_COST_PER_HOUR": float(os.environ.get("MINEFOOT_CPU_COST_PER_HOUR", "0")),
+    "STORAGE_COST_PER_GB_MONTH": float(os.environ.get("MINEFOOT_STORAGE_COST_PER_GB_MONTH", "0")),
+    "COST_CURRENCY": os.environ.get("MINEFOOT_COST_CURRENCY", "USD"),
     # FR-053 coverage thresholds (provisional): warn below 80% usable pixels, block below 40%.
     "COVERAGE_WARN_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_WARN_BELOW", "0.80")),
     "COVERAGE_BLOCK_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_BLOCK_BELOW", "0.40")),

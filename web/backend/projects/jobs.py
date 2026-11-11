@@ -49,10 +49,13 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
     except ValueError as exc:   # schema mismatch (FR-102)
         raise JobError(str(exc))
     covered = sum(1 for _, t in tiles if pipeline.choose_scene(items, t)[1] > 0.01)
+    from . import costs
+    cost = costs.estimate(project.organisation, covered)
     est = {"tiles": len(tiles), "tiles_with_imagery": covered, "scenes_found": len(items),
            "clearest_scene": items[0]["id"], "clearest_cloud_pct": items[0]["properties"].get("eo:cloud_cover"),
-           "estimated_minutes": round(len(tiles) * settings.MINEFOOT["SECONDS_PER_TILE"] / 60, 1),
-           "estimate_basis": f"{settings.MINEFOOT['SECONDS_PER_TILE']:.0f} s per {settings.MINEFOOT['TILE_KM']:.0f} km tile on CPU",
+           "estimated_minutes": round(cost["seconds"] / 60, 1),
+           "estimate_basis": f"{cost['seconds_per_tile']:.0f} s per {settings.MINEFOOT['TILE_KM']:.0f} km tile on CPU, {cost['basis']}",
+           "cost": cost, "quota": _quota_status(project.organisation, area.area_km2, cost["storage_bytes"]),
            "area_km2": area.area_km2, "model": card, "domain": pipeline.domain_check(area.geometry, start, end), "source": provider, "sources_tried_in_order": allowed,
            "sources_not_approved": refused}
     with transaction.atomic():
@@ -75,6 +78,11 @@ def start(user, job) -> Job:
     if job.parameters.get("provider") not in allowed:   # an approval withdrawn after the estimate
         raise JobError(f"source {job.parameters.get('provider')} is no longer approved for "
                        f"{job.project.intended_use.replace('_', ' ')} use (FR-025); estimate again")
+    from . import costs
+    try:   # FR-087: checked again at start, since other jobs may have run since the estimate
+        costs.check_quota(job.organisation, job.area.area_km2 if job.area else 0, job.estimate.get("cost", {}).get("storage_bytes", 0))
+    except costs.QuotaExceeded as exc:
+        raise JobError(str(exc))
     from .tasks import run_detection_job
     job.state = Job.State.QUEUED
     job.save(update_fields=["state"])
@@ -110,6 +118,14 @@ def resume(user, job) -> Job:
 
 
 FINISHED = (Job.State.SUCCEEDED, Job.State.SUCCEEDED_WITH_WARNINGS)
+
+
+def _quota_status(org, area_km2, extra_bytes):
+    from . import costs
+    try:
+        return {"ok": True, **costs.check_quota(org, area_km2, extra_bytes)}
+    except costs.QuotaExceeded as exc:
+        return {"ok": False, "reason": str(exc)}
 
 
 def _settings(threshold, mmu_ha):

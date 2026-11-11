@@ -139,6 +139,13 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Cost and quotas (FR-086, FR-087)
+
+- **Estimate:** compute time and storage come from the medians of the organisation's last finished jobs (at least three), otherwise from defaults. On the Ghana jobs the calibrated estimate is 43 s for 4 tiles; the three real runs took 51, 40 and 43 s, all within 25%.
+- **Actual:** when a job ends, its wall time, tiles processed, bytes kept on disk and the ratio to the estimate are recorded (`Job.actual`).
+- **Money:** shown only when `MINEFOOT_CPU_COST_PER_HOUR` or `MINEFOOT_STORAGE_COST_PER_GB_MONTH` is set; otherwise the app says there is no money cost.
+- **Quotas:** per organisation (Django admin, Organisation): km² per month, jobs per month and storage in GB; empty means no limit. The estimate shows quota status, and the start is refused with a reason when a quota would be exceeded.
+
 ## Restricted sites and validated domain (FR-005, FR-014)
 
 - **Restricted sites:** GIS users or administrators mark a candidate's location restricted, with a reason; the change is audited. Restricted sites are:
