@@ -1,3 +1,4 @@
+import Uploads from "./Uploads";
 import RestrictedGrants from "./RestrictedGrants";
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef, useState } from "react";
@@ -131,6 +132,7 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
             <p className="small muted">Limit 10,000 km² per job. Area is computed on the ellipsoid.</p>
           </div>
         )}
+        {canEdit && <Uploads projectId={projectId} />}
         {me.roles.includes("admin") && <RestrictedGrants projectId={projectId} />}
         {error && <p className="error" role="alert">{error}</p>}
         {me.roles.includes("gis") && project?.status === "active" && <RunSetup projectId={projectId} areas={areas} />}

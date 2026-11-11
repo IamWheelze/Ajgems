@@ -59,7 +59,7 @@ def _scene_for(provider, item):
     from shapely.geometry import shape
     return Scene.objects.get_or_create(
         provider=provider, source_id=item["id"],
-        defaults=dict(sensor=p.get("platform", ""), processing_baseline=str(p.get("s2:processing_baseline", "")),
+        defaults=dict(sensor=p.get("platform", ""), processing_baseline=str(p.get("s2:processing_baseline") or p.get("processing:version") or ""),
                       acquired_at=datetime.fromisoformat(p["datetime"].replace("Z", "+00:00")),
                       cloud_pct=p.get("eo:cloud_cover"),
                       licence_note=f"Contains modified Copernicus Sentinel data {p['datetime'][:4]}",
@@ -77,6 +77,7 @@ def process_tile(job, tile, items, provider, work):
     if item is None or cover < 0.01:
         tile.state, tile.outcome, tile.failure_reason = Tile.State.SKIPPED, Tile.Outcome.NOT_PROCESSED, "no scene covers this tile"
         tile.save(); return None
+    provider = item.get("properties", {}).get("minefoot:provider", provider)   # an uploaded product, or the catalogue
     scene = _scene_for(provider, item)
     tile.scene, tile.scene_cover, tile.state = scene, cover, Tile.State.FETCHING
     tile.save(update_fields=["scene", "scene_cover", "state"])

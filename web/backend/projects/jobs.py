@@ -34,13 +34,21 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
         raise JobError(reason)
     bbox = list(area.geometry.extent)
     allowed, refused = pipeline.allowed_providers(project.intended_use)
-    if not allowed:
+    from .models import SourceApproval
+    from .uploads import items_for
+    uploads_ok = SourceApproval.objects.filter(provider="upload", use=project.intended_use, approved=True).exists()
+    uploaded = items_for(project.organisation, bbox, start, end, max_cloud) if uploads_ok else []   # FR-022
+    if not allowed and not uploaded:
         raise JobError(f"no imagery source is approved for {project.intended_use.replace('_', ' ')} use (FR-025): "
                        + "; ".join(f"{p}: {why}" for p, why in refused.items()))
-    try:
-        provider, items = pipeline.find_scenes(bbox, start, end, max_cloud, providers=allowed)
-    except RuntimeError as exc:
-        raise RuntimeError(f"all approved catalogues failed ({', '.join(allowed)}): {exc}")
+    provider, items = "upload", []
+    if allowed:
+        try:
+            provider, items = pipeline.find_scenes(bbox, start, end, max_cloud, providers=allowed)
+        except RuntimeError as exc:
+            if not uploaded:   # with uploads in hand, a catalogue outage is not fatal (FR-024)
+                raise RuntimeError(f"all approved catalogues failed ({', '.join(allowed)}): {exc}")
+    items = sorted(items + uploaded, key=lambda i: (i["properties"].get("eo:cloud_cover") or 0, i["id"]))
     if not items:
         raise JobError(f"no scene under {max_cloud}% cloud in {start} to {end}; widen the window or the cloud limit")
     tiles = pipeline.tile_grid(area.geometry, settings.MINEFOOT["TILE_KM"])
@@ -74,10 +82,12 @@ def start(user, job) -> Job:
     """Estimated -> queued. Parameters are frozen from here on."""
     if job.state != Job.State.ESTIMATED:
         raise JobError(f"only an estimated job can start, this one is {job.state}")
-    allowed, _ = pipeline.allowed_providers(job.project.intended_use)
-    if job.parameters.get("provider") not in allowed:   # an approval withdrawn after the estimate
-        raise JobError(f"source {job.parameters.get('provider')} is no longer approved for "
-                       f"{job.project.intended_use.replace('_', ' ')} use (FR-025); estimate again")
+    from .models import SourceApproval
+    used = {i.get("properties", {}).get("minefoot:provider", job.parameters.get("provider")) for i in job.parameters.get("items", [])}
+    for prov in sorted(used):   # an approval withdrawn after the estimate blocks the start
+        if not SourceApproval.objects.filter(provider=prov, use=job.project.intended_use, approved=True).exists():
+            raise JobError(f"source {prov} is no longer approved for {job.project.intended_use.replace('_', ' ')} use "
+                           "(FR-025); estimate again")
     from . import costs
     try:   # FR-087: checked again at start, since other jobs may have run since the estimate
         costs.check_quota(job.organisation, job.area.area_km2 if job.area else 0, job.estimate.get("cost", {}).get("storage_bytes", 0))

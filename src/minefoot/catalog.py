@@ -24,6 +24,8 @@ PROVIDERS = {
              "assets": {"B02": "B02_10m", "B03": "B03_10m", "B04": "B04_10m", "B08": "B08_10m", "B05": "B05_20m",
                         "B06": "B06_20m", "B07": "B07_20m", "B8A": "B8A_20m", "B11": "B11_20m", "B12": "B12_20m",
                         "SCL": "SCL_20m"}, "sign": False, "s3_endpoint": "eodata.dataspace.copernicus.eu"},
+    # Products uploaded by users (FR-022), read from their zip through /vsizip; see minefoot.upload.
+    "upload": {"url": None, "collection": "uploaded", "assets": {b: b for b in (*BANDS, "SCL")}, "sign": False},
 }
 
 

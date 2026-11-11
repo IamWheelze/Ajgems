@@ -559,3 +559,75 @@ class AreaDomainView(APIView):
         except ValueError:
             return Response({"detail": "dates must be YYYY-MM-DD"}, status=400)
         return Response(domain_check(a.geometry, start, end))
+
+
+class _Bytes(__import__("rest_framework.parsers", fromlist=["BaseParser"]).BaseParser):
+    media_type = "application/octet-stream"
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        return stream.read()
+
+
+class UploadListView(APIView):
+    """FR-022: GET a project's uploads; POST {filename, size} starts a resumable upload."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis")
+    write_roles = ("gis",)
+
+    def _project(self, request, project_pk):
+        try:
+            return Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
+            raise Http404
+
+    def get(self, request, project_pk):
+        from .models import Upload
+        from .uploads import payload
+        p = self._project(request, project_pk)
+        return Response([payload(u) for u in Upload.objects.filter(project=p).order_by("-created_at")])
+
+    def post(self, request, project_pk):
+        from .uploads import UploadError, create, payload
+        p = self._project(request, project_pk)
+        try:
+            return Response(payload(create(request.user, p, request.data.get("filename"), request.data.get("size"))), status=201)
+        except UploadError as exc:
+            return Response({"detail": str(exc)}, status=400)
+
+
+class UploadView(APIView):
+    """GET status (how many bytes are safely stored); PUT one chunk as application/octet-stream with headers
+    Content-Range: bytes <start>-<end>/<total> and X-Chunk-SHA256. A chunk not starting at the stored byte count gets
+    409 with the offset to resume from."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis")
+    write_roles = ("gis",)
+    parser_classes = [_Bytes]
+
+    def get(self, request, pk):
+        from .models import Upload
+        from .uploads import payload
+        try:
+            return Response(payload(Upload.objects.get(pk=pk, organisation=request.user.organisation)))
+        except Upload.DoesNotExist:
+            raise Http404
+
+    def put(self, request, pk):
+        import re
+        from .models import Upload
+        from .uploads import OffsetMismatch, UploadError, append, payload
+        m = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)", request.headers.get("Content-Range", ""))
+        if not m:
+            return Response({"detail": "send Content-Range: bytes start-end/total"}, status=400)
+        data = request.data if isinstance(request.data, (bytes, bytearray)) else b""
+        if int(m.group(2)) - int(m.group(1)) + 1 != len(data):
+            return Response({"detail": "Content-Range does not match the chunk length"}, status=400)
+        try:
+            u = append(request.user, pk, int(m.group(1)), bytes(data), request.headers.get("X-Chunk-SHA256", ""))
+        except Upload.DoesNotExist:
+            raise Http404
+        except OffsetMismatch as exc:
+            return Response({"detail": str(exc), "received": exc.received}, status=409)
+        except UploadError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(payload(u))

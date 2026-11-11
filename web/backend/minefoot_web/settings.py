@@ -100,6 +100,10 @@ MINEFOOT = {
     "CPU_COST_PER_HOUR": float(os.environ.get("MINEFOOT_CPU_COST_PER_HOUR", "0")),
     "STORAGE_COST_PER_GB_MONTH": float(os.environ.get("MINEFOOT_STORAGE_COST_PER_GB_MONTH", "0")),
     "COST_CURRENCY": os.environ.get("MINEFOOT_COST_CURRENCY", "USD"),
+    # FR-022 uploads: where products are kept, the largest accepted, and the chunk size clients should use.
+    "UPLOAD_ROOT": Path(os.environ.get("MINEFOOT_UPLOAD_ROOT", REPO_ROOT / "data" / "uploads")),
+    "MAX_UPLOAD_BYTES": int(float(os.environ.get("MINEFOOT_MAX_UPLOAD_GB", "4")) * 1e9),
+    "UPLOAD_CHUNK_BYTES": 8 * 1024 * 1024,
     # FR-053 coverage thresholds (provisional): warn below 80% usable pixels, block below 40%.
     "COVERAGE_WARN_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_WARN_BELOW", "0.80")),
     "COVERAGE_BLOCK_BELOW": float(os.environ.get("MINEFOOT_COVERAGE_BLOCK_BELOW", "0.40")),

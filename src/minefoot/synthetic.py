@@ -73,3 +73,36 @@ def make_scene(out_dir, baseline="05.10", offset=-1000, size=512, seed=7, cloud=
     (out / "truth.geojson").write_text(json.dumps({"type": "FeatureCollection", "features": feats,
         "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::32632"}}}))
     return out
+
+
+def make_safe_zip(raw_dir, zip_path, baseline="05.11", offset=-1000):
+    """A zipped L2A .SAFE built from a synthetic scene, for upload tests. Bands are GeoTIFF bytes under .jp2 names
+    (GDAL recognises the content, not the extension); 20 m bands stay on the 10 m grid, which fetch_scene aligns anyway."""
+    import io
+    import zipfile
+    from .upload import BAND_FILES, BAND_INDEX
+    raw_dir, zip_path = Path(raw_dir), Path(zip_path)
+    meta = json.loads((raw_dir / "scene.json").read_text())
+    safe = f"S2B_MSIL2A_20260114T100000_N{baseline.replace('.', '')}_R000_T32PMR_20260114T120000.SAFE"
+    granule = f"{safe}/GRANULE/L2A_T32PMR_A000000_20260114T100000/IMG_DATA"
+    offs = "".join(f'<BOA_ADD_OFFSET band_id="{i}">{offset}</BOA_ADD_OFFSET>' for i in range(13))
+    mtd = (f'<?xml version="1.0"?><n1:Level-2A_User_Product xmlns:n1="https://psd-14.sentinel2.eo.esa.int/PSD/User_Product_Level-2A.xsd">'
+           f"<General_Info><Product_Info><PRODUCT_START_TIME>{meta['datetime']}</PRODUCT_START_TIME>"
+           f"<PROCESSING_BASELINE>{baseline}</PROCESSING_BASELINE><Datatake><SPACECRAFT_NAME>Sentinel-2B</SPACECRAFT_NAME></Datatake>"
+           f"</Product_Info><Product_Image_Characteristics><QUANTIFICATION_VALUES_LIST><BOA_QUANTIFICATION_VALUE>10000"
+           f"</BOA_QUANTIFICATION_VALUE></QUANTIFICATION_VALUES_LIST><BOA_ADD_OFFSET_VALUES_LIST>{offs}</BOA_ADD_OFFSET_VALUES_LIST>"
+           f"</Product_Image_Characteristics></General_Info><Quality_Indicators_Info><Cloud_Coverage_Assessment>12.5"
+           f"</Cloud_Coverage_Assessment></Quality_Indicators_Info></n1:Level-2A_User_Product>")
+    with rasterio.open(raw_dir / "raw_dn.tif") as src, zipfile.ZipFile(zip_path, "w", zipfile.ZIP_STORED) as z:
+        names = list(src.descriptions)
+        z.writestr(f"{safe}/MTD_MSIL2A.xml", mtd)
+        for band, (res, suffix) in BAND_FILES.items():
+            buf = io.BytesIO()
+            p = {**src.profile, "count": 1, "driver": "GTiff", "tiled": False}
+            p.pop("blockxsize", None); p.pop("blockysize", None)
+            with rasterio.io.MemoryFile() as mf:
+                with mf.open(**p) as d:
+                    d.write(src.read(names.index(band) + 1), 1)
+                buf.write(mf.read())
+            z.writestr(f"{granule}/{res}/T32PMR_20260114T100000_{suffix}.jp2", buf.getvalue())
+    return zip_path

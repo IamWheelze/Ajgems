@@ -139,6 +139,17 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Uploading imagery (FR-022)
+
+**Upload imagery** on a project page accepts a zipped Sentinel-2 Level-2A `.SAFE` folder (up to 4 GB, `MINEFOOT_MAX_UPLOAD_GB`).
+- **Transfer:** 8 MB chunks, each with its SHA-256. The server keeps a chunk only if it starts at the stored byte count and its hash matches. Failures are retried with backoff, and choosing the same file again (even after a reload) resumes from the last confirmed byte.
+- **Tested:**
+  - API test: three interruptions (corrupted chunk, resent old chunk, connection cut mid-chunk).
+  - Browser: a cut connection plus a page reload resumed at 55% and finished with the original file's SHA-256.
+  - A 2 GB transfer has not been tried.
+- **Validation:** on completion the whole-file SHA-256 is recorded and the product is checked. Level-1C, missing bands and non-zips are refused with the reason. The baseline, offsets and footprint come from `MTD_MSIL2A.xml`.
+- **Use in jobs:** ready uploads covering the area and window are offered to the job alongside catalogue scenes. They are read in place through `/vsizip` and go through the same `fetch_scene` → `prepare_scene` path. A package test shows identical reflectance to the same scene fetched normally. A job still runs from uploads when every catalogue is down.
+
 ## Cost and quotas (FR-086, FR-087)
 
 - **Estimate:** compute time and storage come from the medians of the organisation's last finished jobs (at least three), otherwise from defaults. On the Ghana jobs the calibrated estimate is 43 s for 4 tiles; the three real runs took 51, 40 and 43 s, all within 25%.

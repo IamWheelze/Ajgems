@@ -33,6 +33,7 @@ class JobTest(TestCase):
         super().setUpClass()
         cls.tmp = Path(tempfile.mkdtemp())
         raw = make_scene(cls.tmp / "raw", size=256, seed=7, scene_id="SYN")
+        cls.raw = raw
         cls.good = cls.tmp / "good"; prepare_scene(raw, cls.good)
         cls.cloudy = cls.tmp / "cloudy"; shutil.copytree(cls.good, cls.cloudy)
         with rasterio.open(cls.cloudy / "scl.tif", "r+") as s:
@@ -268,6 +269,56 @@ class JobTest(TestCase):
         Organisation.objects.filter(pk=self.org.pk).update(quota_jobs_per_month=None, quota_km2_per_month=0.001)
         r = self.c.post(f"/api/jobs/{est2['id']}/start/")
         self.assertIn("monthly quota", r.json()["detail"])
+
+    def test_resumable_upload_survives_interruptions_and_feeds_a_job(self):
+        """FR-022: a product sent in chunks survives three interruptions intact; the job then uses it, even with
+        every catalogue down (FR-024)."""
+        import hashlib
+        from minefoot.synthetic import make_safe_zip
+        from projects import pipeline
+        from projects.models import Scene, Upload
+        z = make_safe_zip(self.raw, self.tmp / "S2_upload.zip").read_bytes()
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "UPLOAD_ROOT": self.tmp / "uploads", "TILE_KM": 1.0,
+                                         "JOB_ROOT": self.tmp / "jobs", "NIGERIA_TEST_LOCK": self.tmp / "no_lock.json"}):
+            r = self.c.post(f"/api/projects/{self.project.pk}/uploads/", {"filename": "S2_upload.zip", "size": len(z)}, format="json")
+            self.assertEqual(r.status_code, 201, r.content)
+            uid, step = r.json()["id"], 100_000
+
+            def put(start, data, sha=None, rng=None):
+                return self.c.generic("PUT", f"/api/uploads/{uid}/", data, content_type="application/octet-stream",
+                                      HTTP_CONTENT_RANGE=rng or f"bytes {start}-{start + len(data) - 1}/{len(z)}",
+                                      HTTP_X_CHUNK_SHA256=sha or hashlib.sha256(data).hexdigest())
+            sent, interruptions = 0, 0
+            while sent < len(z):
+                chunk = z[sent:sent + step]
+                if interruptions == 0 and sent >= step:           # 1: corrupted in transit
+                    self.assertEqual(put(sent, chunk[:-1] + b"x", sha=hashlib.sha256(chunk).hexdigest()).status_code, 400); interruptions += 1
+                elif interruptions == 1 and sent >= 3 * step:     # 2: client restarts and resends an old chunk
+                    r = put(sent - step, z[sent - step:sent]); self.assertEqual(r.status_code, 409)
+                    self.assertEqual(r.json()["received"], sent); interruptions += 1
+                elif interruptions == 2 and sent >= 5 * step:     # 3: connection cut mid-chunk
+                    self.assertEqual(put(sent, chunk[: len(chunk) // 2], rng=f"bytes {sent}-{sent + len(chunk) - 1}/{len(z)}").status_code, 400)
+                    interruptions += 1
+                sent = self.c.get(f"/api/uploads/{uid}/").json()["received"]   # resume from what the server holds
+                chunk = z[sent:sent + step]
+                self.assertEqual(put(sent, chunk).status_code, 200)
+                sent += len(chunk)
+            self.assertEqual(interruptions, 3)
+            u = Upload.objects.get(pk=uid)
+            self.assertEqual((u.state, u.sha256), ("ready", hashlib.sha256(z).hexdigest()), u.error)
+            self.assertEqual(u.meta["processing_baseline"], "05.11")
+            pipeline.find_scenes.side_effect = RuntimeError("all catalogues down")
+            try:
+                est = self.estimate()
+            finally:
+                pipeline.find_scenes.side_effect = None
+            job = Job.objects.get(pk=est["id"])
+            self.assertEqual([i["properties"]["minefoot:provider"] for i in job.parameters["items"]], ["upload"])
+            job = self.run_job(job.pk)
+            self.assertIn(job.state, ("succeeded", "succeeded_with_warnings"), job.message)
+            self.assertTrue(Scene.objects.filter(provider="upload", source_id=u.meta["scene_id"]).exists())
+            bad = self.c.post(f"/api/projects/{self.project.pk}/uploads/", {"filename": "x.tif", "size": 10}, format="json")
+            self.assertEqual(bad.status_code, 400)
 
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()

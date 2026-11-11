@@ -969,3 +969,30 @@ def test_catalogue_fallback_records_the_source(monkeypatch):
     monkeypatch.setattr(cat, "_client", lambda p: (_ for _ in ()).throw(ConnectionError("down")))
     with pytest.raises(RuntimeError, match="all catalogues failed"):
         cat.search([0, 0, 1, 1], "2026-01-01", "2026-01-31", providers=("planetary", "earth-search"))
+
+
+def test_uploaded_safe_matches_the_catalogue_path(tmp_path):
+    """FR-022: an uploaded L2A .SAFE zip is read in place and gives the same reflectance as the same scene
+    through the normal fetch and prepare path; radiometry comes from the product's own metadata."""
+    import pystac
+    import rasterio
+    from minefoot.catalog import fetch_scene
+    from minefoot.synthetic import make_safe_zip
+    from minefoot.upload import NotCompatible, read_safe, stac_item
+    raw = make_scene(tmp_path / "raw", size=128, seed=3, scene_id="SYN")
+    z = make_safe_zip(raw, tmp_path / "product.zip")
+    meta = read_safe(z)
+    assert meta["processing_baseline"] == "05.11" and meta["offsets"]["B04"] == -1000 and meta["cloud_pct"] == 12.5
+    item = pystac.Item.from_dict(stac_item(z, meta))
+    got = fetch_scene(item, "upload", meta["bbox_wgs84"], tmp_path / "f", name="up")
+    prepare_scene(got, tmp_path / "p_up"); prepare_scene(raw, tmp_path / "p_ref")
+    with rasterio.open(tmp_path / "p_up" / "reflectance.tif") as a, rasterio.open(tmp_path / "p_ref" / "reflectance.tif") as b:
+        B = b.read()
+        win = rasterio.windows.from_bounds(*b.bounds, transform=a.transform).round_offsets().round_lengths()
+        A = a.read(window=win)   # same 10 m grid; the upload's window is a pixel wider on each side
+        assert A.shape == B.shape and a.transform.a == b.transform.a
+        assert np.allclose(A, B, equal_nan=True)
+    assert json.loads((got / "scene.json").read_text())["radiometry"]["B04"]["offset_dn"] == -1000
+    (tmp_path / "bad.zip").write_bytes(b"not a zip")
+    with pytest.raises(NotCompatible, match="zip"):
+        read_safe(tmp_path / "bad.zip")

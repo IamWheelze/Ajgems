@@ -19,10 +19,10 @@ def main(argv=None):
     prov_help = "use only this catalogue (default: try each in order)"
     a = sub.add_parser("search"); a.add_argument("--bbox", type=_bbox, required=True); a.add_argument("--start", required=True)
     a.add_argument("--end", required=True); a.add_argument("--max-cloud", type=float, default=40)
-    a.add_argument("--provider", choices=list(PROVIDERS), help=prov_help)
+    a.add_argument("--provider", choices=[p for p in PROVIDERS if PROVIDERS[p]["url"]], help=prov_help)
     a = sub.add_parser("fetch"); a.add_argument("--bbox", type=_bbox, required=True); a.add_argument("--start", required=True)
     a.add_argument("--end", required=True); a.add_argument("--max-cloud", type=float, default=40)
-    a.add_argument("--provider", choices=list(PROVIDERS), help=prov_help)
+    a.add_argument("--provider", choices=[p for p in PROVIDERS if PROVIDERS[p]["url"]], help=prov_help)
     a.add_argument("--scenes", type=int, default=1); a.add_argument("--scene-id"); a.add_argument("--out", default="data/raw")
     a = sub.add_parser("prepare"); a.add_argument("raw"); a.add_argument("--out", default="data/prepared")
     a = sub.add_parser("view", help="inspection package: HTML gallery, COGs, GeoPackage and a QGIS project (FR-133)")
@@ -36,7 +36,7 @@ def main(argv=None):
     a = sub.add_parser("fetch-sites", help="fetch each site's exact scene and labels")
     a.add_argument("sites", help="sites.gpkg written by ingest"); a.add_argument("--n", type=int, default=50)
     a.add_argument("--site-id", action="append", help="fetch only these sites (repeatable)")
-    a.add_argument("--seed", type=int, default=0); a.add_argument("--provider", choices=list(PROVIDERS))
+    a.add_argument("--seed", type=int, default=0); a.add_argument("--provider", choices=[p for p in PROVIDERS if PROVIDERS[p]["url"]])
     a.add_argument("--out", default="data/raw/global_ml_ready")
     a = sub.add_parser("label-audit", help="how much labelled ground the quality mask removes, per scene")
     a.add_argument("prepared", nargs="+"); a.add_argument("--raw-root", required=True,
@@ -140,6 +140,8 @@ def main(argv=None):
         from .catalog import PROVIDERS, _client, summarise
         ok = False
         for p, c in PROVIDERS.items():
+            if c["url"] is None:   # uploaded products have no catalogue
+                continue
             try:
                 items = list(_client(p).search(collections=[c["collection"]], bbox=[8.8, 9.7, 8.95, 9.85], max_items=1,
                                                datetime="2026-01-01/2026-02-28").items())

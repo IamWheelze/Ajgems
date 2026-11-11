@@ -180,3 +180,25 @@ class RestrictedGrant(models.Model):
     @staticmethod
     def has(user, project) -> bool:
         return RestrictedGrant.objects.filter(project=project, user=user, revoked_at=None).exists()
+
+
+class Upload(models.Model):
+    """FR-022: a user-supplied Sentinel-2 L2A product, received in verified chunks and resumable at any byte."""
+    class State(models.TextChoices):
+        RECEIVING = "receiving"; READY = "ready"; FAILED = "failed"
+
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name="uploads")
+    filename = models.CharField(max_length=255)
+    size = models.BigIntegerField()
+    received = models.BigIntegerField(default=0)
+    state = models.CharField(max_length=20, choices=State.choices, default=State.RECEIVING)
+    path = models.CharField(max_length=500)
+    sha256 = models.CharField(max_length=64, blank=True, help_text="of the whole file, computed on completion")
+    meta = models.JSONField(default=dict, blank=True, help_text="product metadata read from MTD_MSIL2A.xml")
+    footprint = models.PolygonField(srid=4326, null=True)
+    acquired_at = models.DateTimeField(null=True)
+    cloud_pct = models.FloatField(null=True)
+    error = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)

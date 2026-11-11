@@ -21,6 +21,9 @@ export type PoolFeature = GeoJSON.Feature<GeoJSON.Polygon, { id: number; project
   kind: string; negative_type: string; scene_id: string; scene_date: string | null; status_at_nomination: string; protocol_version: string;
   nominated_by: string; nominated_at: string; note: string; state: string; can_check: boolean | null;
   decision: { decision: string; reason_code: string; note: string; checker: string; at: string } | null }>;
+export type UploadInfo = { id: number; project: number; filename: string; size: number; received: number; state: string; sha256: string;
+  error: string; scene_id: string | null; acquired_at: string | null; cloud_pct: number | null; processing_baseline: string | null;
+  chunk_bytes: number; created_at: string };
 export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
@@ -156,6 +159,18 @@ export const api = {
   grantRestricted: (projectId: number, user: string, reason: string, revoke = false) =>
     call<unknown>("POST", `/api/projects/${projectId}/restricted-grants/`, { user, reason, revoke }),
   areaDomain: (id: number) => call<Domain>("GET", `/api/areas/${id}/domain/`),
+  uploads: (projectId: number) => call<UploadInfo[]>("GET", `/api/projects/${projectId}/uploads/`),
+  createUpload: (projectId: number, filename: string, size: number) => call<UploadInfo>("POST", `/api/projects/${projectId}/uploads/`, { filename, size }),
+  upload: (id: number) => call<UploadInfo>("GET", `/api/uploads/${id}/`),
+  /** One verified chunk (FR-022). Resolves with the server state; a 409 carries the offset to resume from. */
+  putChunk: async (id: number, start: number, total: number, chunk: ArrayBuffer): Promise<{ status: number; body: UploadInfo & { detail?: string } }> => {
+    const digest = await crypto.subtle.digest("SHA-256", chunk);
+    const hex = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const res = await fetch(`/api/uploads/${id}/`, { method: "PUT", credentials: "same-origin", body: chunk, headers: {
+      "Content-Type": "application/octet-stream", "X-CSRFToken": csrf(), "X-Chunk-SHA256": hex,
+      "Content-Range": `bytes ${start}-${start + chunk.byteLength - 1}/${total}` } });
+    return { status: res.status, body: await res.json().catch(() => ({})) };
+  },
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),
