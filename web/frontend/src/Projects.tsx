@@ -9,6 +9,7 @@ export default function Projects({ me }: { me: Me }) {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [name, setName] = useState("");
   const [purpose, setPurpose] = useState("");
+  const [use, setUse] = useState("internal_research");   // FR-025
   const [accepted, setAccepted] = useState(false);
   const [error, setError] = useState("");
   const canCreate = me.roles.includes("gis");
@@ -19,7 +20,7 @@ export default function Projects({ me }: { me: Me }) {
   const create = async (e: FormEvent) => {
     e.preventDefault(); setError("");
     try {
-      await api.createProject(name, purpose);
+      await api.createProject(name, purpose, use);
       setName(""); setPurpose(""); setAccepted(false); load();
     } catch (err) { setError((err as Error).message); }
   };
@@ -36,7 +37,7 @@ export default function Projects({ me }: { me: Me }) {
             <div key={p.id} className="card row">
               <div className="grow">
                 <h2>{p.name} {p.status === "archived" && <span className="badge">archived</span>}</h2>
-                <p className="muted">{p.purpose}</p>
+                <p className="muted">{p.purpose} <span className="badge">{p.intended_use?.replace("_", " ")}</span></p>
                 <p className="small muted">{p.areas} area{p.areas === 1 ? "" : "s"} · {p.detections} candidate footprints</p>
               </div>
               <div className="actions">
@@ -53,6 +54,13 @@ export default function Projects({ me }: { me: Me }) {
           <label>Name<input value={name} onChange={(e) => setName(e.target.value)} /></label>
           <label>Purpose<textarea value={purpose} onChange={(e) => setPurpose(e.target.value)} rows={2}
             placeholder="What will this project be used for, and by whom?" /></label>
+          <label>Intended use of the outputs
+            <select value={use} onChange={(e) => setUse(e.target.value)}>
+              <option value="internal_research">Internal research</option><option value="evaluation">Evaluation</option>
+              <option value="commercial">Commercial</option>
+            </select>
+            <span className="small muted">Jobs use only imagery sources approved for this use. Planetary Computer's terms allow evaluation and testing only.</span>
+          </label>
           <label className="check"><input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} />
             <span>{TERMS}</span></label>
           <button className="primary" disabled={!name.trim() || !purpose.trim() || !accepted}>Create project</button>

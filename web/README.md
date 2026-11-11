@@ -139,6 +139,14 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Imagery sources: fallback and licence approval (FR-024, FR-025)
+
+- **Fallback:** the estimate searches the approved catalogues in order and uses the first that answers. The job records which one did (`estimate.source`). A test simulates an outage of the first catalogue.
+  - Pixel downloads do not switch catalogue mid-job; a tile whose download fails is marked failed with its reason.
+- **Approval:** each project states its intended use (internal research, evaluation or commercial). Sources are approved per use in `SourceApproval`, seeded from `docs/licence_register.csv`; administrators edit them in the Django admin.
+  - Planetary Computer is **not** approved for commercial use, because its terms say "solely for evaluation and testing".
+  - The estimate refuses with the licence reason when no source is approved. An approval withdrawn after the estimate blocks the start.
+
 ## Provenance and progress (FR-021, FR-023, FR-053, FR-132)
 
 - Each tile records SHA-256 checksums and the size of its fetched and prepared rasters. Each scene records when it was first retrieved.

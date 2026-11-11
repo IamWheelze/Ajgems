@@ -22,9 +22,28 @@ class Project(models.Model):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Use(models.TextChoices):   # FR-025: what the project's outputs are for; sources must be approved for it
+        INTERNAL_RESEARCH = "internal_research"; EVALUATION = "evaluation"; COMMERCIAL = "commercial"
+
+    intended_use = models.CharField(max_length=20, choices=Use.choices, default=Use.INTERNAL_RESEARCH)
+
     class Meta:
         unique_together = [("organisation", "name")]
         ordering = ["-created_at"]
+
+
+class SourceApproval(models.Model):
+    """FR-025: an imagery source approved for one intended use, with the licence evidence. Administrators keep
+    these in the Django admin; jobs search only approved sources and refuse with the reason when none is."""
+    provider = models.CharField(max_length=40)
+    use = models.CharField(max_length=20, choices=Project.Use.choices)
+    licence_evidence = models.TextField(help_text="what the licence register says, and where")
+    approved = models.BooleanField(default=True)
+    decided_by = models.CharField(max_length=150, help_text="person or record that made this decision")
+    decided_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("provider", "use")]
 
 
 class AreaOfInterest(models.Model):

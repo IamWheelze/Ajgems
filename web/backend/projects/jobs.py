@@ -33,7 +33,14 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
     if reason:
         raise JobError(reason)
     bbox = list(area.geometry.extent)
-    provider, items = pipeline.find_scenes(bbox, start, end, max_cloud)
+    allowed, refused = pipeline.allowed_providers(project.intended_use)
+    if not allowed:
+        raise JobError(f"no imagery source is approved for {project.intended_use.replace('_', ' ')} use (FR-025): "
+                       + "; ".join(f"{p}: {why}" for p, why in refused.items()))
+    try:
+        provider, items = pipeline.find_scenes(bbox, start, end, max_cloud, providers=allowed)
+    except RuntimeError as exc:
+        raise RuntimeError(f"all approved catalogues failed ({', '.join(allowed)}): {exc}")
     if not items:
         raise JobError(f"no scene under {max_cloud}% cloud in {start} to {end}; widen the window or the cloud limit")
     tiles = pipeline.tile_grid(area.geometry, settings.MINEFOOT["TILE_KM"])
@@ -46,7 +53,8 @@ def estimate(user, project, area_id, start, end, max_cloud=20.0) -> Job:
            "clearest_scene": items[0]["id"], "clearest_cloud_pct": items[0]["properties"].get("eo:cloud_cover"),
            "estimated_minutes": round(len(tiles) * settings.MINEFOOT["SECONDS_PER_TILE"] / 60, 1),
            "estimate_basis": f"{settings.MINEFOOT['SECONDS_PER_TILE']:.0f} s per {settings.MINEFOOT['TILE_KM']:.0f} km tile on CPU",
-           "area_km2": area.area_km2, "model": card}
+           "area_km2": area.area_km2, "model": card, "source": provider, "sources_tried_in_order": allowed,
+           "sources_not_approved": refused}
     with transaction.atomic():
         job = Job.objects.create(
             organisation=project.organisation, project=project, area=area, kind="detection",
@@ -63,6 +71,10 @@ def start(user, job) -> Job:
     """Estimated -> queued. Parameters are frozen from here on."""
     if job.state != Job.State.ESTIMATED:
         raise JobError(f"only an estimated job can start, this one is {job.state}")
+    allowed, _ = pipeline.allowed_providers(job.project.intended_use)
+    if job.parameters.get("provider") not in allowed:   # an approval withdrawn after the estimate
+        raise JobError(f"source {job.parameters.get('provider')} is no longer approved for "
+                       f"{job.project.intended_use.replace('_', ' ')} use (FR-025); estimate again")
     from .tasks import run_detection_job
     job.state = Job.State.QUEUED
     job.save(update_fields=["state"])

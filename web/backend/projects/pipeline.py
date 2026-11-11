@@ -45,10 +45,20 @@ def tile_grid(area_geom_4326, tile_km: float):
 
 # ---------- catalogue ----------
 
-def find_scenes(bbox, start, end, max_cloud):
-    """Scenes for the job, clearest first. Returns (provider, [item dicts])."""
+def allowed_providers(use):
+    """FR-025: catalogues in fallback order (FR-024) that are approved for this intended use, and refusals."""
+    from minefoot.catalog import default_providers
+    from .models import SourceApproval
+    ok = {a.provider: a for a in SourceApproval.objects.filter(use=use)}
+    allowed = [p for p in default_providers() if p in ok and ok[p].approved]
+    refused = {p: ok[p].licence_evidence if p in ok else "no approval recorded" for p in default_providers() if p not in allowed}
+    return allowed, refused
+
+
+def find_scenes(bbox, start, end, max_cloud, providers=None):
+    """Scenes for the job, clearest first, from the first catalogue that answers (FR-024). Returns (provider, [item dicts])."""
     from minefoot.catalog import search
-    prov, items = search(bbox, start, end, max_cloud)
+    prov, items = search(bbox, start, end, max_cloud, providers=providers)
     return prov, [it.to_dict() for it in items]
 
 

@@ -226,6 +226,26 @@ class JobTest(TestCase):
             self.assertEqual((b["date"][:10], b["scene_id"]), ("2026-01-03", "S2_SYN"))
             self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour&job=999999").status_code, 404)
 
+    def test_sources_must_be_approved_for_the_projects_use(self):
+        """FR-025: a commercial project never searches Planetary Computer (evaluation-only terms); with no approved
+        source the estimate is refused with the reason; an approval withdrawn after the estimate blocks the start."""
+        from projects import pipeline
+        from projects.models import SourceApproval
+        Project.objects.filter(pk=self.project.pk).update(intended_use="commercial")
+        with mock.patch("minefoot.catalog.cdse_keys", return_value=None):
+            est = self.estimate()
+            providers = pipeline.find_scenes.call_args.kwargs["providers"]
+            self.assertEqual(providers, ["earth-search"])
+            self.assertIn("planetary", est["estimate"]["sources_not_approved"])
+            SourceApproval.objects.filter(provider="earth-search").update(approved=False)
+            r = self.c.post(f"/api/jobs/{est['id']}/start/")
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("no longer approved", r.json()["detail"])
+            r = self.c.post(f"/api/projects/{self.project.pk}/jobs/",
+                            {"area": self.area_id, "start": "2026-01-01", "end": "2026-02-28"}, format="json")
+            self.assertEqual(r.status_code, 400)
+            self.assertIn("evaluation and testing", r.json()["detail"])
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])

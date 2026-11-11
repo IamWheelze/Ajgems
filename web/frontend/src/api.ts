@@ -2,7 +2,7 @@
 
 export type Me = { username: string; organisation: string; roles: string[]; privileged: boolean; mfa_enabled: boolean;
   mfa_satisfied: boolean };
-export type Project = { id: number; name: string; purpose: string; status: string; created_at: string; areas: number; detections: number };
+export type Project = { id: number; name: string; purpose: string; status: string; created_at: string; areas: number; detections: number; intended_use: string };
 export type Area = { id: number; name: string; area_km2: number; source: string; source_crs: string; geometry: GeoJSON.Geometry };
 export type Scene = { id: number; source_id: string; provider: string; sensor: string; acquired_at: string; processing_baseline: string; cloud_pct: number | null; licence_note: string };
 export type ReviewEntry = { action: string; reason_code: string; note: string; reviewer_role: string; status_before: string; status_after: string; at: string };
@@ -31,7 +31,8 @@ export type Job = {
   created_at: string; started_at: string | null; finished_at: string | null; candidates: number;
   parameters: Record<string, unknown>;
   estimate: { tiles: number; tiles_with_imagery: number; scenes_found: number; clearest_scene: string; clearest_cloud_pct: number;
-    estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard };
+    estimated_minutes: number; estimate_basis: string; area_km2: number; model: ModelCard;
+    source?: string; sources_not_approved?: Record<string, string> };
   tiles: { total: number; by_state: Record<string, number>; by_outcome: Record<string, number> };
   progress?: { elapsed_s: number; tiles_done: number; remaining_s: number | null; bytes_fetched: number; compute: string;
     area_coverage: { usable_pct: number | null; not_assessed_pct: number | null } | null };
@@ -111,8 +112,8 @@ export const api = {
   logout: () => call<void>("POST", "/api/auth/logout/"),
   me: () => call<Me>("GET", "/api/me/"),
   projects: () => call<{ results: Project[] }>("GET", "/api/projects/").then((r) => r.results),
-  createProject: (name: string, purpose: string) =>
-    call<Project>("POST", "/api/projects/", { name, purpose, acceptable_use: true }),
+  createProject: (name: string, purpose: string, intended_use = "internal_research") =>
+    call<Project>("POST", "/api/projects/", { name, purpose, intended_use, acceptable_use: true }),
   archiveProject: (id: number) => call<Project>("POST", `/api/projects/${id}/archive/`),
   project: (id: number) => call<Project>("GET", `/api/projects/${id}/`),
   areas: (id: number) => call<Area[]>("GET", `/api/projects/${id}/areas/`),

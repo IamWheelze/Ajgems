@@ -55,6 +55,9 @@ export default function RunSetup({ projectId, areas }: { projectId: number; area
         <div className="estimate small">
           <p><b>{job.estimate.tiles}</b> tiles ({job.estimate.tiles_with_imagery} with imagery) · {job.estimate.scenes_found} scene(s)
             found · clearest {job.estimate.clearest_cloud_pct?.toFixed(1)}% cloud · about <b>{job.estimate.estimated_minutes} min</b>
+            {job.estimate.source && <> · source <b>{job.estimate.source}</b></>}
+            {job.estimate.sources_not_approved && Object.keys(job.estimate.sources_not_approved).length > 0 &&
+              <span className="small muted"> (not used for this project's intended use: {Object.keys(job.estimate.sources_not_approved).join(", ")})</span>}
             <span className="muted"> ({job.estimate.estimate_basis})</span></p>
           <p>Model <b>{m.model_version}</b> · threshold {m.threshold.toFixed(2)} · {m.score_type}, not calibrated
             {m.global_test_f1 !== undefined && <> · global test pixel F1 {m.global_test_f1.toFixed(2)}</>}</p>

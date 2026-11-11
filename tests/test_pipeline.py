@@ -945,3 +945,27 @@ def test_cdse_radiometry_and_missing_keys(monkeypatch):
         _reader_env("cdse")
     monkeypatch.setenv("CDSE_S3_ACCESS_KEY", "a"); monkeypatch.setenv("CDSE_S3_SECRET_KEY", "b")
     assert default_providers()[0] == "cdse"
+
+
+def test_catalogue_fallback_records_the_source(monkeypatch):
+    """FR-024: when the first catalogue fails, search falls back and says which one answered."""
+    import minefoot.catalog as cat
+
+    class Item:
+        def __init__(self, i, cc): self.id, self.properties = i, {"eo:cloud_cover": cc}
+
+    class Ok:
+        def search(self, **kw):
+            return type("R", (), {"items": lambda self: [Item("b", 30), Item("a", 5)]})()
+
+    def client(p):
+        if p == "planetary":
+            raise ConnectionError("simulated outage")
+        return Ok()
+    monkeypatch.setattr(cat, "_client", client)
+    monkeypatch.setattr(cat.time, "sleep", lambda s: None)
+    prov, items = cat.search([0, 0, 1, 1], "2026-01-01", "2026-01-31", providers=("planetary", "earth-search"))
+    assert prov == "earth-search" and [i.id for i in items] == ["a", "b"]   # clearest first
+    monkeypatch.setattr(cat, "_client", lambda p: (_ for _ in ()).throw(ConnectionError("down")))
+    with pytest.raises(RuntimeError, match="all catalogues failed"):
+        cat.search([0, 0, 1, 1], "2026-01-01", "2026-01-31", providers=("planetary", "earth-search"))

@@ -11,7 +11,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ["id", "name", "purpose", "status", "created_at", "acceptable_use", "acceptable_use_accepted_at",
-                  "areas", "detections"]
+                  "areas", "detections", "intended_use"]
         read_only_fields = ["status", "created_at", "acceptable_use_accepted_at"]
 
     def get_areas(self, p):
