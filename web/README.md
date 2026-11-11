@@ -108,6 +108,15 @@ Also run for real here: a 122 kmÂ² area in Ghana, 4 tiles, 18 candidates in 42â€
 
 ## Model registry (FR-101 to FR-104)
 
+**How to approve a model (two people).**
+1. Create one account per person, each with their own password typed at a hidden prompt:
+   - `python manage.py add_user --username <you> --organisation "<org>" --roles ml`
+   - `python manage.py add_user --username <second person> --organisation "<org>" --roles admin` (or `ml`)
+   - Never use the shared demo accounts for a real approval.
+2. Each person signs in and enrols multi-factor sign-in with an authenticator app.
+3. Person 1, in **Models**: **Compare with production** (if no report is listed), then **Propose for production**.
+4. Person 2, in **Models**: reviews the comparison and the licences on the card, then **Approve (second person)**. New detection jobs then use this model; **Roll back** returns to the previous one.
+
 - **Registration** of a finished G2 run (`python manage.py register_model --run ../../data/runs/<run> --user <ml user>`, or the API) is refused if any lineage field is missing: code commit (not uncommitted code), dataset, input schema, split hash, sites, parameters, normalisation, metrics and weights. The model card lists every licence in the lineage, including unverified ones.
 - **Compare** a model with the production model on the same locked test sites (paired site bootstrap). Promotion is impossible without this report.
 - **Propose, then approve.** A model is proposed by ML and approved by a **different** person (ML or admin); self-approval is refused. Inference refuses a model whose input schema does not match.
