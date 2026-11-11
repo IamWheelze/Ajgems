@@ -173,3 +173,64 @@ class PoolImageView(APIView):
         if request.query_params.get("bounds") == "1":
             return Response({"bounds": bounds})
         return FileResponse(open(path, "rb"), content_type="image/png")
+
+
+class FieldTasksView(APIView):
+    """FR-095: open field-check tasks for the phone to take offline."""
+    permission_classes = [RolePermission]
+    read_roles = ("field", "gis", "admin")
+
+    def get(self, request):
+        from .field import tasks
+        return Response(tasks(request.user))
+
+
+class FieldVisitSyncView(APIView):
+    """POST multipart: meta (JSON), photos (files), blurred (JSON list of counts). Idempotent by meta.client_uuid."""
+    permission_classes = [RolePermission]
+    write_roles = ("field",)
+
+    def post(self, request):
+        import json
+        from .field import sync_visit, visit_payload
+        try:
+            meta = json.loads(request.data.get("meta") or "{}")
+            blurred = json.loads(request.data.get("blurred") or "[]")
+        except ValueError:
+            return Response({"detail": "meta and blurred must be JSON"}, status=400)
+        try:
+            v, created = sync_visit(request.user, meta, [f.read() for f in request.FILES.getlist("photos")], blurred)
+        except Detection.DoesNotExist:
+            raise Http404
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(visit_payload(v), status=201 if created else 200)
+
+
+class FieldVisitListView(APIView):
+    permission_classes = [RolePermission]
+    read_roles = ("field", "gis", "admin")
+
+    def get(self, request, pk):
+        from .field import visit_payload
+        from .models import FieldVisit
+        qs = (FieldVisit.objects.filter(detection_id=pk, organisation=request.user.organisation)
+              .select_related("observer", "review").prefetch_related("photos").order_by("visited_at"))
+        return Response([visit_payload(v) for v in qs])
+
+
+class FieldPhotoView(APIView):
+    """Photos open only for field, GIS and admin users of the same organisation; never for customer viewers."""
+    permission_classes = [RolePermission]
+    read_roles = ("field", "gis", "admin")
+
+    def get(self, request, pk):
+        from django.http import FileResponse
+        from .models import FieldPhoto
+        try:
+            p = FieldPhoto.objects.get(pk=pk, organisation=request.user.organisation)
+        except FieldPhoto.DoesNotExist:
+            raise Http404
+        return FileResponse(open(p.path, "rb"), content_type="image/jpeg")

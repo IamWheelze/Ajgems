@@ -187,3 +187,68 @@ class PoolTest(Base):
         self.assertEqual(r.status_code, 400)
         self.assertIn("ML-07", r.json()["detail"])
         self.ov.enable()
+
+
+class FieldEvidenceTest(Base):
+    """FR-095: offline visits sync once, carry the field decision, lose photo metadata, and photos follow role rules."""
+
+    def setUp(self):
+        super().setUp()
+        import tempfile
+        from pathlib import Path
+        from django.conf import settings
+        from django.test import override_settings
+        self.ov = override_settings(MINEFOOT={**settings.MINEFOOT, "DATA_ROOT": Path(tempfile.mkdtemp())})
+        self.ov.enable()
+
+    def tearDown(self):
+        self.ov.disable()
+
+    def photo_with_gps(self):
+        import io
+        from PIL import Image
+        im = Image.new("RGB", (64, 48), (120, 90, 60))
+        exif = Image.Exif()
+        exif[0x010F] = "PhoneMaker"                                   # Make
+        exif[0x8825] = {1: "N", 2: (9.0, 45.0, 0.0), 3: "E", 4: (8.0, 52.0, 0.0)}   # GPSInfo
+        b = io.BytesIO(); im.save(b, "JPEG", exif=exif.tobytes())
+        assert Image.open(io.BytesIO(b.getvalue())).getexif()          # the input really has metadata
+        b.seek(0); b.name = "IMG_0001.jpg"
+        return b
+
+    def test_offline_visit_sync(self):
+        import io, json, uuid
+        from PIL import Image
+        from review.models import FieldPhoto, FieldVisit
+        d = self.dets["A"]
+        submit_review(self.users[("A", "gis")], d.pk, "request_field_check", "needs_ground_truth")
+        field = self.client_for("A", "field")
+        tasks = field.get("/api/field/tasks/").json()
+        self.assertEqual([t["id"] for t in tasks], [d.pk])
+        cid = str(uuid.uuid4())
+        meta = {"client_uuid": cid, "detection": d.pk, "visited_at": "2026-11-10T09:30:00+01:00", "lat": 9.75, "lon": 8.87,
+                "accuracy_m": 6, "notes": "fresh pits, no activity seen", "observer_name": "A. Field",
+                "decision": {"action": "field_confirm", "reason_code": "observed_on_site"}}
+        body = lambda: {"meta": json.dumps(meta), "blurred": json.dumps([2]), "photos": [self.photo_with_gps()]}
+        self.assertEqual(self.client_for("A", "gis").post("/api/field/visits/", body(), format="multipart").status_code, 403)
+        r = field.post("/api/field/visits/", body(), format="multipart")
+        self.assertEqual(r.status_code, 201, r.content)
+        d.refresh_from_db()
+        self.assertEqual((d.status, d.evidence_grade), ("field_confirmed", "E3"))
+        self.assertEqual(field.post("/api/field/visits/", body(), format="multipart").status_code, 200)   # retried sync
+        self.assertEqual((FieldVisit.objects.count(), FieldPhoto.objects.count()), (1, 1))
+        p = FieldPhoto.objects.get()
+        self.assertEqual(p.blurred_regions, 2)
+        stored = Image.open(p.path)
+        self.assertEqual(dict(stored.getexif()), {})                  # no GPS, maker or serial left in the file
+        pid = r.json()["photos"][0]["id"]
+        self.assertEqual(self.client_for("A", "viewer").get(f"/api/field/photos/{pid}/").status_code, 403)
+        self.assertEqual(self.client_for("B", "field").get(f"/api/field/photos/{pid}/").status_code, 404)
+        self.assertEqual(self.client_for("A", "gis").get(f"/api/field/photos/{pid}/").status_code, 200)
+        visits = self.client_for("A", "gis").get(f"/api/detections/{d.pk}/field-visits/").json()
+        self.assertEqual((visits[0]["decision"]["action"], visits[0]["lat"]), ("field_confirm", 9.75))
+        # A decision the rules refuse stores nothing, so the phone keeps the visit queued with the reason.
+        meta2 = {**meta, "client_uuid": str(uuid.uuid4())}
+        r = field.post("/api/field/visits/", {"meta": json.dumps(meta2), "photos": []}, format="multipart")
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(FieldVisit.objects.count(), 1)

@@ -140,3 +140,29 @@ class QCDecision(AppendOnly):
 
     class Meta:
         ordering = ["at", "id"]
+
+
+class FieldVisit(AppendOnly):
+    """FR-095: a field visit recorded on a phone, possibly offline, and synced later. client_uuid makes sync
+    idempotent: sending the same visit twice stores it once."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    detection = models.ForeignKey("projects.Detection", on_delete=models.PROTECT, related_name="field_visits")
+    client_uuid = models.UUIDField(unique=True)
+    observer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    observer_name = models.CharField(max_length=200, blank=True, help_text="as typed in the field, if different")
+    visited_at = models.DateTimeField(help_text="device time of the visit")
+    lat = models.FloatField(null=True); lon = models.FloatField(null=True); accuracy_m = models.FloatField(null=True)
+    notes = models.TextField(blank=True)
+    review = models.ForeignKey(Review, on_delete=models.PROTECT, null=True, related_name="+",
+                               help_text="the field decision recorded with this visit, if any")
+    synced_at = models.DateTimeField(auto_now_add=True)
+
+
+class FieldPhoto(AppendOnly):
+    """A photo from a field visit, stored with its metadata stripped. Only field, GIS and admin roles can open it."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    visit = models.ForeignKey(FieldVisit, on_delete=models.PROTECT, related_name="photos")
+    path = models.CharField(max_length=500)
+    sha256 = models.CharField(max_length=64)
+    blurred_regions = models.IntegerField(default=0, help_text="areas the observer blurred before upload (people, plates)")
+    width = models.IntegerField(); height = models.IntegerField()

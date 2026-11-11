@@ -56,6 +56,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [nominated, setNominated] = useState("");
+  const [visits, setVisits] = useState<Awaited<ReturnType<typeof api.fieldVisits>>>([]);
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(NO_FILTERS);   // FR-094, applied on the server
   const [jobPick, setJobPick] = useState("");   // "" = the latest finished job for each area
@@ -101,6 +102,11 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   }, []);
 
   useEffect(() => { if (!selected && queue.length) select(queue[0]); }, [queue, selected, select]);
+  useEffect(() => {
+    setVisits([]);
+    if (selected && me.roles.some((r) => ["field", "gis", "admin"].includes(r)))
+      api.fieldVisits(selected.properties.id).then(setVisits).catch(() => setVisits([]));
+  }, [selected?.properties.id]);
   useEffect(() => {
     if (!selected) return;
     api.detectionDates(selected.properties.id).then((d) => {
@@ -576,6 +582,17 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             )}
             {error && <p className="error" role="alert">{error}</p>}
 
+            {visits.length > 0 && <>   {/* FR-095: field evidence, visible to field, GIS and admin roles only */}
+              <h3>Field visits</h3>
+              {visits.map((v) => <div key={v.id} className="small">
+                <b>{v.visited_at.slice(0, 16).replace("T", " ")}</b> · {v.observer_name || v.observer}
+                {v.lat !== null && ` · ${v.lat.toFixed(5)}, ${v.lon!.toFixed(5)} (±${v.accuracy_m ?? "?"} m)`}
+                {v.decision && <> · <b>{ACTION_LABEL[v.decision.action] ?? v.decision.action}</b> ({human(v.decision.reason_code)})</>}
+                {v.notes && <div className="muted">{v.notes}</div>}
+                <div className="row gap">{v.photos.map((ph) => <a key={ph.id} href={`/api/field/photos/${ph.id}/`} target="_blank" rel="noreferrer">
+                  <img className="field-thumb" alt={`field photo, ${ph.blurred_regions} area(s) blurred`} src={`/api/field/photos/${ph.id}/`} /></a>)}</div>
+              </div>)}
+            </>}
             <h3>History</h3>
             {(p.reviews ?? []).length === 0 ? <p className="small muted">No decisions yet.</p> : (
               <ol className="history small">

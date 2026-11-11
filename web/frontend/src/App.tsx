@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, ApiError, Me } from "./api";
+import { api, Me } from "./api";
 import Login from "./Login";
 import Projects from "./Projects";
 import ProjectAreas from "./ProjectAreas";
@@ -7,6 +7,7 @@ import ReviewWorkspace from "./ReviewWorkspace";
 import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
 import ErrorMaps from "./ErrorMaps";
+import Field from "./Field";
 import Pool from "./Pool";
 import RunDashboard from "./RunDashboard";
 import Registry from "./Registry";
@@ -28,10 +29,8 @@ export default function App() {
   const route = useRoute();
 
   useEffect(() => {
-    api.csrf().then(() => api.me()).then(setMe).catch((e) => {
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) setMe(null);
-      else setMe(null);
-    });
+    // Offline (FR-095) the CSRF request fails but the service worker still answers /api/me/ from its cache.
+    api.csrf().catch(() => undefined).then(() => api.me()).then(setMe).catch(() => setMe(null));
   }, []);
 
   if (me === undefined) return <div className="centre muted">Loading…</div>;
@@ -49,6 +48,7 @@ export default function App() {
         {me.roles.some((r) => r === "ml" || r === "admin") && <a href="#/models" className="small">Models</a>}
         {me.roles.some((r) => r === "ml" || r === "admin") && <a href="#/datasets" className="small">Datasets</a>}
         {me.roles.some((r) => r === "ml" || r === "gis" || r === "admin") && <a href="#/pool" className="small">Annotation QC</a>}
+        {me.roles.includes("field") && <a href="#/field" className="small">Field visits</a>}
         <span className="spacer" />
         <span className="muted">{me.username} · {me.roles.join(", ")}</span>
         <button className="link" onClick={signOut}>Sign out</button>
@@ -59,6 +59,7 @@ export default function App() {
           : section === "models" ? <Registry me={me} />
           : section === "datasets" ? <DatasetExplorer />
           : section === "pool" ? <Pool me={me} />
+          : section === "field" ? <Field me={me} />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
           : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />
           : section === "projects" && id ? <ProjectAreas projectId={Number(id)} me={me} />

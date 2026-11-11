@@ -171,6 +171,23 @@ export const api = {
       "Content-Range": `bytes ${start}-${start + chunk.byteLength - 1}/${total}` } });
     return { status: res.status, body: await res.json().catch(() => ({})) };
   },
+  fieldTasks: () => call<import("./fieldStore").FieldTask[]>("GET", "/api/field/tasks/"),
+  /** Sync one queued visit (FR-095). Resolves ok/detail; rejects only when the network fails. */
+  syncVisit: async (v: import("./fieldStore").QueuedVisit): Promise<{ ok: boolean; detail?: string }> => {
+    const f = new FormData();
+    f.append("meta", JSON.stringify({ ...v.meta, client_uuid: v.client_uuid }));
+    f.append("blurred", JSON.stringify(v.blurred));
+    v.photos.forEach((b, i) => f.append("photos", b, `photo_${i}.jpg`));
+    const res = await fetch("/api/field/visits/", { method: "POST", body: f, credentials: "same-origin", headers: { "X-CSRFToken": csrf() } });
+    if (res.ok) return { ok: true };
+    const d = await res.json().catch(() => ({}));
+    if (res.status >= 500) throw new Error("server error");
+    if (res.status === 401 || res.status === 403) throw new Error(`sign in again to sync (${d.detail ?? res.status})`);   // keep queued
+    return { ok: false, detail: d.detail ?? `refused (${res.status})` };
+  },
+  fieldVisits: (id: number) => call<{ id: number; observer: string; observer_name: string; visited_at: string; lat: number | null; lon: number | null;
+    accuracy_m: number | null; notes: string; decision: { action: string; reason_code: string } | null;
+    photos: { id: number; blurred_regions: number }[] }[]>("GET", `/api/detections/${id}/field-visits/`),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

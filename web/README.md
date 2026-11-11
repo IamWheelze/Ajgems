@@ -139,6 +139,25 @@ The explorer page (ML and admin users) shows:
 - **Pixel inspector** (FR-128): click the map to see the job tile's 10 band reflectances (not resampled), NDVI, NDWI, the mask class and whether the pixel was usable, the model score with the threshold, and the source scene. A test checks 20 sampled points against the rasters.
 - **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
 
+## Field visits, offline (FR-095)
+
+**Field visits** (field role) is a phone page that works without a connection.
+- **Before going out:** it saves the open field-check tasks on the phone; a service worker in the built app caches the page itself.
+- **At the site:**
+  - record position (GPS with accuracy), time, observer, notes and photos, plus an optional field confirm or reject with a reason;
+  - before a photo is kept, drag boxes over people, faces or number plates and they are blurred on the phone.
+  - Visits wait in IndexedDB and sync automatically when the phone is back online (retried every 20 s).
+  - A visit the rules refuse stays on the phone with the reason.
+- **On the server:**
+  - sync is idempotent by the visit's UUID, so retries never duplicate a visit;
+  - photos are re-encoded with no EXIF (location, device serial);
+  - visits and photos are append-only;
+  - a field decision goes through the normal review rules (evidence grade E3).
+  - Photos open only for field, GIS and admin users of the same organisation, and appear in the review evidence panel.
+- **Tested:** the production build in a phone-sized browser. Load, go offline, reload (served from cache), record a visit with GPS, notes and a blurred photo, reconnect, and it synced (201). The stored photo had no EXIF.
+  - Blurring is manual; there is no automatic face detection.
+  - The demo project has one open field task (#320) to try this with `demo_field`.
+
 ## Uploading imagery (FR-022)
 
 **Upload imagery** on a project page accepts a zipped Sentinel-2 Level-2A `.SAFE` folder (up to 4 GB, `MINEFOOT_MAX_UPLOAD_GB`).
