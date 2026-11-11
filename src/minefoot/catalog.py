@@ -45,7 +45,10 @@ def default_providers():
 
 
 def _reader_env(provider):
-    """GDAL settings for reading a provider's pixels."""
+    """GDAL settings for reading a provider's pixels. For S3 stores the keys are given to GDAL through the process
+    environment only while reading (rasterio refuses AWS keys in rasterio.Env without boto3), then removed."""
+    import contextlib
+    import os
     import rasterio
     cfg = PROVIDERS[provider]
     if "s3_endpoint" not in cfg:
@@ -54,8 +57,28 @@ def _reader_env(provider):
     if keys is None:
         raise MissingCredentials("Copernicus Data Space pixels need S3 keys: set CDSE_S3_ACCESS_KEY and CDSE_S3_SECRET_KEY "
                                  "(free account at dataspace.copernicus.eu), or use --provider planetary or earth-search")
-    return rasterio.Env(AWS_S3_ENDPOINT=cfg["s3_endpoint"], AWS_VIRTUAL_HOSTING="FALSE", AWS_HTTPS="YES",
-                        AWS_ACCESS_KEY_ID=keys[0], AWS_SECRET_ACCESS_KEY=keys[1], GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR")
+    gdal = {"AWS_S3_ENDPOINT": cfg["s3_endpoint"], "AWS_VIRTUAL_HOSTING": "FALSE", "AWS_HTTPS": "YES",
+            "AWS_ACCESS_KEY_ID": keys[0], "AWS_SECRET_ACCESS_KEY": keys[1], "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR"}
+
+    @contextlib.contextmanager
+    def env():
+        saved = {k: os.environ.get(k) for k in gdal}
+        os.environ.update(gdal)
+        try:
+            with rasterio.Env():
+                yield
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+    return env()
+
+
+def _gdal_path(href: str) -> str:
+    """s3:// hrefs go straight to GDAL's /vsis3/ handler, so rasterio does not need boto3."""
+    return "/vsis3/" + href[len("s3://"):] if href.startswith("s3://") else href
 
 
 def _client(provider: str):
@@ -121,7 +144,7 @@ def fetch_scene(item, provider: str, bbox_wgs84, out_dir, name: str | None = Non
     _reader_env(provider)   # fail early, before any download, if keys are missing
     for band in BANDS_10M + tuple(b for b in (*BANDS, "SCL") if b not in BANDS_10M):
         asset = item.assets[cfg["assets"][band]]
-        with _reader_env(provider), rasterio.open(asset.href) as src:
+        with _reader_env(provider), rasterio.open(_gdal_path(asset.href)) as src:
             b = transform_bounds("EPSG:4326", src.crs, *bbox_wgs84, densify_pts=21)
             if dst is None:
                 # 10 m grid snapped to the source pixels, so no shift is introduced.
