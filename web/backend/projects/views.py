@@ -98,6 +98,29 @@ class AreaViewSet(viewsets.ViewSet):
         return Response(AreaSerializer(a).data, status=status.HTTP_201_CREATED)
 
 
+def filter_detections(qs, q):
+    """FR-094: status, score band, mask status, area (ha), image date, model, latest review reason and area of interest."""
+    from django.db.models import OuterRef, Subquery
+    from review.models import Review
+    for key in ("status", "score_band", "mask_status", "model_version"):
+        if q.get(key):
+            qs = qs.filter(**{f"{key}__in": q[key].split(",")})
+    if q.get("min_ha"):
+        qs = qs.filter(area_ha__gte=float(q["min_ha"]))
+    if q.get("max_ha"):
+        qs = qs.filter(area_ha__lte=float(q["max_ha"]))
+    if q.get("date_from"):
+        qs = qs.filter(scene__acquired_at__date__gte=q["date_from"])
+    if q.get("date_to"):
+        qs = qs.filter(scene__acquired_at__date__lte=q["date_to"])
+    if q.get("area"):
+        qs = qs.filter(job__area_id__in=[int(x) for x in q["area"].split(",")])
+    if q.get("reason"):
+        latest = Review.objects.filter(detection=OuterRef("pk")).order_by("-at", "-id").values("reason_code")[:1]
+        qs = qs.annotate(latest_reason=Subquery(latest)).filter(latest_reason__in=q["reason"].split(","))
+    return qs
+
+
 class DetectionViewSet(viewsets.ViewSet):
     """Detections as GeoJSON. Customer viewers see released detections only (FRD 5)."""
     permission_classes = [RolePermission]
@@ -105,7 +128,7 @@ class DetectionViewSet(viewsets.ViewSet):
     write_roles = ()
 
     def _qs(self, request):
-        qs = Detection.objects.filter(organisation=request.user.organisation).select_related("scene")
+        qs = Detection.objects.filter(organisation=request.user.organisation).select_related("scene", "job")
         if request.user.has_role("viewer") and not request.user.has_role("admin", "gis", "field"):
             qs = qs.filter(status=Detection.Status.RELEASED)
         return qs
@@ -120,9 +143,7 @@ class DetectionViewSet(viewsets.ViewSet):
         job = request.query_params.get("job")
         jobs = selected_jobs(p, int(job) if job else None)
         qs = self._qs(request).filter(project_id=project_pk, job__in=jobs)
-        for key in ("status", "score_band", "mask_status"):
-            if request.query_params.get(key):
-                qs = qs.filter(**{f"{key}__in": request.query_params[key].split(",")})
+        qs = filter_detections(qs, request.query_params)
         return Response({"type": "FeatureCollection", "features": [detection_feature(d) for d in qs[:5000]]})
 
     def retrieve(self, request, pk=None, project_pk=None):

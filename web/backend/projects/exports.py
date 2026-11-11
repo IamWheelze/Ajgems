@@ -231,8 +231,14 @@ def build_package(project, dets, user, fmt, statuses, jobs=None) -> tuple[bytes,
     files = {f"candidates.{fmt}": {"geojson": _geojson, "gpkg": _gpkg, "csv": _csv}[fmt](dets, recs),
              "report.pdf": report_pdf(project, dets, recs, jobs, user, statuses),
              "LICENCE_AND_ATTRIBUTION.txt": licence_text(project, dets).encode()}
+    from review.models import MissedSite
+    from review.services import missed_feature
+    missed = list(MissedSite.objects.filter(project=project, job__in=jobs).select_related("added_by"))
+    if missed:   # FR-093: analyst-added misses are a separate layer, never mixed with model candidates
+        files["missed_sites.geojson"] = json.dumps({"type": "FeatureCollection", "features": [missed_feature(m) for m in missed]},
+                                                   default=str, indent=1).encode()
     manifest = {"project_id": project.id, "project": project.name, "created_at": datetime.now(timezone.utc).isoformat(),
-                "format": fmt, "status_filter": statuses, "candidates": len(dets), "jobs": [j.pk for j in jobs],
+                "format": fmt, "status_filter": statuses, "candidates": len(dets), "missed_sites": len(missed), "jobs": [j.pk for j in jobs],
                 "files": {n: {"sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b)} for n, b in files.items()},
                 "signature": None, "note": "Signing (FR-109) is not implemented yet; checksums only."}
     buf = io.BytesIO()

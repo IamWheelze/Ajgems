@@ -1,6 +1,6 @@
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, DetectionFeature, Me, Project, ReviewOptions } from "./api";
+import { api, Area, DetectionFeature, Me, MissedProps, Project, ReviewOptions } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
 import SwipeCompare from "./SwipeCompare";
 import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
@@ -10,6 +10,9 @@ const LAYERS: Record<string, string> = {
   nir_false_colour: "NIR false colour (B8 B4 B3)", quality: "Quality mask (not assessed areas)",
 };
 const BAND_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+const NO_FILTERS = { score_band: "", min_ha: "", max_ha: "", date_from: "", date_to: "", model_version: "", reason: "", area: "" };
+// FR-093: analyst-added missed sites, drawn white over a black casing so they never look like a candidate status.
+const MISSED = { colour: "#FFFFFF", casing: "#000000", icon: "＋", label: "Missed site (added by analyst)" };
 
 export default function ReviewWorkspace({ projectId, me }: { projectId: number; me: Me }) {
   const mapEl = useRef<HTMLDivElement>(null);
@@ -32,12 +35,28 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [filters, setFilters] = useState(NO_FILTERS);   // FR-094, applied on the server
+  const [draftFilters, setDraftFilters] = useState(NO_FILTERS);
+  const [areas, setAreas] = useState<Area[]>([]);
+  const [missed, setMissed] = useState<GeoJSON.Feature<GeoJSON.Polygon, MissedProps>[]>([]);
+  const [missedReasons, setMissedReasons] = useState<string[]>([]);
+  const [missedPts, setMissedPts] = useState<[number, number][] | null>(null);   // null: not drawing
+  const missedRef = useRef<[number, number][] | null>(null);
+  const [missedReason, setMissedReason] = useState("");
+  const [missedNote, setMissedNote] = useState("");
 
   useEffect(() => {
-    Promise.all([api.project(projectId), api.detections(projectId), api.reviewOptions()])
-      .then(([p, fc, o]) => { setProject(p); setFeatures(fc.features as DetectionFeature[]); setOptions(o); })
+    Promise.all([api.project(projectId), api.reviewOptions(), api.areas(projectId)])
+      .then(([p, o, a]) => { setProject(p); setOptions(o); setAreas(a); })
       .catch((e) => setError(e.message));
-  }, [projectId]);
+    if (me.roles.some((r) => ["admin", "gis", "field"].includes(r)))
+      api.missedSites(projectId).then((fc) => { setMissed(fc.features); setMissedReasons(fc.reasons); }).catch((e) => setError(e.message));
+  }, [projectId, me.roles]);
+  useEffect(() => {
+    api.detections(projectId, filters).then((fc) => { setFeatures(fc.features as DetectionFeature[]); setSelected(null); })
+      .catch((e) => setError(e.message));
+  }, [projectId, filters]);
+  const activeFilters = Object.values(filters).filter(Boolean).length;
 
   const queue = useMemo(() => features
     .filter((f) => filter === "all" || f.properties.status === filter)
@@ -72,6 +91,15 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       }
       m.addLayer({ id: "dets-selected", type: "line", source: "dets", filter: ["==", ["get", "id"], -1],
         paint: { "line-color": "#ffffff", "line-width": 4 } });
+      m.addSource("missed", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      m.addLayer({ id: "missed-casing", type: "line", source: "missed", paint: { "line-color": MISSED.casing, "line-width": 4 } });
+      m.addLayer({ id: "missed-line", type: "line", source: "missed", paint: { "line-color": MISSED.colour, "line-width": 2, "line-dasharray": [3, 1] } });
+      m.addSource("missed-draft", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+      m.addLayer({ id: "missed-draft-line", type: "line", source: "missed-draft", filter: ["==", ["geometry-type"], "LineString"],
+        paint: { "line-color": MISSED.colour, "line-width": 2, "line-dasharray": [3, 1] } });
+      m.addLayer({ id: "missed-draft-pts", type: "circle", source: "missed-draft", filter: ["==", ["geometry-type"], "Point"],
+        paint: { "circle-radius": 4, "circle-color": MISSED.colour, "circle-stroke-color": MISSED.casing, "circle-stroke-width": 2 } });
+      m.on("click", (e) => { if (missedRef.current) setMissedPts([...missedRef.current, [e.lngLat.lng, e.lngLat.lat]]); });
       m.addSource("edit", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addLayer({ id: "edit-line", type: "line", source: "edit", filter: ["==", ["geometry-type"], "Polygon"],
         paint: { "line-color": "#56B4E9", "line-width": 2.5 } });
@@ -88,6 +116,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       });
       m.on("mouseup", () => { if (drag !== null) { drag = null; m.dragPan.enable(); } });
       m.on("click", "dets-fill", (e) => {
+        if (missedRef.current) return;   // drawing a missed site
         const id = e.features?.[0]?.properties?.id;
         const f = featuresRef.current.find((x) => x.properties.id === id);
         if (f) select(f);
@@ -110,6 +139,32 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
     const apply = () => (m!.getSource("dets") as maplibregl.GeoJSONSource)?.setData(dets);
     if (m) whenReady(m, apply);
   }, [features, dets]);
+
+  useEffect(() => {
+    const m = map.current;
+    if (m) whenReady(m, () => (m.getSource("missed") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: missed }));
+  }, [missed]);
+  useEffect(() => {
+    missedRef.current = missedPts;
+    const m = map.current;
+    if (!m) return;
+    m.getCanvas().style.cursor = missedPts ? "crosshair" : "";
+    const pts = missedPts ?? [];
+    const ring = pts.length > 2 ? [...pts, pts[0]] : pts;
+    whenReady(m, () => (m.getSource("missed-draft") as maplibregl.GeoJSONSource).setData({ type: "FeatureCollection", features: [
+      ...(ring.length > 1 ? [{ type: "Feature" as const, properties: {}, geometry: { type: "LineString" as const, coordinates: ring } }] : []),
+      ...pts.map((p) => ({ type: "Feature" as const, properties: {}, geometry: { type: "Point" as const, coordinates: p } })),
+    ] }));
+  }, [missedPts]);
+  const saveMissed = async () => {
+    if (!missedPts || missedPts.length < 3) return;
+    setBusy(true); setError("");
+    try {
+      const f = await api.addMissedSite(projectId, { type: "Polygon", coordinates: [[...missedPts, missedPts[0]]] }, missedReason, missedNote);
+      setMissed((ms) => [...ms, f]); setMissedPts(null); setMissedReason(""); setMissedNote("");
+    } catch (e) { setError((e as Error).message); }
+    finally { setBusy(false); }
+  };
 
   useEffect(() => {
     const m = map.current;
@@ -203,7 +258,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   // Keyboard review: c/r/u/f choose an action, j/k move through the queue, Enter submits.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest("input, textarea, select")) return;
+      if ((e.target as HTMLElement).closest("input, textarea, select") || missedRef.current) return;
       const i = queue.findIndex((f) => f.properties.id === selected?.properties.id);
       if (e.key === "j" && i < queue.length - 1) select(queue[i + 1]);
       else if (e.key === "k" && i > 0) select(queue[i - 1]);
@@ -224,7 +279,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         <span>Model: <b>{p?.model_version ?? "—"}</b></span>
         <span className="badge" title="Scores are not calibrated probabilities (FR-084)">Model score, not calibrated</span>
         <span className="spacer" />
-        <span className="small muted">{reviewed} of {features.length} reviewed</span>
+        <span className="small muted">{reviewed} of {features.length} reviewed{activeFilters ? " (filtered)" : ""} · {missed.length} missed site{missed.length === 1 ? "" : "s"} added</span>
       </div>
 
       <aside className="ws-queue">
@@ -234,6 +289,24 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             {Object.entries(STATUS).map(([s, x]) => <option key={s} value={s}>{x.icon} {x.label} ({counts[s] ?? 0})</option>)}
           </select>
         </label>
+        <details className="filters-more small" open={activeFilters > 0}>
+          <summary>More filters{activeFilters ? ` (${activeFilters})` : ""}</summary>
+          <form className="filter-grid" onSubmit={(e) => { e.preventDefault(); setFilters(draftFilters); }}>
+            <label>Score band<select value={draftFilters.score_band} onChange={(e) => setDraftFilters({ ...draftFilters, score_band: e.target.value })}>
+              <option value="">Any</option>{Object.entries(BAND_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
+            <label>Area of interest<select value={draftFilters.area} onChange={(e) => setDraftFilters({ ...draftFilters, area: e.target.value })}>
+              <option value="">Any</option>{areas.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+            <label>Min ha<input type="number" min="0" step="any" value={draftFilters.min_ha} onChange={(e) => setDraftFilters({ ...draftFilters, min_ha: e.target.value })} /></label>
+            <label>Max ha<input type="number" min="0" step="any" value={draftFilters.max_ha} onChange={(e) => setDraftFilters({ ...draftFilters, max_ha: e.target.value })} /></label>
+            <label>Image from<input type="date" value={draftFilters.date_from} onChange={(e) => setDraftFilters({ ...draftFilters, date_from: e.target.value })} /></label>
+            <label>Image to<input type="date" value={draftFilters.date_to} onChange={(e) => setDraftFilters({ ...draftFilters, date_to: e.target.value })} /></label>
+            <label>Model<input value={draftFilters.model_version} placeholder="e.g. g2_hn:unet" onChange={(e) => setDraftFilters({ ...draftFilters, model_version: e.target.value })} /></label>
+            <label>Last reason<select value={draftFilters.reason} onChange={(e) => setDraftFilters({ ...draftFilters, reason: e.target.value })}>
+              <option value="">Any</option>{[...new Set(Object.values(options).flatMap((o) => o.reasons))].sort().map((r) => <option key={r} value={r}>{human(r)}</option>)}</select></label>
+            <div className="actions"><button className="primary">Apply</button>
+              <button type="button" onClick={() => { setDraftFilters(NO_FILTERS); setFilters(NO_FILTERS); }}>Clear</button></div>
+          </form>
+        </details>
         <ol className="queue" aria-label="Review queue">
           {queue.map((f) => {
             const s = STATUS[f.properties.status];
@@ -275,10 +348,33 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             <span key={s}><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke={x.colour} strokeWidth="2"
               strokeDasharray={x.dash ? x.dash.map((d) => d * 2).join(" ") : undefined} /></svg> {x.icon} {x.label}</span>
           ))}
+          {missed.length > 0 && <span><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke={MISSED.casing} strokeWidth="4" />
+            <line x1="0" y1="4" x2="22" y2="4" stroke={MISSED.colour} strokeWidth="2" strokeDasharray="6 2" /></svg> {MISSED.icon} {MISSED.label}</span>}
         </div>
       </div>
 
       <aside className="ws-evidence">
+        {me.roles.includes("gis") && (
+          <div className="card missed">
+            {missedPts === null ? (
+              <button onClick={() => { setMissedPts([]); setAction(""); }} title="FR-093: record disturbance the model did not find">{MISSED.icon} Add missed site</button>
+            ) : (
+              <>
+                <h3>{MISSED.icon} Missed site</h3>
+                <p className="small muted">Click the map to outline disturbance the model did not find ({missedPts.length} points). It is counted as a false negative, separately from candidates, unless that tile had no usable imagery.</p>
+                <label className="small">Reason (required)
+                  <select value={missedReason} onChange={(e) => setMissedReason(e.target.value)}>
+                    <option value="">Choose…</option>{missedReasons.map((r) => <option key={r} value={r}>{human(r)}</option>)}</select></label>
+                <label className="small">Note{missedReason === "other" && " (required)"}<textarea rows={2} value={missedNote} onChange={(e) => setMissedNote(e.target.value)} /></label>
+                <div className="actions wrap">
+                  <button className="primary" disabled={busy || missedPts.length < 3 || !missedReason || (missedReason === "other" && !missedNote.trim())} onClick={saveMissed}>Save missed site</button>
+                  <button onClick={() => setMissedPts(missedPts.slice(0, -1))} disabled={!missedPts.length}>Undo point</button>
+                  <button onClick={() => setMissedPts(null)}>Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
         {!p ? <p className="muted">Select a candidate.</p> : (
           <>
             <h2><span style={{ color: st!.colour }}>{st!.icon}</span> Candidate #{p.id}</h2>

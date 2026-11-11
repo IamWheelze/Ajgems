@@ -129,6 +129,15 @@ The explorer page (ML and admin users) shows:
 - *Warnings:* overlaps across splits.
 - *Per site:* labels and details.
 
+## Missed sites and filters (FR-093, FR-094)
+
+- **Add missed site** (GIS role, review workspace): outline disturbance the model did not find, with a reason.
+  - It is stored apart from candidates, append-only like reviews, and linked to the latest finished job in that area.
+  - It counts as a false negative, unless the tile at its centre had no usable imagery. That case is labelled "not a model miss" (FR-052).
+  - Exports include a separate `missed_sites.geojson`, and the manifest gives the count.
+  - Like reviewed candidates, missed sites reach training labels only through independent QC (FR-075).
+- **More filters** in the review queue: score band, area of interest, size in ha, image dates, model and the latest review reason. They are applied on the server (`/api/projects/<id>/detections/?min_ha=…&reason=…`).
+
 ## Swipe comparison (FR-127, MVP)
 
 In review, **Swipe compare** puts a second band preset (for example SWIR false colour) on the right of a draggable divider; arrow keys move it too.

@@ -11,6 +11,8 @@ export type DetectionProps = {
   min_mapping_unit_ha: number; model_version: string; masked_fraction: number; mask_status: string;
   evidence_grade: string; scene: Scene; statement: string; reviews?: ReviewEntry[];
 };
+export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
+  scene_date: string | null; added_by: string; at: string; counts_as: string };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
 export type ModelCard = { model_version: string; threshold: number; score_type: string; trained_on?: string;
   global_test_f1?: number; global_test_f1_ci95?: [number, number]; tested_in_nigeria: boolean; domain_warning: string | null };
@@ -108,8 +110,13 @@ export const api = {
     const f = new FormData(); f.append("name", name); f.append("file", file);
     return call<Area>("POST", `/api/projects/${id}/areas/`, f);
   },
-  detections: (id: number) =>
-    call<GeoJSON.FeatureCollection<GeoJSON.Polygon, DetectionProps>>("GET", `/api/projects/${id}/detections/`),
+  detections: (id: number, filters: Record<string, string> = {}) => {
+    const q = new URLSearchParams(Object.entries(filters).filter(([, v]) => v)).toString();
+    return call<GeoJSON.FeatureCollection<GeoJSON.Polygon, DetectionProps>>("GET", `/api/projects/${id}/detections/${q ? `?${q}` : ""}`);
+  },
+  missedSites: (id: number) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, MissedProps> & { reasons: string[] }>("GET", `/api/projects/${id}/missed-sites/`),
+  addMissedSite: (id: number, geometry: GeoJSON.Polygon, reason_code: string, note: string) =>
+    call<GeoJSON.Feature<GeoJSON.Polygon, MissedProps>>("POST", `/api/projects/${id}/missed-sites/`, { geometry, reason_code, note }),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

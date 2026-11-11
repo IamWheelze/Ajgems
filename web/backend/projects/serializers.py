@@ -67,7 +67,7 @@ def detection_feature(d, include_history=False):
         "min_mapping_unit_ha": d.min_mapping_unit_ha, "model_version": d.model_version,
         "input_schema_version": d.input_schema_version, "masked_fraction": round(d.masked_fraction, 3),
         "mask_status": d.mask_status, "evidence_grade": d.evidence_grade,
-        "scene": SceneSerializer(d.scene).data, "statement": SCORE_STATEMENT,
+        "scene": SceneSerializer(d.scene).data, "statement": SCORE_STATEMENT, "area_id": d.job.area_id,
     }
     if include_history:
         props["reviews"] = [{"action": r.action, "reason_code": r.reason_code, "note": r.note,

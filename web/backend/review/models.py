@@ -66,3 +66,30 @@ class Evidence(AppendOnly):
     file = models.CharField(max_length=500, blank=True)
     notes = models.TextField(blank=True)
     at = models.DateTimeField(auto_now_add=True)
+
+
+MISSED_REASONS = ["not_detected", "only_partly_detected", "other"]
+
+
+class MissedSite(AppendOnly):
+    """A disturbance the model missed, added by an analyst (FR-093). Counted as a false negative,
+    separately from candidates. Like reviews, it is never changed or deleted, and it reaches
+    ground truth only through independent QC (FR-075)."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    project = models.ForeignKey("projects.Project", on_delete=models.PROTECT, related_name="missed_sites")
+    job = models.ForeignKey("projects.Job", on_delete=models.PROTECT, null=True, related_name="missed_sites",
+                            help_text="the finished job whose area it lies in")
+    geometry = models.PolygonField(srid=4326)
+    area_ha = models.FloatField()
+    reason_code = models.CharField(max_length=40)
+    note = models.TextField(blank=True)
+    tile_outcome = models.CharField(max_length=40, blank=True,
+                                    help_text="outcome of the job tile at its centre: a miss in a tile without usable "
+                                              "imagery is not a model miss (FR-052)")
+    scene_date = models.DateField(null=True)
+    added_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    added_by_role = models.CharField(max_length=20)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]

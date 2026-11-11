@@ -7,7 +7,7 @@ from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, EditGeometryView, ExportView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ModelActionView, ModelDashboardView, ModelListView
-from review.views import ReviewCreateView, ReviewOptionsView
+from review.views import MissedSiteView, ReviewCreateView, ReviewOptionsView
 
 # FR-001: the Django admin is for administrators, so it also requires a session whose second factor was
 # verified through the app's sign-in (/api/auth/login/ then /api/auth/mfa/verify/).
@@ -45,6 +45,7 @@ urlpatterns = [
     path("api/detections/<int:pk>/image/", DetectionImageView.as_view()),
     path("api/detections/<int:pk>/edit-geometry/", EditGeometryView.as_view()),
     path("api/review-options/", ReviewOptionsView.as_view()),
+    path("api/projects/<int:project_pk>/missed-sites/", MissedSiteView.as_view()),
     path("api/scenes/<int:pk>/image/", SceneImageView.as_view()),
     path("api/audit/", AuditListView.as_view()),
     path("api/model-card/", ModelCardView.as_view()),

@@ -37,3 +37,39 @@ class ReviewOptionsView(APIView):
     def get(self, request):
         return Response({a: {"status_after": s, "roles": sorted(r), "allowed_from": sorted(f) if f else None,
                              "reasons": REASONS[a]} for a, (s, r, f) in ACTIONS.items()})
+
+
+class MissedSiteView(APIView):
+    """FR-093: GET lists a project's missed sites; POST {geometry, reason_code, note?} adds one."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field")
+    write_roles = ("gis",)
+
+    def get(self, request, project_pk):
+        from projects.exports import selected_jobs
+        from projects.models import Project
+        from .models import MissedSite
+        from .services import missed_feature
+        try:
+            p = Project.objects.get(pk=project_pk, organisation=request.user.organisation)
+        except Project.DoesNotExist:
+            raise Http404
+        qs = MissedSite.objects.filter(project=p).select_related("added_by")
+        if request.query_params.get("all") != "1":   # same default as detections: the latest finished job per area
+            qs = qs.filter(job__in=selected_jobs(p))
+        from .models import MISSED_REASONS
+        return Response({"type": "FeatureCollection", "features": [missed_feature(m) for m in qs], "reasons": MISSED_REASONS})
+
+    def post(self, request, project_pk):
+        from projects.models import Project
+        from .services import add_missed_site, missed_feature
+        try:
+            ms = add_missed_site(request.user, project_pk, request.data.get("geometry"),
+                                 request.data.get("reason_code", ""), request.data.get("note", "") or "")
+        except Project.DoesNotExist:
+            raise Http404
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(missed_feature(ms), status=201)
