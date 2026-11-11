@@ -7,8 +7,17 @@ import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
 
 const LAYERS: Record<string, string> = {
   true_colour: "True colour (B4 B3 B2)", swir_false_colour: "SWIR false colour (B12 B8A B4)",
-  nir_false_colour: "NIR false colour (B8 B4 B3)", quality: "Quality mask (not assessed areas)",
+  nir_false_colour: "NIR false colour (B8 B4 B3)", ndvi: "NDVI", ndwi: "NDWI", quality: "Quality mask (cloud, shadow, no data)",
 };
+// FR-122: fixed, documented stretches (same text as minefoot.viewer.LAYER_TEXT), so a scene looks the same in every session.
+const STRETCH_NOTE: Record<string, string> = {
+  true_colour: "Fixed stretch: reflectance 0 to 0.35.", swir_false_colour: "Fixed stretch: reflectance 0 to 0.50. Bare ground stands out from vegetation.",
+  nir_false_colour: "Fixed stretch: reflectance 0 to 0.50. Vegetation looks red.", ndvi: "Dark is low vegetation, light is high. Fixed scale −0.2 to 0.8.",
+  ndwi: "Light is water-like. Fixed scale −0.6 to 0.6.", quality: "Scene classification (SCL) of unusable pixels over a dimmed true-colour view.",
+};
+// FR-123: the quality layer's classes (minefoot.viewer.SCL_COLOURS).
+const QUALITY_KEY: [string, string][] = [["rgb(0,0,0)", "No data"], ["rgb(120,0,120)", "Saturated or defective"], ["rgb(70,70,110)", "Cloud shadow"],
+  ["rgb(200,200,200)", "Cloud, medium"], ["rgb(255,255,255)", "Cloud, high"], ["rgb(150,210,240)", "Thin cirrus"], ["rgb(255,150,0)", "Snow or ice (often bright mine ground)"]];
 const BAND_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 const NO_FILTERS = { score_band: "", min_ha: "", max_ha: "", date_from: "", date_to: "", model_version: "", reason: "", area: "" };
 // FR-093: analyst-added missed sites, drawn white over a black casing so they never look like a candidate status.
@@ -27,6 +36,10 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [mapObj, setMapObj] = useState<maplibregl.Map | null>(null);
   const [showOsm, setShowOsm] = useState(false);
   const [showNA, setShowNA] = useState(true);
+  const [showScore, setShowScore] = useState(false);   // FR-124 heatmap
+  const showScoreRef = useRef(showScore);
+  const [scoreMissing, setScoreMissing] = useState(false);
+  const [cursor, setCursor] = useState<[number, number] | null>(null);   // FR-120 coordinates
   const [editRing, setEditRing] = useState<[number, number][] | null>(null);
   const editRef = useRef<[number, number][] | null>(null);
   const [imagery, setImagery] = useState<{ date: string; scene_id: string; licence_note: string } | null>(null);
@@ -99,6 +112,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         paint: { "line-color": MISSED.colour, "line-width": 2, "line-dasharray": [3, 1] } });
       m.addLayer({ id: "missed-draft-pts", type: "circle", source: "missed-draft", filter: ["==", ["geometry-type"], "Point"],
         paint: { "circle-radius": 4, "circle-color": MISSED.colour, "circle-stroke-color": MISSED.casing, "circle-stroke-width": 2 } });
+      m.on("mousemove", (e) => setCursor([e.lngLat.lng, e.lngLat.lat]));
+      m.on("mouseout", () => setCursor(null));
       m.on("click", (e) => { if (missedRef.current) setMissedPts([...missedRef.current, [e.lngLat.lng, e.lngLat.lat]]); });
       m.addSource("edit", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addLayer({ id: "edit-line", type: "line", source: "edit", filter: ["==", ["geometry-type"], "Polygon"],
@@ -171,6 +186,12 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
     if (m && m.getLayer("osm")) m.setLayoutProperty("osm", "visibility", showOsm ? "visible" : "none");
   }, [showOsm]);
 
+  useEffect(() => {
+    showScoreRef.current = showScore;
+    const m = map.current;
+    if (m && m.getLayer("score")) m.setLayoutProperty("score", "visibility", showScore && !scoreMissing ? "visible" : "none");
+  }, [showScore, scoreMissing]);
+
   const showNARef = useRef(showNA);
   useEffect(() => {
     showNARef.current = showNA;
@@ -229,6 +250,24 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           m.addLayer({ id: "na", type: "raster", source: "na", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-fill");
         }
         m.setLayoutProperty("na", "visibility", showNARef.current ? "visible" : "none");
+        // FR-124: the job's model-score map as a heatmap, between the imagery and the hatch.
+        try {
+          const sm = await api.detectionBounds(detId, "score");
+          const [sw, ss, se, sn] = sm.bounds;
+          const sCorners: typeof corners = [[sw, sn], [se, sn], [se, ss], [sw, ss]];
+          const sUrl = api.detectionImageUrl(detId, "score");
+          const sc = m.getSource("score") as maplibregl.ImageSource | undefined;
+          if (sc) sc.updateImage({ url: sUrl, coordinates: sCorners });
+          else {
+            m.addSource("score", { type: "image", url: sUrl, coordinates: sCorners });
+            m.addLayer({ id: "score", type: "raster", source: "score", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "na");
+          }
+          m.setLayoutProperty("score", "visibility", showScoreRef.current ? "visible" : "none");
+          setScoreMissing(false);
+        } catch {
+          if (m.getLayer("score")) m.setLayoutProperty("score", "visibility", "none");
+          setScoreMissing(true);
+        }
       } catch (e) { setError((e as Error).message); }
     };
     whenReady(m, run);
@@ -329,10 +368,17 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           <SwipeCompare main={mapObj} detectionId={selected.properties.id} layer={compare}
             label={`◀ ${LAYERS[layer]}  |  ${LAYERS[compare]} ▶`} outline={selected as unknown as GeoJSON.Feature} all={dets} showNA={showNA} />
         )}
-        <div className="map-overlay">
+        <details className="map-overlay" open>
+          <summary className="small"><b>Layers</b> · {LAYERS[layer]}</summary>
           <select value={layer} onChange={(e) => setLayer(e.target.value)} aria-label="Band preset">
             {Object.entries(LAYERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
+          <div className="small muted stretch-note">{STRETCH_NOTE[layer]}</div>
+          {layer === "quality" && <div className="quality-key small">{QUALITY_KEY.map(([c, l]) => <span key={l}><span className="swatch" style={{ background: c }} /> {l}</span>)}</div>}
+          <label className="small"><input type="checkbox" checked={showScore} onChange={(e) => setShowScore(e.target.checked)} disabled={scoreMissing} />
+            {" "}Model-score heatmap{scoreMissing ? " (not stored for this candidate)" : ""}</label>
+          {showScore && !scoreMissing && <div className="score-key small"><span>0.1</span><span className="score-ramp" /><span>1.0</span>
+            <span className="muted">model score, not a probability; threshold {p ? p.threshold.toFixed(2) : "—"}</span></div>}
           <label className="small">Swipe compare
             <select value={compare} onChange={(e) => setCompare(e.target.value)} aria-label="Swipe comparison preset">
               <option value="">Off</option>
@@ -342,7 +388,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           <label className="small"><input type="checkbox" checked={showNA} onChange={(e) => setShowNA(e.target.checked)} /> Not assessed (hatched)</label>
           <label className="small"><input type="checkbox" checked={showOsm} onChange={(e) => setShowOsm(e.target.checked)} /> OpenStreetMap (orientation only)</label>
           {imagery && <div className="small">{imagery.scene_id}<br />{imagery.licence_note}</div>}
-        </div>
+        </details>
+        {cursor && <div className="coords small" aria-live="off">{cursor[1].toFixed(5)}°, {cursor[0].toFixed(5)}° (WGS 84)</div>}
         <div className="legend small">
           {Object.entries(STATUS).map(([s, x]) => (
             <span key={s}><svg width="22" height="8"><line x1="0" y1="4" x2="22" y2="4" stroke={x.colour} strokeWidth="2"

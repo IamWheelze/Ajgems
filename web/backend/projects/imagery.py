@@ -9,7 +9,10 @@ from pathlib import Path
 import numpy as np
 from django.conf import settings
 
-LAYERS = ("true_colour", "swir_false_colour", "nir_false_colour", "ndvi", "ndwi", "quality", "not_assessed")
+LAYERS = ("true_colour", "swir_false_colour", "nir_false_colour", "ndvi", "ndwi", "quality", "not_assessed", "score")
+# FR-124 heatmap: one hue, light to dark with rising model score; scores under SCORE_FLOOR stay transparent.
+SCORE_RAMP = ((253, 217, 181), (166, 54, 3))
+SCORE_FLOOR = 0.1
 
 
 def not_assessed_rgba(scl):
@@ -28,6 +31,26 @@ def not_assessed_rgba(scl):
 MAX_SIZE = 2048
 
 
+def score_rgba(levels):
+    """Model score levels (uint8, 0..255) as a single-hue heatmap; alpha grows with the score."""
+    s = levels.astype("float32") / 255.0
+    lo, hi = np.array(SCORE_RAMP[0], "float32"), np.array(SCORE_RAMP[1], "float32")
+    rgb = (lo + (hi - lo) * s[..., None]).astype("uint8")
+    alpha = np.where(s < SCORE_FLOOR, 0, 50 + 150 * s).astype("uint8")
+    return np.dstack([rgb, alpha])
+
+
+def score_paths(tiles):
+    """Score maps written by the job for these tiles (job folder/<grid_id>_score.tif)."""
+    out = []
+    for t in tiles:
+        p = Path(t.score_path) if t.score_path else (Path(t.prepared_path).parents[1] / f"{t.grid_id}_score.tif"
+                                                      if t.prepared_path else None)   # jobs run before score_path existed
+        if p is not None and p.exists():
+            out.append(p)
+    return out
+
+
 def _render(arr, scl, t, crs, layer, cache):
     """Display layer (or the not-assessed hatch) warped to WGS 84 as RGBA PNG; returns (path, bounds)."""
     import rasterio
@@ -35,8 +58,8 @@ def _render(arr, scl, t, crs, layer, cache):
     from rasterio.warp import Resampling, calculate_default_transform, reproject
     from minefoot.viewer import build_layers
     shape = scl.shape
-    if layer == "not_assessed":
-        rgba = not_assessed_rgba(scl)
+    if layer in ("not_assessed", "score"):
+        rgba = not_assessed_rgba(scl) if layer == "not_assessed" else score_rgba(arr)
         img, alpha_src = rgba[..., :3], rgba[..., 3]
     else:
         img, alpha_src = build_layers(arr, scl)[layer], None              # (H, W, 3) uint8
@@ -49,6 +72,7 @@ def _render(arr, scl, t, crs, layer, cache):
     alpha = alpha_src if alpha_src is not None else np.full(shape, 255, "uint8")
     reproject(alpha, out[3], src_transform=t, src_crs=crs, dst_transform=dst_t, dst_crs="EPSG:4326",
               resampling=Resampling.nearest, dst_nodata=0)
+    out[3][out[3] <= 1] = 0   # reproject writes 1 for source zeros next to nodata; drawn alphas are always far above 1
     cache.parent.mkdir(parents=True, exist_ok=True)
     Image.fromarray(out.transpose(1, 2, 0), "RGBA").save(cache, optimize=True)
     west, north = dst_t * (0, 0); east, south = dst_t * (w, h)
@@ -86,7 +110,27 @@ def _read(prepared_dirs):
             s.close()
 
 
+def _read_scores(paths):
+    import rasterio
+    from rasterio.enums import Resampling
+    from rasterio.merge import merge
+    srcs = [rasterio.open(p) for p in paths]
+    try:
+        crs = srcs[0].crs
+        srcs = [s for s in srcs if s.crs == crs]
+        W = max(s.bounds.right for s in srcs) - min(s.bounds.left for s in srcs)
+        H = max(s.bounds.top for s in srcs) - min(s.bounds.bottom for s in srcs)
+        res = max(abs(srcs[0].res[0]), max(W, H) / MAX_SIZE)
+        arr, t = merge(srcs, res=res, resampling=Resampling.nearest, nodata=0)
+        return arr[0], t, crs
+    finally:
+        for s in srcs:
+            s.close()
+
+
 def render_scene_png(scene, layer="true_colour"):
+    if layer == "score":
+        raise ValueError("no score map is stored for this candidate")
     if layer not in LAYERS:
         raise ValueError(f"layer must be one of {LAYERS}")
     prep = Path(scene.prepared_path)
@@ -113,5 +157,11 @@ def render_detection_png(detection, layer="true_colour"):
     hit = _cached(cache)
     if hit:
         return hit
+    if layer == "score":
+        paths = score_paths(tiles)
+        if not paths:
+            raise ValueError("no score map is stored for this candidate")
+        levels, t, crs = _read_scores(paths)
+        return _render(levels, levels, t, crs, "score", cache)
     arr, scl, t, crs = _read([t.prepared_path for t in tiles])
     return _render(arr, scl, t, crs, layer, cache)

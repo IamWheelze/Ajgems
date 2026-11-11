@@ -120,3 +120,15 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
 .filter-grid input, .filter-grid select { width: 100%; min-width: 0; padding: 4px 6px; }
 .filter-grid .actions { grid-column: 1 / -1; }
 .card.missed { margin-bottom: 10px; }
+
+/* FR-121 to FR-124 layer notes and keys */
+.stretch-note { max-width: 300px; }
+.quality-key { display: grid; gap: 2px; }
+.quality-key span, .score-key { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.quality-key .swatch { width: 12px; height: 12px; display: inline-block; }
+.score-ramp { display: inline-block; width: 90px; height: 10px; border-radius: 3px; border: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(253,217,181,.55), rgba(166,54,3,.95)); }
+.coords { position: absolute; bottom: 8px; right: 110px; z-index: 3; background: color-mix(in srgb, var(--panel) 90%, transparent);
+  padding: 2px 6px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.map-overlay label:has(> input[type="checkbox"]) { display: flex; gap: 6px; align-items: center; }
+.map-overlay label > input[type="checkbox"] { width: auto; margin: 0; }

@@ -127,6 +127,17 @@ class JobTest(TestCase):
         fc = self.c.get(f"/api/jobs/{job.pk}/tiles/").json()
         self.assertEqual(len(fc["features"]), job.tiles.count())
         self.assertEqual(fc["features"][0]["properties"]["date"], "2026-01-03")
+        # FR-124: the score heatmap shows the job's stored score map (0.9 inside the truth, 0.05 outside).
+        from io import BytesIO
+        from PIL import Image
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "cache"}):
+            self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=score&bounds=1").status_code, 200)
+            px = np.asarray(Image.open(BytesIO(b"".join(self.c.get(f"/api/detections/{d.pk}/image/?layer=score").streaming_content))))
+        from projects.imagery import score_rgba
+        expect = score_rgba(np.array([[round(0.9 * 255)], [round(0.05 * 255)]], "uint8"))
+        shown = px[px[..., 3] > 0]
+        self.assertTrue(len(shown) and (np.abs(shown.astype(int) - expect[0, 0].astype(int)).max(axis=1) <= 1).all())
+        self.assertEqual(expect[1, 0, 3], 0)   # 0.05 is under the 0.1 floor: transparent, so the imagery shows
 
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()

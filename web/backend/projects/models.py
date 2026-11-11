@@ -101,6 +101,7 @@ class Tile(models.Model):
     candidates = models.IntegerField(default=0)
     failure_reason = models.CharField(max_length=80, blank=True)
     prepared_path = models.CharField(max_length=500, blank=True, help_text="minefoot prepared folder for this tile")
+    score_path = models.CharField(max_length=500, blank=True, help_text="the tile's model-score map (uint8 levels)")
     outcome = models.CharField(max_length=40, choices=Outcome.choices, default=Outcome.NOT_PROCESSED)
 
     class Meta:

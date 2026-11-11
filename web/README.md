@@ -129,6 +129,14 @@ The explorer page (ML and admin users) shows:
 - *Warnings:* overlaps across splits.
 - *Per site:* labels and details.
 
+## Map layers in review (FR-120 to FR-124)
+
+- **Band presets:** true colour, SWIR false colour, NIR false colour, NDVI and NDWI. Each uses a fixed, documented stretch, shown under the preset (FR-122).
+- **Quality mask:** scene classification of unusable pixels (no data, saturated, cloud shadow, cloud, cirrus, snow), with a key (FR-123).
+- **Model-score heatmap:** the job's stored score map in one hue, light to dark (FR-124). Scores under 0.1 are transparent, and the key gives the job's threshold.
+  - Score maps are kept per tile (`Tile.score_path`). The demo project's candidates have none, so the toggle says so.
+- **Cursor coordinates** in WGS 84, plus the scale bar (FR-120). The layer panel collapses.
+
 ## Missed sites and filters (FR-093, FR-094)
 
 - **Add missed site** (GIS role, review workspace): outline disturbance the model did not find, with a reason.
