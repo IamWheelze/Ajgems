@@ -243,6 +243,14 @@ What to compare with: any band preset, on the **same date** or on **another date
 
 The review header has a **Job** picker, so an earlier job's candidates and reviews stay reachable after a newer job over the same area. By default you see the latest job for each area.
 
+## Correction requests (FR-096, Commercial)
+
+Anyone who can see a released candidate, customer viewers included, can **Request a correction** in review. The kinds are: not mining disturbance, boundary wrong, location sensitive, imagery out of date, or other.
+- **Owner:** an administrator assigns a GIS reviewer or administrator on the **Corrections** page.
+- **Outcome:** the owner accepts or declines with a written outcome, which the requester sees. Accepting can apply the fix: reject the candidate through the normal review rules, or restrict the location (FR-005).
+- **Records:** every step is an immutable event and an audit record. The requester can withdraw an open request.
+- **Tested:** the lifecycle, role rules, organisation isolation and the applied rejection.
+
 ## Signed exports (FR-109, Commercial)
 
 Every export package's manifest lists each file's SHA-256 and size. It is signed with Ed25519 over canonical JSON (sorted keys, every field except the signature).

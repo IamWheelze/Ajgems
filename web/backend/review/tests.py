@@ -252,3 +252,44 @@ class FieldEvidenceTest(Base):
         r = field.post("/api/field/visits/", {"meta": json.dumps(meta2), "photos": []}, format="multipart")
         self.assertEqual(r.status_code, 400)
         self.assertEqual(FieldVisit.objects.count(), 1)
+
+
+class CorrectionTest(Base):
+    """FR-096: a correction request on a released result has an owner, a state and an outcome, all in the audit trail."""
+
+    def test_correction_lifecycle(self):
+        from audit.models import AuditEvent
+        from review.models import CorrectionEvent
+        d = self.dets["A"]
+        viewer, admin, gis = self.client_for("A", "viewer"), self.client_for("A", "admin"), self.client_for("A", "gis")
+        body = {"detection": d.pk, "kind": "not_mining_disturbance", "description": "This is a sand quarry for road works."}
+        self.assertEqual(gis.post("/api/corrections/", body, format="json").status_code, 400)   # not released yet
+        Detection.objects.filter(pk=d.pk).update(status="released")
+        r = viewer.post("/api/corrections/", body, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        rid = r.json()["id"]
+        self.assertEqual(self.client_for("B", "viewer").post("/api/corrections/", body, format="json").status_code, 404)
+        self.assertEqual(gis.post(f"/api/corrections/{rid}/assign/", {"owner": "A_gis"}, format="json").status_code, 403)
+        self.assertEqual(admin.post(f"/api/corrections/{rid}/resolve/", {"decision": "accept", "outcome": "x"}, format="json").status_code, 400)
+        r = admin.post(f"/api/corrections/{rid}/assign/", {"owner": "A_gis"}, format="json")
+        self.assertEqual((r.json()["state"], r.json()["owner"]), ("in_review", "A_gis"))
+        self.assertEqual(viewer.post(f"/api/corrections/{rid}/resolve/", {"decision": "accept", "outcome": "x"}, format="json").status_code, 403)
+        self.assertEqual(gis.post(f"/api/corrections/{rid}/resolve/", {"decision": "accept", "outcome": ""}, format="json").status_code, 400)
+        r = gis.post(f"/api/corrections/{rid}/resolve/", {"decision": "accept", "outcome": "Checked imagery: a quarry. Withdrawn from the release.",
+                                                           "apply": {"action": "reject", "reason_code": "quarry_or_borrow_pit"}}, format="json")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["state"], "accepted")
+        d.refresh_from_db()
+        self.assertEqual(d.status, "rejected")                                    # applied through the review rules
+        self.assertEqual([e["action"] for e in r.json()["events"]], ["opened", "assigned", "accepted"])
+        self.assertEqual(AuditEvent.objects.filter(action__startswith="correction.").count(), 3)
+        self.assertEqual(gis.post(f"/api/corrections/{rid}/resolve/", {"decision": "decline", "outcome": "x"}, format="json").status_code, 400)
+        with self.assertRaises(PermissionError):
+            CorrectionEvent.objects.first().delete()
+        # The requester sees their own requests and outcomes, and can withdraw an open one.
+        mine = viewer.get("/api/corrections/").json()
+        self.assertEqual((len(mine), mine[0]["outcome"][:7]), (1, "Checked"))
+        Detection.objects.filter(pk=d.pk).update(status="released")
+        rid2 = viewer.post("/api/corrections/", {**body, "kind": "location_sensitive", "description": "Community site."}, format="json").json()["id"]
+        self.assertEqual(gis.post(f"/api/corrections/{rid2}/withdraw/", {}, format="json").status_code, 403)
+        self.assertEqual(viewer.post(f"/api/corrections/{rid2}/withdraw/", {}, format="json").json()["state"], "withdrawn")

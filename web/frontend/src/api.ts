@@ -27,6 +27,9 @@ export type UploadInfo = { id: number; project: number; filename: string; size: 
   chunk_bytes: number; created_at: string };
 export type AnnotationTask = { id: number; project: number; job: number; tile: string; tile_id: number; scene: string | null; date: string | null;
   state: string; protocol_version: string; created_by: string; versions: number; labels: GeoJSON.FeatureCollection; classes: string[] };
+export type Correction = { id: number; detection: number; project: number; kind: string; description: string; contact: string;
+  requested_by: string; owner: string | null; state: string; outcome: string; review: number | null; created_at: string;
+  events: { action: string; state_after: string; actor: string; note: string; at: string }[] };
 export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
@@ -202,6 +205,9 @@ export const api = {
   annotationImageUrl: (id: number, layer: string) => `/api/annotation-tasks/${id}/image/?layer=${layer}`,
   signingKey: () => call<{ key_id: string; public_key: string; development_key: boolean; pem: string }>("GET", "/api/signing-key/"),
   verifyExport: (f: File) => { const d = new FormData(); d.append("package", f); return call<{ ok: boolean; problems: string[]; files_checked: number }>("POST", "/api/exports/verify/", d); },
+  corrections: () => call<Correction[]>("GET", "/api/corrections/"),
+  requestCorrection: (detection: number, kind: string, description: string) => call<Correction>("POST", "/api/corrections/", { detection, kind, description }),
+  correctionAction: (id: number, action: string, body: Record<string, unknown>) => call<Correction>("POST", `/api/corrections/${id}/${action}/`, body),
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),

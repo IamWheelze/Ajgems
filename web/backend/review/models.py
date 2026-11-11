@@ -192,3 +192,36 @@ class AnnotationVersion(AppendOnly):
 
     class Meta:
         ordering = ["at", "id"]
+
+
+CORRECTION_KINDS = ["not_mining_disturbance", "boundary_wrong", "location_sensitive", "outdated_imagery", "other"]
+CORRECTION_STATES = ["open", "in_review", "accepted", "declined", "withdrawn"]
+
+
+class CorrectionRequest(models.Model):
+    """FR-096: a request to correct a released result. State and owner change; every change is an event."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    detection = models.ForeignKey("projects.Detection", on_delete=models.PROTECT, related_name="corrections")
+    kind = models.CharField(max_length=40)
+    description = models.TextField()
+    contact = models.CharField(max_length=200, blank=True, help_text="how to reply, if not the requester's account")
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, related_name="+")
+    state = models.CharField(max_length=20, default="open")
+    outcome = models.TextField(blank=True)
+    review = models.ForeignKey(Review, on_delete=models.PROTECT, null=True, related_name="+",
+                               help_text="the review that applied an accepted correction")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class CorrectionEvent(AppendOnly):
+    request = models.ForeignKey(CorrectionRequest, on_delete=models.PROTECT, related_name="events")
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    action = models.CharField(max_length=30)
+    state_after = models.CharField(max_length=20)
+    note = models.TextField(blank=True)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]

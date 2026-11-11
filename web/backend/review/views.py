@@ -325,3 +325,65 @@ class AnnotationTaskView(APIView):
             return Response(edit(request.user, pk, d.get("op", ""), d.get("class", "mining"), d))
         except ReviewError as exc:
             return Response({"detail": str(exc)}, status=400)
+
+
+class CorrectionListView(APIView):
+    """FR-096: GET requests (customers see their own); POST {detection, kind, description, contact?}."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer")
+    write_roles = ("admin", "gis", "field", "viewer")
+
+    def get(self, request):
+        from .corrections import payload
+        from .models import CorrectionRequest
+        qs = CorrectionRequest.objects.filter(organisation=request.user.organisation).select_related(
+            "detection", "requested_by", "owner").prefetch_related("events__actor").order_by("-created_at")
+        if not request.user.has_role("admin", "gis"):
+            qs = qs.filter(requested_by=request.user)
+        if request.query_params.get("state"):
+            qs = qs.filter(state=request.query_params["state"])
+        return Response([payload(r) for r in qs])
+
+    def post(self, request):
+        from projects.views import DetectionViewSet
+        from .corrections import create, payload
+        try:   # only candidates the requester can see (viewers: released and not restricted without a grant)
+            d = DetectionViewSet()._qs(request).get(pk=request.data.get("detection"))
+        except (Detection.DoesNotExist, ValueError, TypeError):
+            raise Http404
+        try:
+            r = create(request.user, d, request.data.get("kind", ""), request.data.get("description", ""), request.data.get("contact", "") or "")
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(payload(r), status=201)
+
+
+class CorrectionActionView(APIView):
+    """POST assign/ {owner} (admin); resolve/ {decision, outcome, apply?} (owner or admin); withdraw/ {note?} (requester)."""
+    permission_classes = [RolePermission]
+    write_roles = ("admin", "gis", "field", "viewer")
+
+    def post(self, request, pk, action):
+        from accounts.models import User
+        from . import corrections as c
+        from .models import CorrectionRequest
+        try:
+            if action == "assign":
+                try:
+                    owner = User.objects.get(username=request.data.get("owner"), organisation=request.user.organisation)
+                except User.DoesNotExist:
+                    return Response({"detail": "no such user in your organisation"}, status=400)
+                r = c.assign(request.user, pk, owner)
+            elif action == "resolve":
+                r = c.resolve(request.user, pk, request.data.get("decision", ""), request.data.get("outcome", ""), request.data.get("apply"))
+            elif action == "withdraw":
+                r = c.withdraw(request.user, pk, request.data.get("note", "") or "")
+            else:
+                raise Http404
+        except CorrectionRequest.DoesNotExist:
+            raise Http404
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ReviewError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(c.payload(CorrectionRequest.objects.get(pk=r.pk)))

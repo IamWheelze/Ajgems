@@ -8,6 +8,7 @@ import JobMonitor from "./JobMonitor";
 import MfaSetup from "./MfaSetup";
 import Annotate from "./Annotate";
 import ErrorMaps from "./ErrorMaps";
+import Corrections from "./Corrections";
 import Field from "./Field";
 import Pool from "./Pool";
 import RunDashboard from "./RunDashboard";
@@ -50,6 +51,7 @@ export default function App() {
         {me.roles.some((r) => r === "ml" || r === "admin") && <a href="#/datasets" className="small">Datasets</a>}
         {me.roles.some((r) => r === "ml" || r === "gis" || r === "admin") && <a href="#/pool" className="small">Annotation QC</a>}
         {me.roles.includes("field") && <a href="#/field" className="small">Field visits</a>}
+        <a href="#/corrections" className="small">Corrections</a>
         <span className="spacer" />
         <span className="muted">{me.username} · {me.roles.join(", ")}</span>
         <button className="link" onClick={signOut}>Sign out</button>
@@ -62,6 +64,7 @@ export default function App() {
           : section === "pool" ? <Pool me={me} />
           : section === "annotate" && id ? <Annotate taskId={Number(id)} />
           : section === "field" ? <Field me={me} />
+          : section === "corrections" ? <Corrections me={me} />
           : section === "projects" && id && page === "jobs" && sub ? <JobMonitor projectId={Number(id)} jobId={Number(sub)} me={me} />
           : section === "projects" && id && page === "review" ? <ReviewWorkspace projectId={Number(id)} me={me} />
           : section === "projects" && id ? <ProjectAreas projectId={Number(id)} me={me} />

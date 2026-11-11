@@ -56,6 +56,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [nominated, setNominated] = useState("");
+  const [corr, setCorr] = useState({ kind: "not_mining_disturbance", text: "", sent: "" });
   const [visits, setVisits] = useState<Awaited<ReturnType<typeof api.fieldVisits>>>([]);
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(NO_FILTERS);   // FR-094, applied on the server
@@ -584,6 +585,19 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             )}
             {error && <p className="error" role="alert">{error}</p>}
 
+            {p.status === "released" && (   // FR-096: anyone who can see a released result can ask for a correction
+              <details className="small"><summary>Request a correction</summary>
+                <select value={corr.kind} onChange={(e) => setCorr({ ...corr, kind: e.target.value })} aria-label="What is wrong">
+                  <option value="not_mining_disturbance">Not mining disturbance</option><option value="boundary_wrong">Boundary is wrong</option>
+                  <option value="location_sensitive">Location is sensitive</option><option value="outdated_imagery">Imagery is out of date</option>
+                  <option value="other">Other</option></select>
+                <textarea rows={2} placeholder="What is wrong, and how you know" value={corr.text} onChange={(e) => setCorr({ ...corr, text: e.target.value })} />
+                <button disabled={!corr.text.trim()} onClick={() => api.requestCorrection(p.id, corr.kind, corr.text)
+                  .then((c) => setCorr({ kind: corr.kind, text: "", sent: `Request #${c.id} sent; follow it under Corrections.` }))
+                  .catch((e) => setCorr({ ...corr, sent: e.message }))}>Send request</button>
+                {corr.sent && <span className="muted"> {corr.sent}</span>}
+              </details>
+            )}
             {visits.length > 0 && <>   {/* FR-095: field evidence, visible to field, GIS and admin roles only */}
               <h3>Field visits</h3>
               {visits.map((v) => <div key={v.id} className="small">
