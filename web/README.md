@@ -162,36 +162,18 @@ On a finished job's page, choose a threshold and a minimum size, then **Preview*
   - Like reviewed candidates, missed sites reach training labels only through independent QC (FR-075).
 - **More filters** in the review queue: score band, area of interest, size in ha, image dates, model and the latest review reason. They are applied on the server (`/api/projects/<id>/detections/?min_ha=…&reason=…`).
 
-## Swipe comparison (FR-127, MVP)
+## Comparison: swipe, side by side, blink, dates (FR-127)
 
-In review, **Swipe compare** puts a second band preset (for example SWIR false colour) on the right of a draggable divider; arrow keys move it too.
-- **Synced:** the right pane copies the main map's position and zoom on every move.
-- **Same overlays:** candidate outlines in their status styles and the "not assessed" hatch are drawn on both sides.
-- **Same interactions:** clicks, keyboard review and boundary editing all go to the main map.
+In review, **Compare** has three modes:
+- **Swipe:** a divider you drag; arrow keys move it too.
+- **Side by side:** two maps; panning or zooming either moves the other.
+- **Blink:** flips between the two views on a timer, with pause, flip and speed controls.
 
-## Run dashboard (FR-130, internal)
+What to compare with: any band preset, on the **same date** or on **another date**. Other dates are other finished jobs whose imagery covers the candidate (`/api/detections/<id>/dates/`). Each date shows its own quality mask, so cloud on either date is hatched, never shown as clean ground. Outlines, clicks, keyboard review and editing stay on the main map.
 
-**Models → Run dashboard** (ML and admin) charts each registered model's stored records:
-- **Training curves** from `history.csv`, with the kept checkpoint marked.
-- **Per-stratum metrics** (F1, precision, recall, footprints found, false-alarm area) with 95% site-bootstrap intervals, from `metrics.json`.
-- **Precision-recall and reliability** from `curves.json`. Make one with `minefoot curves <run> --prepared-root … --labels-root …`; it refuses if its counts at the run's threshold differ from the run record.
-
-You can switch between validation and test sites, show models side by side, hover any chart for values, and open a table view.
-
-## Evaluation error maps (FR-129, internal)
-
-**Models → Error maps** (ML and admin) lists a registered model's locked test sites, worst pixel F1 first, with thumbnails. Clicking one moves the map to it: hits, false alarms and missed pixels from the run's stored error maps, with not-assessed pixels hatched, over the true-colour scene. Each class has its own toggle and label, and the colours are checked for colour-vision separation. Labels are the dataset's and are incomplete, so some "false alarms" are real unlabelled mining.
-
-## Annotation QC: the only route to training labels (FR-075, Pilot)
-
-- **Nominate:** in review, a GIS user nominates a confirmed, edited or field-confirmed candidate as a mining example. A rejected candidate becomes a hard-negative example, typed from its reject reason (FR-074). Missed sites can be nominated through the API (`POST /api/pool/ {missed_site}`).
-- **Check:** on **Annotation QC**, an independent ML or GIS user accepts or returns each nomination, with a reason. The nominator, anyone who reviewed the candidate and whoever added the missed site are refused. Nominations and decisions are append-only (database triggers).
-- **Export:** **Download accepted labels** (ML role) gives `labels.geojson` with `manifest.json` (counts per type, SHA-256). There is no other path from reviews to labels.
-- **Test independence:** anything inside the Nigerian test regions is refused, whether or not the test set is locked (ML-07).
-- *Not yet:* `minefoot` does not ingest the exported labels into a training dataset version. Add that adapter when the first accepted examples exist.
+The review header has a **Job** picker, so an earlier job's candidates and reviews stay reachable after a newer job over the same area. By default you see the latest job for each area.
 
 ## Not built yet (next slices)
 
-- **Side-by-side and blink comparison, and comparing dates** (FR-127, Pilot). Swipe between band presets of one scene is built.
 - **A raster tile server** (TiTiler) instead of whole-scene PNGs.
 - **Signed export manifests** (FR-109). Checksums exist; signatures do not.

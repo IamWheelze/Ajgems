@@ -151,10 +151,12 @@ export const api = {
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
       "GET", `/api/scenes/${id}/image/?bounds=1&layer=${layer}`),
   sceneImageUrl: (id: number, layer: string) => `/api/scenes/${id}/image/?layer=${layer}`,
-  detectionBounds: (id: number, layer: string) =>
+  detectionBounds: (id: number, layer: string, job: number | null = null) =>
     call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
-      "GET", `/api/detections/${id}/image/?bounds=1&layer=${layer}`),
-  detectionImageUrl: (id: number, layer: string, stretch = "") => `/api/detections/${id}/image/?layer=${layer}${stretch ? `&stretch=${stretch}` : ""}`,
+      "GET", `/api/detections/${id}/image/?bounds=1&layer=${layer}${job ? `&job=${job}` : ""}`),
+  detectionImageUrl: (id: number, layer: string, stretch = "", job: number | null = null) =>
+    `/api/detections/${id}/image/?layer=${layer}${stretch ? `&stretch=${stretch}` : ""}${job ? `&job=${job}` : ""}`,
+  detectionDates: (id: number) => call<{ current: { job: number; date: string; scene_id: string }; others: { job: number; date: string; scene_id: string; cloud_pct: number | null }[] }>("GET", `/api/detections/${id}/dates/`),
   editGeometry: (id: number) => call<GeoJSON.Polygon & { vertices: number; original_vertices: number; valid: boolean }>(
     "GET", `/api/detections/${id}/edit-geometry/`),
   exportPackage: (projectId: number, format: string, statuses: string[], job?: number) =>

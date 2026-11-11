@@ -376,14 +376,52 @@ class DetectionImageView(APIView):
             raise Http404
         layer = request.query_params.get("layer", "true_colour")
         from .imagery import render_detection_png
+        src = d
+        if request.query_params.get("job"):   # FR-127: the same ground from another job's imagery (another date)
+            from types import SimpleNamespace
+            from .models import Job
+            try:
+                other = Job.objects.get(pk=int(request.query_params["job"]), organisation=request.user.organisation,
+                                        state__in=("succeeded", "succeeded_with_warnings"))
+            except (Job.DoesNotExist, ValueError):
+                raise Http404
+            t = other.tiles.filter(geometry__intersects=d.geometry).exclude(prepared_path="").select_related("scene").first()
+            if t is None:
+                return Response({"detail": "that job has no imagery here"}, status=400)
+            src = SimpleNamespace(job=other, geometry=d.geometry, scene=t.scene)
         try:
-            path, bounds = render_detection_png(d, layer, request.query_params.get("stretch") or None)
+            path, bounds = render_detection_png(src, layer, request.query_params.get("stretch") or None)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         if request.query_params.get("bounds") == "1":
-            return Response({"bounds": bounds, "date": d.scene.acquired_at.isoformat(), "scene_id": d.scene.source_id,
-                             "licence_note": d.scene.licence_note, "layer": layer})
+            return Response({"bounds": bounds, "date": src.scene.acquired_at.isoformat(), "scene_id": src.scene.source_id,
+                             "licence_note": src.scene.licence_note, "layer": layer})
         return FileResponse(open(path, "rb"), content_type="image/png")
+
+
+class DetectionDatesView(APIView):
+    """FR-127 dates: other finished jobs whose stored imagery covers this candidate, one per scene date."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer")
+
+    def get(self, request, pk):
+        from .models import Tile
+        try:
+            d = DetectionViewSet()._qs(request).select_related("scene").get(pk=pk)
+        except Detection.DoesNotExist:
+            raise Http404
+        seen, out = {d.scene.source_id}, []
+        tiles = (Tile.objects.filter(job__organisation=request.user.organisation, job__state__in=("succeeded", "succeeded_with_warnings"),
+                                     geometry__intersects=d.geometry, scene__isnull=False).exclude(prepared_path="")
+                 .exclude(job=d.job_id).select_related("scene", "job").order_by("scene__acquired_at", "-job__created_at"))
+        for t in tiles:
+            if t.scene.source_id in seen:
+                continue
+            seen.add(t.scene.source_id)
+            out.append({"job": t.job_id, "date": t.scene.acquired_at.date().isoformat(), "scene_id": t.scene.source_id,
+                        "cloud_pct": t.scene.cloud_pct})
+        return Response({"current": {"job": d.job_id, "date": d.scene.acquired_at.date().isoformat(), "scene_id": d.scene.source_id},
+                         "others": out})
 
 
 class PixelView(APIView):

@@ -2,7 +2,7 @@ import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, Area, DetectionFeature, Me, MissedProps, PixelInfo, Project, ReviewOptions } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
-import SwipeCompare from "./SwipeCompare";
+import CompareMap, { CompareMode } from "./CompareMap";
 import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
 
 const LAYERS: Record<string, string> = {
@@ -32,7 +32,9 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [filter, setFilter] = useState("unreviewed");
   const [selected, setSelected] = useState<DetectionFeature | null>(null);
   const [layer, setLayer] = useState("true_colour");
-  const [compare, setCompare] = useState("");   // FR-127 swipe: the right-hand preset, "" when off
+  // FR-127: compare mode, and what to compare with: a band preset, and the same date or another job's date.
+  const [compare, setCompare] = useState<{ mode: CompareMode | ""; layer: string; job: number | null }>({ mode: "", layer: "swir_false_colour", job: null });
+  const [dates, setDates] = useState<{ current: { job: number; date: string }; others: { job: number; date: string; cloud_pct: number | null }[] } | null>(null);
   const [mapObj, setMapObj] = useState<maplibregl.Map | null>(null);
   const [showOsm, setShowOsm] = useState(false);
   const [showNA, setShowNA] = useState(true);
@@ -56,6 +58,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [nominated, setNominated] = useState("");
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(NO_FILTERS);   // FR-094, applied on the server
+  const [jobPick, setJobPick] = useState("");   // "" = the latest finished job for each area
+  const [jobs, setJobs] = useState<{ id: number; area: number; finished_at: string | null; parameters: Record<string, unknown> }[]>([]);
   const [draftFilters, setDraftFilters] = useState(NO_FILTERS);
   const [areas, setAreas] = useState<Area[]>([]);
   const [missed, setMissed] = useState<GeoJSON.Feature<GeoJSON.Polygon, MissedProps>[]>([]);
@@ -73,9 +77,13 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
       api.missedSites(projectId).then((fc) => { setMissed(fc.features); setMissedReasons(fc.reasons); }).catch((e) => setError(e.message));
   }, [projectId, me.roles]);
   useEffect(() => {
-    api.detections(projectId, filters).then((fc) => { setFeatures(fc.features as DetectionFeature[]); setSelected(null); })
+    api.detections(projectId, { ...filters, job: jobPick }).then((fc) => { setFeatures(fc.features as DetectionFeature[]); setSelected(null); })
       .catch((e) => setError(e.message));
-  }, [projectId, filters]);
+  }, [projectId, filters, jobPick]);
+  useEffect(() => {   // finished jobs, so an earlier job's candidates and reviews stay reachable
+    if (me.roles.some((r) => r === "gis" || r === "admin"))
+      api.jobs(projectId).then((js) => setJobs(js.filter((j) => ["succeeded", "succeeded_with_warnings"].includes(j.state)))).catch(() => setJobs([]));
+  }, [projectId, me.roles]);
   const activeFilters = Object.values(filters).filter(Boolean).length;
 
   const queue = useMemo(() => features
@@ -93,6 +101,13 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   }, []);
 
   useEffect(() => { if (!selected && queue.length) select(queue[0]); }, [queue, selected, select]);
+  useEffect(() => {
+    if (!selected) return;
+    api.detectionDates(selected.properties.id).then((d) => {
+      setDates(d);
+      setCompare((c) => (c.job && !d.others.some((o) => o.job === c.job) ? { ...c, job: null } : c));
+    }).catch(() => setDates(null));
+  }, [selected?.properties.id]);
 
   // Map setup: one line layer per status so each status has its own dash pattern (MapLibre dashes are not data-driven).
   useEffect(() => {
@@ -346,6 +361,10 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         <a href={`#/projects/${projectId}`} className="small">← {project?.name ?? "Project"}</a>
         <span>Imagery: <b>{imagery ? `Sentinel-2, ${imagery.date.slice(0, 10)}` : "—"}</b></span>
         <span>Model: <b>{p?.model_version ?? "—"}</b></span>
+        {jobs.length > 1 && <label className="small">Job <select value={jobPick} onChange={(e) => setJobPick(e.target.value)} aria-label="Job">
+          <option value="">Latest per area</option>
+          {jobs.map((j) => <option key={j.id} value={j.id}>Job {j.id} · {String(j.parameters.start)} to {String(j.parameters.end)}</option>)}
+        </select></label>}
         <span className="badge" title="Scores are not calibrated probabilities (FR-084)">Model score, not calibrated</span>
         <span className="spacer" />
         <span className="small muted">{reviewed} of {features.length} reviewed{activeFilters ? " (filtered)" : ""} · {missed.length} missed site{missed.length === 1 ? "" : "s"} added</span>
@@ -392,11 +411,13 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
         <p className="small muted">Keys: c confirm · r reject · u uncertain · f field check · j/k next/previous · Enter submit</p>
       </aside>
 
-      <div className="ws-map">
+      <div className={`ws-map${compare.mode === "side" && selected && (compare.layer !== layer || compare.job) ? " side" : ""}`}>
         <div ref={mapEl} className="map" />
-        {mapObj && compare && compare !== layer && selected && (
-          <SwipeCompare main={mapObj} detectionId={selected.properties.id} layer={compare}
-            label={`◀ ${LAYERS[layer]}  |  ${LAYERS[compare]} ▶`} outline={selected as unknown as GeoJSON.Feature} all={dets} showNA={showNA} />
+        {mapObj && compare.mode && selected && (compare.layer !== layer || compare.job) && (
+          <CompareMap key={compare.mode} main={mapObj} mode={compare.mode} detectionId={selected.properties.id} layer={compare.layer} job={compare.job}
+            label={`${compare.mode === "blink" ? "" : "◀ "}${LAYERS[layer]}, ${dates?.current.date ?? ""}  |  ${LAYERS[compare.layer]}, ${
+              compare.job ? dates?.others.find((o) => o.job === compare.job)?.date ?? "" : dates?.current.date ?? ""}${compare.mode === "blink" ? "" : " ▶"}`}
+            outline={selected as unknown as GeoJSON.Feature} all={dets} showNA={showNA} />
         )}
         <details className="map-overlay" open>
           <summary className="small"><b>Layers</b> · {LAYERS[layer]}</summary>
@@ -421,12 +442,22 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             <span className="muted">model score, not a probability; threshold {p ? p.threshold.toFixed(2) : "—"}</span></div>}
           <label className="small"><input type="checkbox" checked={inspecting} onChange={(e) => { setInspecting(e.target.checked); if (e.target.checked) setMissedPts(null); }} />
             {" "}Pixel inspector (click the map)</label>
-          <label className="small">Swipe compare
-            <select value={compare} onChange={(e) => setCompare(e.target.value)} aria-label="Swipe comparison preset">
-              <option value="">Off</option>
-              {Object.entries(LAYERS).filter(([k]) => k !== layer).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          <label className="small">Compare
+            <select value={compare.mode} onChange={(e) => setCompare({ ...compare, mode: e.target.value as CompareMode | "" })} aria-label="Comparison mode">
+              <option value="">Off</option><option value="swipe">Swipe</option><option value="side">Side by side</option><option value="blink">Blink</option>
             </select>
           </label>
+          {compare.mode && <div className="compare-with small">
+            <select value={compare.layer} onChange={(e) => setCompare({ ...compare, layer: e.target.value })} aria-label="Comparison preset">
+              {Object.entries(LAYERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+            <select value={compare.job ?? ""} onChange={(e) => setCompare({ ...compare, job: e.target.value ? Number(e.target.value) : null })} aria-label="Comparison date">
+              <option value="">Same date{dates ? ` (${dates.current.date})` : ""}</option>
+              {(dates?.others ?? []).map((o) => <option key={o.job} value={o.job}>{o.date}{o.cloud_pct != null ? `, ${o.cloud_pct.toFixed(0)}% cloud` : ""} (job {o.job})</option>)}
+            </select>
+            {compare.layer === layer && !compare.job && <span className="muted">Choose another preset or date.</span>}
+            {dates && dates.others.length === 0 && <span className="muted">No other date covers this candidate yet; run another job over this area.</span>}
+          </div>}
           <label className="small"><input type="checkbox" checked={showNA} onChange={(e) => setShowNA(e.target.checked)} /> Not assessed (hatched)</label>
           <label className="small"><input type="checkbox" checked={showOsm} onChange={(e) => setShowOsm(e.target.checked)} /> OpenStreetMap (orientation only)</label>
           {imagery && <div className="small">{imagery.scene_id}<br />{imagery.licence_note}</div>}

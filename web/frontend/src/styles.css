@@ -154,3 +154,11 @@ th, td { padding: 3px 10px 3px 0; border-bottom: 1px solid var(--line); text-ali
 .panel { min-width: 0; } .panel > * { min-width: 0; overflow-wrap: anywhere; }
 .panel .badge { white-space: normal; }
 .panel .row.gap { flex-wrap: wrap; }
+
+/* FR-127 side-by-side and blink */
+.ws-map.side .map:not(.compare-side) { width: 50%; }
+.compare-side { position: absolute; top: 0; right: 0; bottom: 0; width: 50%; border-left: 3px solid #fff; z-index: 1; }
+.compare-with { display: grid; gap: 4px; }
+.blink-controls { display: flex; gap: 8px; align-items: center; pointer-events: auto; }
+.blink-controls select { padding: 1px 4px; }
+.ws-map.side .swipe-label { top: 10px; right: 10px; }

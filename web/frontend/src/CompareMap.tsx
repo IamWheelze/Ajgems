@@ -4,23 +4,30 @@ import { api } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
 import { STATUS } from "./status";
 
-// FR-127 (MVP swipe): a second, non-interactive map stacked over the main one and clipped at the
-// slider. It copies the main map's camera on every move, so both sides stay in the same place and zoom.
-// The main map keeps every interaction (clicks, editing) because the top map ignores the pointer.
-export default function SwipeCompare({ main, detectionId, layer, label, outline, all, showNA }: {
-  main: maplibregl.Map; detectionId: number; layer: string; label: string;
+export type CompareMode = "swipe" | "side" | "blink";
+
+// FR-127: a second map showing another band preset or another date of the same ground.
+// - swipe: stacked over the main map and clipped at a draggable divider; ignores the pointer.
+// - side: beside the main map; both are interactive and each follows the other's camera.
+// - blink: stacked over the main map and shown and hidden on a timer.
+// Position and zoom always match, so like is compared with like.
+export default function CompareMap({ main, mode, detectionId, layer, job, label, outline, all, showNA }: {
+  main: maplibregl.Map; mode: CompareMode; detectionId: number; layer: string; job: number | null; label: string;
   outline: GeoJSON.Feature | null; all: GeoJSON.FeatureCollection; showNA: boolean;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const top = useRef<maplibregl.Map | null>(null);
   const [pos, setPos] = useState(50);   // slider position, % from the left
+  const [blinkOn, setBlinkOn] = useState(true);
+  const [blinkMs, setBlinkMs] = useState(800);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
   const showNARef = useRef(showNA);
 
   useEffect(() => {
     if (!el.current) return;
     const m = new maplibregl.Map({
-      container: el.current, style: BASE_STYLE, interactive: false, attributionControl: false,
+      container: el.current, style: BASE_STYLE, interactive: mode === "side", attributionControl: false,
       center: main.getCenter(), zoom: main.getZoom(), bearing: main.getBearing(), pitch: main.getPitch(),
     });
     m.on("load", () => {
@@ -33,14 +40,22 @@ export default function SwipeCompare({ main, detectionId, layer, label, outline,
       m.addSource("sel", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       m.addLayer({ id: "sel", type: "line", source: "sel", paint: { "line-color": "#ffffff", "line-width": 3 } });
     });
-    const sync = () => m.jumpTo({ center: main.getCenter(), zoom: main.getZoom(), bearing: main.getBearing(), pitch: main.getPitch() });
+    let syncing = false;   // each map follows the other without echoing back
+    const follow = (from: maplibregl.Map, to: maplibregl.Map) => () => {
+      if (syncing) return;
+      syncing = true;
+      to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(), bearing: from.getBearing(), pitch: from.getPitch() });
+      syncing = false;
+    };
+    const sync = follow(main, m), back = follow(m, main);
     main.on("move", sync);
-    const ro = new ResizeObserver(() => m.resize());
+    if (mode === "side") m.on("move", back);
+    const ro = new ResizeObserver(() => { m.resize(); main.resize(); sync(); });
     ro.observe(el.current);
     top.current = m;
     if (import.meta.env.DEV) (window as unknown as { __swipeMap: maplibregl.Map }).__swipeMap = m;   // browser tests only
-    return () => { main.off("move", sync); ro.disconnect(); m.remove(); top.current = null; };
-  }, [main]);
+    return () => { main.off("move", sync); ro.disconnect(); m.remove(); top.current = null; main.resize(); };
+  }, [main, mode]);
 
   useEffect(() => {
     const m = top.current;
@@ -60,7 +75,7 @@ export default function SwipeCompare({ main, detectionId, layer, label, outline,
     let stale = false;
     whenReady(m, async () => {
       try {
-        const meta = await api.detectionBounds(detectionId, layer);
+        const meta = await api.detectionBounds(detectionId, layer, job);
         if (stale) return;
         const [w, s, e, n] = meta.bounds;
         const coordinates: [[number, number], [number, number], [number, number], [number, number]] = [[w, n], [e, n], [e, s], [w, s]];
@@ -72,18 +87,24 @@ export default function SwipeCompare({ main, detectionId, layer, label, outline,
             m.addLayer({ id, type: "raster", source: id, paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-unreviewed");
           }
         };
-        put("scene", api.detectionImageUrl(detectionId, layer), coordinates);
+        put("scene", api.detectionImageUrl(detectionId, layer, "", job), coordinates);
         // FR-125 on this side too: unassessed ground is hatched, never shown as clean.
-        const na = await api.detectionBounds(detectionId, "not_assessed");
+        const na = await api.detectionBounds(detectionId, "not_assessed", job);   // that date's own mask
         if (stale) return;
         const [nw, ns, ne, nn] = na.bounds;
-        put("na", api.detectionImageUrl(detectionId, "not_assessed"), [[nw, nn], [ne, nn], [ne, ns], [nw, ns]]);
+        put("na", api.detectionImageUrl(detectionId, "not_assessed", "", job), [[nw, nn], [ne, nn], [ne, ns], [nw, ns]]);
         m.setLayoutProperty("na", "visibility", showNARef.current ? "visible" : "none");
         setError("");
       } catch (e) { setError((e as Error).message); }
     });
     return () => { stale = true; };
-  }, [detectionId, layer]);
+  }, [detectionId, layer, job, mode]);
+
+  useEffect(() => {   // blink timer
+    if (mode !== "blink" || paused) return;
+    const t = setInterval(() => setBlinkOn((v) => !v), blinkMs);
+    return () => clearInterval(t);
+  }, [mode, paused, blinkMs]);
 
   useEffect(() => {
     showNARef.current = showNA;
@@ -100,6 +121,24 @@ export default function SwipeCompare({ main, detectionId, layer, label, outline,
     e.preventDefault();
   };
 
+  if (mode === "side") return (
+    <>
+      <div ref={el} className="map compare-side" aria-label="Comparison map" />
+      <div className="swipe-label small">{label}{error && <span className="error"> · {error}</span>}</div>
+    </>
+  );
+  if (mode === "blink") return (
+    <>
+      <div ref={el} className="map swipe-top" style={{ visibility: blinkOn ? "visible" : "hidden" }} aria-hidden="true" />
+      <div className="swipe-label small blink-controls">
+        <b>{blinkOn ? "Showing: comparison" : "Showing: main"}</b> · {label}{error && <span className="error"> · {error}</span>}
+        <button className="link" onClick={() => setPaused((p) => !p)}>{paused ? "Resume" : "Pause"}</button>
+        {paused && <button className="link" onClick={() => setBlinkOn((v) => !v)}>Flip</button>}
+        <select aria-label="Blink speed" value={blinkMs} onChange={(e) => setBlinkMs(Number(e.target.value))}>
+          <option value={400}>fast</option><option value={800}>medium</option><option value={1500}>slow</option></select>
+      </div>
+    </>
+  );
   return (
     <>
       <div ref={el} className="map swipe-top" style={{ clipPath: `inset(0 0 0 ${pos}%)` }} aria-hidden="true" />

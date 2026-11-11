@@ -212,6 +212,20 @@ class JobTest(TestCase):
         from projects.exports import selected_jobs
         self.assertEqual([j.pk for j in selected_jobs(self.project)], [new.pk])   # the area's latest result
 
+    def test_compare_dates_lists_other_jobs_imagery(self):
+        """FR-127: a candidate can be compared with another date's imagery of the same ground."""
+        first = self.run_job(self.estimate()["id"])
+        self.item["id"], self.item["properties"]["datetime"] = "S2_SYN_LATER", "2026-02-12T10:00:00Z"   # a later scene
+        second = self.run_job(self.estimate()["id"])
+        d = Detection.objects.filter(job=second).first()
+        r = self.c.get(f"/api/detections/{d.pk}/dates/").json()
+        self.assertEqual(r["current"]["date"], "2026-02-12")
+        self.assertEqual([(o["job"], o["date"]) for o in r["others"]], [(first.pk, "2026-01-03")])
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "cache2"}):
+            b = self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour&job={first.pk}&bounds=1").json()
+            self.assertEqual((b["date"][:10], b["scene_id"]), ("2026-01-03", "S2_SYN"))
+            self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour&job=999999").status_code, 404)
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])
