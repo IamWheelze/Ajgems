@@ -53,6 +53,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [nominated, setNominated] = useState("");
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState(NO_FILTERS);   // FR-094, applied on the server
   const [draftFilters, setDraftFilters] = useState(NO_FILTERS);
@@ -85,7 +86,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   const counts = useMemo(() => features.reduce<Record<string, number>>((c, f) => ({ ...c, [f.properties.status]: (c[f.properties.status] ?? 0) + 1 }), {}), [features]);
 
   const select = useCallback((f: DetectionFeature | null) => {
-    setAction(""); setReason(""); setNote(""); setError(""); setEditRing(null);
+    setAction(""); setReason(""); setNote(""); setError(""); setEditRing(null); setNominated("");
     if (!f) { setSelected(null); return; }
     setSelected(f);
     api.detection(f.properties.id).then(setSelected).catch((e) => setError(e.message));
@@ -520,6 +521,13 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
                     </button>
                   </>
                 )}
+              </div>
+            )}
+            {me.roles.includes("gis") && ["confirmed", "edited", "field_confirmed", "rejected", "field_rejected"].includes(p.status) && (
+              <div className="small">   {/* FR-075: nominate; an independent person decides */}
+                <button onClick={() => api.nominate(p.id).then(() => setNominated(`#${p.id} nominated for independent QC`)).catch((e) => setNominated(e.message))}>
+                  Nominate as training example</button>
+                {nominated && <span className="muted"> {nominated}</span>}
               </div>
             )}
             {error && <p className="error" role="alert">{error}</p>}

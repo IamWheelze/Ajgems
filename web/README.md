@@ -182,6 +182,14 @@ You can switch between validation and test sites, show models side by side, hove
 
 **Models → Error maps** (ML and admin) lists a registered model's locked test sites, worst pixel F1 first, with thumbnails. Clicking one moves the map to it: hits, false alarms and missed pixels from the run's stored error maps, with not-assessed pixels hatched, over the true-colour scene. Each class has its own toggle and label, and the colours are checked for colour-vision separation. Labels are the dataset's and are incomplete, so some "false alarms" are real unlabelled mining.
 
+## Annotation QC: the only route to training labels (FR-075, Pilot)
+
+- **Nominate:** in review, a GIS user nominates a confirmed, edited or field-confirmed candidate as a mining example. A rejected candidate becomes a hard-negative example, typed from its reject reason (FR-074). Missed sites can be nominated through the API (`POST /api/pool/ {missed_site}`).
+- **Check:** on **Annotation QC**, an independent ML or GIS user accepts or returns each nomination, with a reason. The nominator, anyone who reviewed the candidate and whoever added the missed site are refused. Nominations and decisions are append-only (database triggers).
+- **Export:** **Download accepted labels** (ML role) gives `labels.geojson` with `manifest.json` (counts per type, SHA-256). There is no other path from reviews to labels.
+- **Test independence:** anything inside the Nigerian test regions is refused, whether or not the test set is locked (ML-07).
+- *Not yet:* `minefoot` does not ingest the exported labels into a training dataset version. Add that adapter when the first accepted examples exist.
+
 ## Not built yet (next slices)
 
 - **Side-by-side and blink comparison, and comparing dates** (FR-127, Pilot). Swipe between band presets of one scene is built.

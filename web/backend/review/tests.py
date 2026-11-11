@@ -105,3 +105,85 @@ class FilterTest(Base):
             got = {f["id"] for f in c.get(f"/api/projects/{p.pk}/detections/?{q}").json()["features"]}
             self.assertEqual(got, set(expected.values_list("pk", flat=True)), q)
             self.assertTrue(got, q)
+
+
+class PoolTest(Base):
+    """FR-075: reviewed output reaches training labels only through an independent check."""
+
+    def setUp(self):
+        super().setUp()
+        from django.conf import settings
+        from django.test import override_settings
+        self.ov = override_settings(MINEFOOT={**settings.MINEFOOT, "NIGERIA_AOIS": "/nonexistent.yaml"})
+        self.ov.enable()
+        from accounts.models import User
+        org = self.orgs["A"]
+        self.gis2 = User.objects.create_user("A_gis2", password="pw-long-enough", organisation=org, roles=["gis"])
+        p, d0 = self.projects["A"], self.dets["A"]
+        self.extra = []
+        for i in range(2):
+            g = box(8.85 + i / 100, 9.70, 8.855 + i / 100, 9.705)
+            self.extra.append(Detection.objects.create(
+                organisation=org, project=p, job=d0.job, scene=d0.scene, geometry=g, original_geometry=g, area_ha=5.0,
+                score_mean=0.6, score_band="medium", threshold=0.41, min_mapping_unit_ha=1.0, model_version="g2_hn",
+                input_schema_version="s", masked_fraction=0.0, mask_status="assessed"))
+
+    def tearDown(self):
+        self.ov.disable()
+
+    def c2(self):
+        from rest_framework.test import APIClient
+        c = APIClient(); c.force_login(self.gis2)
+        return c
+
+    def test_independent_qc_only_path(self):
+        gis, d = self.client_for("A", "gis"), self.dets["A"]
+        self.assertEqual(gis.post("/api/pool/", {"detection": d.pk}, format="json").status_code, 400)   # not reviewed yet
+        submit_review(self.users[("A", "gis")], d.pk, "confirm", "visible_disturbance")
+        r = gis.post("/api/pool/", {"detection": d.pk}, format="json")
+        self.assertEqual(r.status_code, 201, r.content)
+        nid = r.json()["properties"]["id"]
+        self.assertEqual(r.json()["properties"]["kind"], "mining")
+        self.assertEqual(gis.post("/api/pool/", {"detection": d.pk}, format="json").status_code, 400)   # no duplicates
+        accept = {"decision": "accept", "reason_code": "matches_imagery"}
+        self.assertEqual(gis.post(f"/api/pool/{nid}/decide/", accept, format="json").status_code, 403)   # own nomination
+        self.assertEqual(self.client_for("A", "field").post(f"/api/pool/{nid}/decide/", accept, format="json").status_code, 403)
+        self.assertEqual(self.client_for("B", "ml").post(f"/api/pool/{nid}/decide/", accept, format="json").status_code, 404)
+        ml = self.client_for("A", "ml")
+        r = ml.post(f"/api/pool/{nid}/decide/", accept, format="json")
+        self.assertEqual((r.status_code, r.json()["properties"]["state"]), (200, "accepted"))
+        self.assertEqual(ml.post(f"/api/pool/{nid}/decide/", accept, format="json").status_code, 400)   # decided once
+
+        # A reviewer of the detection is not independent either, even though someone else nominated it.
+        neg = self.extra[0]
+        submit_review(self.gis2, neg.pk, "reject", "farmland")
+        r = gis.post("/api/pool/", {"detection": neg.pk}, format="json")
+        self.assertEqual((r.json()["properties"]["kind"], r.json()["properties"]["negative_type"]), ("hard_negative", "farmland"))
+        nid2 = r.json()["properties"]["id"]
+        self.assertEqual(self.c2().post(f"/api/pool/{nid2}/decide/", accept, format="json").status_code, 403)
+        self.assertEqual(ml.post(f"/api/pool/{nid2}/decide/", {"decision": "return", "reason_code": "outline_inaccurate"},
+                                 format="json").json()["properties"]["state"], "returned")
+        # A rejection reason that names no negative type cannot become a negative.
+        submit_review(self.gis2, self.extra[1].pk, "reject", "cloud_or_shadow")
+        self.assertEqual(gis.post("/api/pool/", {"detection": self.extra[1].pk}, format="json").status_code, 400)
+
+        # Export: accepted examples only, ML role only.
+        self.assertEqual(gis.get("/api/pool/export/").status_code, 403)
+        import io, json, zipfile
+        z = zipfile.ZipFile(io.BytesIO(ml.get("/api/pool/export/").content))
+        labels, manifest = json.loads(z.read("labels.geojson")), json.loads(z.read("manifest.json"))
+        self.assertEqual([f["properties"]["example_id"] for f in labels["features"]], [f"pool-{nid}"])
+        self.assertEqual((manifest["examples"], manifest["mining"], manifest["hard_negative"]), (1, 1, 0))
+        from review.models import Nomination, QCDecision
+        with self.assertRaises(PermissionError):
+            QCDecision.objects.first().delete()
+        self.assertEqual(Nomination.objects.count(), 2)
+
+    def test_nigerian_test_regions_never_enter_the_pool(self):
+        self.ov.disable()   # real config: the demo detections sit inside the Jos Plateau test region
+        d = self.dets["A"]
+        submit_review(self.users[("A", "gis")], d.pk, "confirm", "visible_disturbance")
+        r = self.client_for("A", "gis").post("/api/pool/", {"detection": d.pk}, format="json")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("ML-07", r.json()["detail"])
+        self.ov.enable()

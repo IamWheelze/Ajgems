@@ -93,3 +93,50 @@ class MissedSite(AppendOnly):
 
     class Meta:
         ordering = ["at", "id"]
+
+
+# FR-075: the only path from reviewed output to training labels. A reviewer nominates; an independent person checks.
+POSITIVE_FROM = {"confirmed", "edited", "field_confirmed"}
+NEGATIVE_FROM = {"rejected", "field_rejected"}
+# Reject reasons that name a hard-negative type (FR-074). Others (cloud, artefact, "other") are not used as negatives.
+NEGATIVE_TYPE = {"farmland": "farmland", "settlement_or_construction": "settlement", "riverbank_or_water": "riverbank",
+                 "bare_natural_ground": "bare_ground", "quarry_or_borrow_pit": "quarry_or_borrow_pit", "burn_scar": "burn_scar",
+                 "different_land_use": "other_land_use", "not_observed_on_site": "other_land_use"}
+QC_DECISIONS = {"accept": ["matches_imagery", "outline_adequate", "other"],
+                "return": ["outline_inaccurate", "not_visible_in_imagery", "wrong_class", "duplicate", "other"]}
+
+
+class Nomination(AppendOnly):
+    """A reviewed detection or missed site proposed as a training example. Never a label by itself."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    project = models.ForeignKey("projects.Project", on_delete=models.PROTECT, related_name="nominations")
+    detection = models.ForeignKey("projects.Detection", on_delete=models.PROTECT, null=True, related_name="nominations")
+    missed_site = models.ForeignKey(MissedSite, on_delete=models.PROTECT, null=True, related_name="nominations")
+    kind = models.CharField(max_length=20, choices=[("mining", "mining"), ("hard_negative", "hard negative")])
+    negative_type = models.CharField(max_length=40, blank=True)
+    geometry = models.PolygonField(srid=4326, help_text="snapshot at nomination")
+    scene_id = models.CharField(max_length=120)
+    scene_date = models.DateField(null=True)
+    status_at_nomination = models.CharField(max_length=30)
+    protocol_version = models.CharField(max_length=20, default="0.1")
+    nominated_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    note = models.TextField(blank=True)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]
+
+
+class QCDecision(AppendOnly):
+    """An independent check of a nomination. The latest decision is the nomination's state."""
+    organisation = models.ForeignKey("accounts.Organisation", on_delete=models.PROTECT)
+    nomination = models.ForeignKey(Nomination, on_delete=models.PROTECT, related_name="decisions")
+    decision = models.CharField(max_length=10, choices=[(d, d) for d in QC_DECISIONS])
+    reason_code = models.CharField(max_length=40)
+    note = models.TextField(blank=True)
+    checker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    checker_role = models.CharField(max_length=20)
+    at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]

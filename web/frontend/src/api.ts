@@ -17,6 +17,10 @@ export type PixelInfo = { lon: number; lat: number; crs: string; row: number; co
   scene: { id: string; provider: string; date: string; processing_baseline: string } | null };
 export type ErrorSite = { site_id: string; f1: number | null; precision: number | null; recall: number | null; mine_scale: string;
   mine_type: string; region: string; false_candidates: number; label_footprints: number; tp: number; fp: number; fn: number };
+export type PoolFeature = GeoJSON.Feature<GeoJSON.Polygon, { id: number; project: number; detection: number | null; missed_site: number | null;
+  kind: string; negative_type: string; scene_id: string; scene_date: string | null; status_at_nomination: string; protocol_version: string;
+  nominated_by: string; nominated_at: string; note: string; state: string; can_check: boolean | null;
+  decision: { decision: string; reason_code: string; note: string; checker: string; at: string } | null }>;
 export type MissedProps = { id: number; job: number; area_ha: number; reason_code: string; note: string; tile_outcome: string;
   scene_date: string | null; added_by: string; at: string; counts_as: string };
 export type DetectionFeature = GeoJSON.Feature<GeoJSON.Polygon, DetectionProps>;
@@ -134,6 +138,11 @@ export const api = {
   errorBounds: (id: number, site: string, layer: string) => call<{ bounds: number[] }>("GET", `/api/models/${id}/errors/${encodeURIComponent(site)}/image/?layer=${layer}&bounds=1`),
   errorImageUrl: (id: number, site: string, layer: string, classes = "") =>
     `/api/models/${id}/errors/${encodeURIComponent(site)}/image/?layer=${layer}${classes ? `&classes=${classes}` : ""}`,
+  pool: () => call<{ features: PoolFeature[]; decisions: Record<string, string[]> }>("GET", "/api/pool/"),
+  nominate: (detection: number, note = "") => call<PoolFeature>("POST", "/api/pool/", { detection, note }),
+  poolDecide: (id: number, decision: string, reason_code: string, note: string) => call<PoolFeature>("POST", `/api/pool/${id}/decide/`, { decision, reason_code, note }),
+  poolBounds: (id: number) => call<{ bounds: number[] }>("GET", `/api/pool/${id}/image/?bounds=1`),
+  poolImageUrl: (id: number) => `/api/pool/${id}/image/`,
   detection: (id: number) => call<DetectionFeature>("GET", `/api/detections/${id}/`),
   review: (id: number, action: string, reason_code: string, note: string, geometry?: GeoJSON.Polygon) =>
     call<DetectionFeature>("POST", `/api/detections/${id}/reviews/`, { action, reason_code, note, ...(geometry ? { geometry } : {}) }),
