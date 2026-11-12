@@ -37,6 +37,10 @@ export type MonitoringReport = {
   alerts: { area: string; season: string; kind: string; message: string }[];
   thresholds: { input_shift_max_sd: number; output_ratio_range: [number, number]; output_min_usable_km2: number;
     rejection_rate_max: number; rejection_min_reviewed: number } };
+export type ReleaseReview = { model: string; state: string; scopes: string[]; allowed_scopes: string[];
+  issues: { id: string; title: string; detail: string; blocks: string[]; needs_reason: string[] }[];
+  evidence: { test: Record<string, unknown> | null; val: Record<string, unknown> | null;
+    paired: Record<string, Record<string, { b_minus_a: number; ci95: [number, number]; verdict: string }>> } };
 export type Cost = { seconds: number; storage_bytes: number; money: { compute: number; storage_per_month: number; currency: string } | null };
 export type Domain = { model_run: string; test_sites: number; flags: string[]; inside: boolean | null; rule: string;
   nearest_test_site?: string; nearest_test_km?: number; nearest_region?: string; same_season_test_sites?: number };
@@ -67,7 +71,7 @@ export type ModelVersion = {
   dataset: Record<string, string>; licences: { item: string; licence: string }[];
   metrics: Record<string, Record<string, number | null>>; card: Record<string, string | boolean>;
   registered_at: string; registered_by: string; proposed_by: string | null; approved_by: string | null;
-  approved_at: string | null; previous_production: string | null;
+  approved_at: string | null; previous_production: string | null; approved_scope?: string;
   reports: { id: number; split: string; baseline: string | null; sites: number; created_at: string;
     result: { metrics?: Record<string, { a: number | null; b: number | null; b_minus_a: number | null; ci95: [number | null, number | null]; verdict: string }>; note?: string } }[];
 };
@@ -237,6 +241,8 @@ export const api = {
       `project_${projectId}_${format}_export.zip`),
   models: () => call<ModelVersion[]>("GET", "/api/models/"),
   modelDashboard: (id: number) => call<RunDashboard>("GET", `/api/models/${id}/dashboard/`),
+  releaseReview: (id: number) => call<ReleaseReview>("GET", `/api/models/${id}/release-review/`),
+  approveModel: (id: number, scope: string, reasons: Record<string, string>) => call<ModelVersion>("POST", `/api/models/${id}/approve/`, { scope, reasons }),
   modelAction: (id: number, action: string) => call<ModelVersion>("POST", `/api/models/${id}/${action}/`, {}),
   datasets: () => call<DatasetInfo[]>("GET", "/api/datasets/"),
   samples: (id: number, q: string) => call<GeoJSON.FeatureCollection<GeoJSON.Polygon, SampleProps> & {

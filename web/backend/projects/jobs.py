@@ -88,6 +88,11 @@ def start(user, job) -> Job:
         if not SourceApproval.objects.filter(provider=prov, use=job.project.intended_use, approved=True).exists():
             raise JobError(f"source {prov} is no longer approved for {job.project.intended_use.replace('_', ' ')} use "
                            "(FR-025); estimate again")
+    scope = pipeline.model_scope()
+    from registry.release import covers
+    if not covers(scope, job.project.intended_use):   # FR-104: use only within the approved scope
+        raise JobError(f"the model in use is approved for {scope.replace('_', ' ')} only, not for this project's "
+                       f"{job.project.intended_use.replace('_', ' ')} use; a model approved for that use is needed")
     from . import costs
     try:   # FR-087: checked again at start, since other jobs may have run since the estimate
         costs.check_quota(job.organisation, job.area.area_km2 if job.area else 0, job.estimate.get("cost", {}).get("storage_bytes", 0))

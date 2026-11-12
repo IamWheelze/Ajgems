@@ -6,7 +6,7 @@ from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmVi
 from audit.views import AuditListView
 from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, SigningKeyView, VerifyExportView, MonitoringView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
-from registry.views import ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
+from registry.views import ReleaseReviewView, ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
 from review.views import CorrectionActionView, CorrectionListView, AnnotationTaskListView, AnnotationTaskView, FieldPhotoView, FieldTasksView, FieldVisitListView, FieldVisitSyncView, MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
 
 # FR-001: the Django admin is for administrators, so it also requires a session whose second factor was
@@ -79,6 +79,7 @@ urlpatterns = [
     path("api/datasets/<int:pk>/samples/", SampleListView.as_view()),
     path("api/samples/<int:pk>/", SampleDetailView.as_view()),
     path("api/models/<int:pk>/dashboard/", ModelDashboardView.as_view()),
+    path("api/models/<int:pk>/release-review/", ReleaseReviewView.as_view()),
     path("api/models/<int:pk>/errors/", ErrorSitesView.as_view()),
     path("api/models/<int:pk>/errors/<str:site_id>/image/", ErrorImageView.as_view()),
     path("api/models/<int:pk>/<str:action>/", ModelActionView.as_view()),

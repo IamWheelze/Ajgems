@@ -109,6 +109,13 @@ def active_model():
     return run, f"{run.name}:unet (unregistered)"
 
 
+def model_scope():
+    """The use the active model is approved for. An unregistered model (MINEFOOT_MODEL_RUN) is internal research only."""
+    from registry.services import production
+    mv = production()
+    return (mv.approved_scope or "internal_research") if mv is not None else "internal_research"
+
+
 def check_schema(run_dir):
     """FR-102: inference refuses a model whose input schema does not match."""
     from minefoot.schema import SCHEMA_VERSION

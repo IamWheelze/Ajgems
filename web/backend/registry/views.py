@@ -21,6 +21,7 @@ def payload(mv):
             "registered_by": mv.registered_by.username, "proposed_by": mv.proposed_by.username if mv.proposed_by else None,
             "approved_by": mv.approved_by.username if mv.approved_by else None, "approved_at": mv.approved_at,
             "previous_production": mv.previous_production.name if mv.previous_production else None,
+            "approved_scope": mv.approved_scope, "approval_review": mv.approval_review,
             "reports": [{"id": r.id, "split": r.split, "baseline": r.baseline.name if r.baseline else None,
                          "sites": r.sites, "result": r.result, "created_at": r.created_at} for r in mv.reports.all()]}
 
@@ -62,6 +63,8 @@ class ModelActionView(APIView):
         try:
             if action == "compare":
                 services.compare(request.user, mv, request.data.get("split", "test"))
+            elif action == "approve":
+                mv = services.approve(request.user, mv, request.data.get("scope"), request.data.get("reasons") or {})
             else:
                 mv = getattr(services, action)(request.user, mv)
         except services.RegistryError as exc:
@@ -152,3 +155,20 @@ class ErrorImageView(APIView):
         if request.query_params.get("bounds") == "1":
             return Response({"bounds": bounds})
         return FileResponse(open(path, "rb"), content_type="image/png")
+
+
+class ReleaseReviewView(APIView):
+    """FR-104: what the approver must weigh: open issues per scope and the evidence."""
+    permission_classes = [RolePermission]
+    read_roles = ("ml", "admin")
+
+    def get(self, request, pk):
+        from .release import SCOPES, evidence, issues
+        try:
+            mv = ModelVersion.objects.get(pk=pk)
+        except ModelVersion.DoesNotExist:
+            raise Http404
+        iss = issues(mv)
+        return Response(services.json_safe({"model": mv.name, "state": mv.state, "scopes": SCOPES, "issues": iss,
+                                            "allowed_scopes": [s for s in SCOPES if not any(s in i["blocks"] for i in iss)],
+                                            "evidence": evidence(mv), "card": mv.card, "licences": mv.licences}))

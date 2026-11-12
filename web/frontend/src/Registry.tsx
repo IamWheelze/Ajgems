@@ -1,3 +1,4 @@
+import ReleaseReview from "./ReleaseReview";
 import { useEffect, useState } from "react";
 import { api, Me, ModelVersion } from "./api";
 import { human } from "./status";
@@ -56,11 +57,11 @@ export default function Registry({ me }: { me: Me }) {
               )}
             </details>
           ))}
+          {m.state === "candidate" && (ml || admin) && <ReleaseReview modelId={m.id} canApprove={me.username !== m.proposed_by && me.username !== m.registered_by} onDone={load} />}
           <div className="actions wrap">
             {ml && ["experimental", "under_evaluation"].includes(m.state) && <button disabled={busy === m.id} onClick={() => act(m, "compare")}>Compare with production</button>}
             {ml && m.state === "under_evaluation" && <button disabled={busy === m.id} onClick={() => act(m, "propose")}>Propose for production</button>}
-            {(ml || admin) && m.state === "candidate" && <button className="primary" disabled={busy === m.id} onClick={() => act(m, "approve")}
-              title="Must be a different person from whoever registered or proposed it">Approve (second person)</button>}
+            {m.approved_scope && <span className="badge">Approved for {m.approved_scope.replace(/_/g, " ")} by {m.approved_by}</span>}
             {(ml || admin) && m.state === "production" && m.previous_production &&
               <button disabled={busy === m.id} onClick={() => act(m, "rollback")}>Roll back to {m.previous_production}</button>}
           </div>

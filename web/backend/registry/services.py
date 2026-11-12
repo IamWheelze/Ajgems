@@ -112,12 +112,18 @@ def propose(user, mv) -> ModelVersion:
     return mv
 
 
-def approve(user, mv) -> ModelVersion:
-    """FR-104: a second person approves; the model becomes production and the old one is kept for rollback."""
+def approve(user, mv, scope=None, reasons=None) -> ModelVersion:
+    """FR-104: a second person approves for a stated scope, after the release review; the model becomes production
+    and the old one is kept for rollback."""
     if mv.state != ModelVersion.State.CANDIDATE:
         raise RegistryError(f"only a proposed candidate can be approved, this one is {mv.state}")
     if user.pk in (mv.proposed_by_id, mv.registered_by_id):
         raise RegistryError("a second person must approve: you registered or proposed this model")
+    from .release import check
+    try:
+        review = check(mv, scope, reasons)
+    except ValueError as exc:
+        raise RegistryError(str(exc))
     with transaction.atomic():
         old = production()
         if old:
@@ -125,8 +131,10 @@ def approve(user, mv) -> ModelVersion:
             old.save(update_fields=["state"])
         mv.state, mv.approved_by, mv.approved_at, mv.previous_production = (
             ModelVersion.State.PRODUCTION, user, timezone.now(), old)
-        mv.save(update_fields=["state", "approved_by", "approved_at", "previous_production"])
-        record(user, "model.approve", mv, after={"replaced": old.name if old else None})
+        mv.approved_scope, mv.approval_review = scope, review
+        mv.save(update_fields=["state", "approved_by", "approved_at", "previous_production", "approved_scope", "approval_review"])
+        record(user, "model.approve", mv, after={"replaced": old.name if old else None, "scope": scope,
+                                                  "reasons": {i["id"]: i["reason"] for i in review["issues"]}})
     return mv
 
 

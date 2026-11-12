@@ -27,6 +27,9 @@ class ModelVersion(models.Model):
     approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, related_name="+")
     approved_at = models.DateTimeField(null=True)
     previous_production = models.ForeignKey("self", on_delete=models.PROTECT, null=True, related_name="+")
+    # Release review (FR-104): the use the approver signed off, and their written reason for each open issue.
+    approved_scope = models.CharField(max_length=20, blank=True)
+    approval_review = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["-registered_at"]

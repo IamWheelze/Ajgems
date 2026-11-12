@@ -54,8 +54,12 @@ class RegistryTest(TestCase):
     def reg(self, u, run, name=None):
         return self.c(u).post("/api/models/", {"run": run, **({"name": name} if name else {})}, format="json")
 
-    def act(self, u, pk, action):
-        return self.c(u).post(f"/api/models/{pk}/{action}/", {}, format="json")
+    def act(self, u, pk, action, body=None):
+        return self.c(u).post(f"/api/models/{pk}/{action}/", body or {}, format="json")
+
+    def approve(self, u, pk, scope="internal_research"):
+        ids = [i["id"] for i in self.c(u).get(f"/api/models/{pk}/release-review/").json()["issues"]]
+        return self.act(u, pk, "approve", {"scope": scope, "reasons": {i: "accepted for internal tests, reviewed by hand" for i in ids}})
 
     def test_lineage_required(self):
         fake_run(self.tmp / "runs", "dirty", commit="abc+uncommitted")
@@ -74,14 +78,14 @@ class RegistryTest(TestCase):
         self.assertIn("propose", self.act(self.ml1, m1["id"], "propose").json()["detail"])   # not under evaluation yet
         self.act(self.ml1, m1["id"], "compare")
         self.assertEqual(self.act(self.ml1, m1["id"], "propose").json()["state"], "candidate")
-        self.assertIn("second person", self.act(self.ml1, m1["id"], "approve").json()["detail"])   # self-approval refused
-        self.assertEqual(self.act(self.ml2, m1["id"], "approve").json()["state"], "production")
+        self.assertIn("second person", self.approve(self.ml1, m1["id"]).json()["detail"])   # self-approval refused
+        self.assertEqual(self.approve(self.ml2, m1["id"]).json()["state"], "production")
         m2 = self.reg(self.ml1, "m2").json()
         rep = self.c(self.ml1).post(f"/api/models/{m2['id']}/compare/", {}, format="json").json()["reports"][0]
         self.assertEqual(rep["baseline"], "m1"); self.assertEqual(rep["sites"], 20)
         self.assertEqual(rep["result"]["metrics"]["f1"]["verdict"], "b better")
         self.act(self.ml1, m2["id"], "propose")
-        self.assertEqual(self.act(self.adm, m2["id"], "approve").json()["state"], "production")
+        self.assertEqual(self.approve(self.adm, m2["id"]).json()["state"], "production")
         self.assertEqual(ModelVersion.objects.get(name="m1").state, "retired")
         from projects.pipeline import active_model
         self.assertEqual(active_model()[1], "m2")                                     # jobs use production
@@ -151,3 +155,26 @@ class RegistryTest(TestCase):
             self.assertEqual(allc, {(0, 114, 178), (230, 159, 0), (204, 121, 167)})
             self.assertEqual(colours("classes=missed"), {(204, 121, 167)})
             self.assertEqual(len(c.get(f"/api/models/{pk}/errors/s0/image/?bounds=1").json()["bounds"]), 4)
+
+
+    def test_release_review_scope_and_reasons(self):
+        """FR-104: approval names a scope; open issues need written reasons; unresolved licences and an untested
+        Nigerian domain block commercial approval; jobs refuse projects beyond the approved scope."""
+        fake_run(self.tmp / "runs", "m1")
+        pk = self.reg(self.ml1, "m1").json()["id"]
+        self.act(self.ml1, pk, "compare"); self.act(self.ml1, pk, "propose")
+        rv = self.c(self.ml2).get(f"/api/models/{pk}/release-review/").json()
+        ids = {i["id"] for i in rv["issues"]}
+        self.assertTrue({"licence:pretrained encoder weights", "licence:global_ml_ready", "domain:nigeria"} <= ids, ids)
+        self.assertNotIn("commercial", rv["allowed_scopes"])
+        r = self.act(self.ml2, pk, "approve", {"scope": "commercial", "reasons": {i: "x" * 30 for i in ids}})
+        self.assertIn("cannot approve for commercial", r.json()["detail"])
+        r = self.act(self.ml2, pk, "approve", {"scope": "evaluation", "reasons": {"domain:nigeria": "too short"}})
+        self.assertIn("write a reason", r.json()["detail"])
+        self.assertEqual(ModelVersion.objects.get(pk=pk).state, "candidate")
+        r = self.act(self.ml2, pk, "approve", {"scope": "evaluation", "reasons": {i: "accepted: evaluation with partners only" for i in ids}})
+        self.assertEqual((r.json()["state"], r.json()["approved_scope"]), ("production", "evaluation"))
+        ev = AuditEvent.objects.filter(action="model.approve").last()
+        self.assertEqual(ev.after["scope"], "evaluation"); self.assertIn("domain:nigeria", ev.after["reasons"])
+        from registry.release import covers
+        self.assertTrue(covers("evaluation", "internal_research")); self.assertFalse(covers("evaluation", "commercial"))

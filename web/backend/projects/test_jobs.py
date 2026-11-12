@@ -374,6 +374,17 @@ class JobTest(TestCase):
         with self.assertRaises(PermissionError):
             AnnotationVersion.objects.first().delete()
 
+    def test_job_refused_beyond_the_models_approved_scope(self):
+        """FR-104: an unregistered or internal-research model cannot run commercial jobs."""
+        from projects import pipeline
+        Project.objects.filter(pk=self.project.pk).update(intended_use="commercial")
+        pipeline.find_scenes.return_value = ("earth-search", [self.item])   # a source approved for commercial use
+        with mock.patch("minefoot.catalog.cdse_keys", return_value=None):
+            est = self.estimate()
+        r = self.c.post(f"/api/jobs/{est['id']}/start/")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("approved for internal research only", r.json()["detail"])
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])

@@ -115,7 +115,13 @@ Also run for real here: a 122 kmÂ² area in Ghana, 4 tiles, 18 candidates in 42â€
    - Never use the shared demo accounts for a real approval.
 2. Each person signs in and enrols multi-factor sign-in with an authenticator app.
 3. Person 1, in **Models**: **Compare with production** (if no report is listed), then **Propose for production**.
-4. Person 2, in **Models**: reviews the comparison and the licences on the card, then **Approve (second person)**. New detection jobs then use this model; **Roll back** returns to the previous one.
+4. Person 2, in **Models**, completes the **Release review** on the proposed model:
+   - It shows the locked-test metrics with intervals, the paired comparisons stored with the run, and every open issue: unverified or share-alike licences, the untested Nigerian domain, uncalibrated scores, and a missing production comparison.
+   - Person 2 chooses the scope: internal research, evaluation or commercial. Commercial is refused while a licence is unresolved or G3 has not run.
+   - Each open issue needs a written reason (at least 20 characters), stored with the approval and in the audit trail.
+5. New detection jobs then use this model, but only for projects whose intended use is within the approved scope; others are refused at start. An unregistered model counts as internal research only. **Roll back** returns to the previous model.
+
+For `g2_hn` today, commercial approval is blocked by the share-alike labels, the unverified encoder weights and G3. Internal research or evaluation approval is possible with written reasons.
 
 - **Registration** of a finished G2 run (`python manage.py register_model --run ../../data/runs/<run> --user <ml user>`, or the API) is refused if any lineage field is missing: code commit (not uncommitted code), dataset, input schema, split hash, sites, parameters, normalisation, metrics and weights. The model card lists every licence in the lineage, including unverified ones.
 - **Compare** a model with the production model on the same locked test sites (paired site bootstrap). Promotion is impossible without this report.
