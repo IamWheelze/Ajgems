@@ -23,7 +23,14 @@ LABEL_LAYER = "mining_labels"
 LABEL_CLASSES = ("mining_disturbance", "ignore")
 MINE_SCALES = ("artisanal", "industrial", "unknown")
 LABEL_FIELDS = {"site_id": "str", "label_class": "str", "mine_scale": "str", "protocol_version": "str",
-                "scene_id": "str", "image_date": "str", "annotator": "str", "evidence_grade": "str", "notes": "str"}
+                "scene_id": "str", "image_date": "str", "annotator": "str", "evidence_grade": "str", "notes": "str",
+                "role": "str"}
+# Protocol v0.2: `site` polygons define the site and its 1 km evaluation window; `context` polygons are the other
+# mining or ignore areas labelled inside that window. Context never moves the window, so labelling the
+# surroundings cannot keep growing it. Layers without the field (v0.1) treat every polygon as `site`.
+ROLES = ("site", "context")
+DRAFT_ANNOTATORS = ("claude-draft",)   # machine-drawn drafts; lock_labels refuses them until a person takes them over
+OPTIONAL_FIELDS = ("role",)
 SITE_ID = re.compile(r"^ng-[a-z0-9_]+-\d{3}$")
 
 
@@ -38,9 +45,11 @@ def _value_map(field, values):
 def label_form(protocol_version="0.1") -> str:
     from .negatives import EVIDENCE_GRADES
     return ("<fieldConfiguration>" + _value_map("label_class", LABEL_CLASSES) + _value_map("mine_scale", MINE_SCALES)
+            + _value_map("role", ROLES)
             + _value_map("evidence_grade", EVIDENCE_GRADES) + "</fieldConfiguration><defaults>"
             f'<default field="protocol_version" expression="\'{protocol_version}\'" applyOnUpdate="0"/>'
             '<default field="label_class" expression="\'mining_disturbance\'" applyOnUpdate="0"/>'
+            '<default field="role" expression="\'site\'" applyOnUpdate="0"/>'
             '<default field="annotator" expression="@user_full_name" applyOnUpdate="0"/></defaults>')
 
 
@@ -154,9 +163,16 @@ def check_labels(path, kit_json=None) -> dict:
     from .negatives import EVIDENCE_GRADES, MIN_AREA_HA
     from .splits import _utm_epsg
     g = gpd.read_file(path, layer=LABEL_LAYER)
-    problems = [f"missing field {f}" for f in LABEL_FIELDS if f not in g.columns]
+    problems = [f"missing field {f}" for f in LABEL_FIELDS if f not in g.columns and f not in OPTIONAL_FIELDS]
     if problems:
         return {"features": int(len(g)), "problems": problems}
+    if "role" in g.columns:
+        bad = sorted(set(g.loc[g["role"].notna() & ~g["role"].isin(ROLES), "role"].astype(str)))
+        if bad:
+            problems.append(f"role must be one of {list(ROLES)} or empty, got {bad[:5]}")
+        no_site = sorted(set(g["site_id"]) - set(g.loc[g["role"].fillna("site") == "site", "site_id"]))
+        if no_site:
+            problems.append(f"sites with only context polygons (each site needs at least one site polygon): {no_site[:5]}")
     def blank(col):
         return g[col].isna() | (g[col].astype(str).str.strip() == "")
     for f in ("site_id", "protocol_version", "scene_id", "image_date", "annotator"):
@@ -214,6 +230,11 @@ def lock_labels(labels_path, out_path, kit_json=None, note="") -> dict:
     if rep["sites"] == 0:
         raise ValueError("no mining sites to lock")
     g = gpd.read_file(labels_path, layer=LABEL_LAYER).to_crs(4326)
+    draft = g["annotator"].astype(str).str.strip().isin(DRAFT_ANNOTATORS)
+    if draft.any():   # a person must check every polygon before it becomes test truth
+        raise ValueError(f"{int(draft.sum())} polygon(s) in {g.loc[draft, 'site_id'].nunique()} site(s) are unreviewed drafts "
+                         f"(annotator {sorted(set(g.loc[draft, 'annotator']))}). Check each one against the scene, fix or delete it, "
+                         "then set annotator to your name (and evidence_grade to E1) before locking")
     hashes = _site_hashes(g)
     lock = {"purpose": "locked Nigerian test set (ML-07): test and threshold reporting only, never training",
             "site_ids": sorted(hashes), "count": len(hashes), "site_sha256": hashes,

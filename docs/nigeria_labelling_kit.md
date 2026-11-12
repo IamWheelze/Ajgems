@@ -19,6 +19,25 @@ Open `data/labelling_kit/nigeria_v1/project.qgs` in QGIS 3.34 or later. You will
 - One group per region: true colour (on), SWIR and NIR false colour, NDVI, NDWI, the quality mask, scene classes, and 10-band reflectance (use the Identify tool for pixel values).
 - An OpenStreetMap layer (off; needs internet). It is for orientation only. **Never label from a base map**: label what is visible in the Sentinel-2 scene on its date.
 
+## 1b. Start from the draft labels (optional, recommended)
+
+`docs/evidence/nigeria_draft_labels_v1/` holds draft labels made from the two pinned scenes alone, with no model involved:
+- 24 sites (23 Jos, 1 Kogi/Kwara), 126 mining polygons and 103 ignore areas, every 1 km window completed;
+- 10 hard negatives.
+
+Open `review.html` first: it shows every site with its outlines, its window and a confidence note. Then copy the drafts into the kit and edit them in QGIS:
+
+```bash
+cp docs/evidence/nigeria_draft_labels_v1/mining_labels.gpkg docs/evidence/nigeria_draft_labels_v1/hard_negatives.gpkg data/labelling_kit/nigeria_v1/labels/
+```
+
+Every draft polygon has `annotator = claude-draft` and `evidence_grade = E0`, and `lock-labels` refuses to lock while any remain. For each site:
+1. Check it against the scene and fix or delete outlines.
+2. Select the polygons you have checked and use the Field Calculator to set `annotator` to your name and `evidence_grade` to `E1`.
+3. Set `mine_scale` where you know it.
+
+Delete any site you are not sure is mining. Kogi/Kwara has only one draft site, so add the sites you know there.
+
 ## 2. Digitise mining sites
 
 Aim for **30 to 50 sites**, spread across both regions and across artisanal and industrial workings.
@@ -31,7 +50,7 @@ Aim for **30 to 50 sites**, spread across both regions and across artisanal and 
    - `scene_id` and `image_date`: copy them from the region's group name in the layer list.
    - `evidence_grade`: E1 for what you see in this imagery. Use E2 if you checked dated high-resolution imagery, and E3 only for a field visit.
 3. Keep polygons at least 0.5 ha. Label only what is visible on this date.
-4. **Label everything within 1 km of each site** under the same `site_id`. G3 scores each site in a 1 km window, so unlabelled mining there would count as a false alarm. Use `ignore` where you cannot judge.
+4. **Label everything within 1 km of each site** under the same `site_id`, with `role = context` (the site's own polygons are `role = site`). G3 scores each site in a 1 km window, so unlabelled mining there would count as a false alarm. Use `ignore` where you cannot judge.
 
 Never record mineral type, ownership, legality or whether a site is active (FR-110).
 

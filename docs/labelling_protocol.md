@@ -1,4 +1,6 @@
-# Labelling protocol v0.1 (draft for the founder to review)
+# Labelling protocol v0.2 (draft for the founder to review)
+
+**v0.2 (2026-11-12): the `role` field.** Each mining or ignore polygon is `site` (it defines the site and its 1 km G3 window) or `context` (other mining or ignore ground labelled inside that window, under the same `site_id`). Context is scored like any label but never moves the window. Without this, labelling the surroundings grew the window, which pulled in more ground to label, without end. Layers without the field (v0.1) treat every polygon as `site`.
 
 **Label what is visible on the stated image date only.** Record protocol version, image date, scene ID, annotator and evidence grade (E0 to E3) on each label.
 

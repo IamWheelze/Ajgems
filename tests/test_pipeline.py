@@ -1016,3 +1016,48 @@ def test_condition_flags_are_prompts_on_the_right_ground(tmp_path):
     import geopandas as gpd
     veg = gpd.GeoSeries([sbox(*rasterio.transform.xy(tr, 60, 10), *rasterio.transform.xy(tr, 40, 30))], crs=crs).to_crs(4326).iloc[0]
     assert polygon_flags(tmp_path / "p", veg.envelope)["flags"] == []
+
+
+def test_context_polygons_do_not_move_the_g3_window():
+    """Protocol v0.2: windows come from `site` polygons only; `context` polygons are scored but never grow the window."""
+    import geopandas as gpd
+    from rasterio.transform import from_origin
+    from shapely.geometry import box
+    from minefoot.g3 import site_window
+    from minefoot.labelling_kit import check_labels
+    tr = from_origin(500000, 1001000, 10, 10); shape = (500, 500)
+    site, ctx = box(502000, 998000, 502100, 998100), box(503500, 998000, 503600, 998100)   # context 1.4 km east
+    part = gpd.GeoDataFrame({"role": ["site", "context"]}, geometry=[site, ctx], crs=32632)
+    only_site = site_window(part[part["role"] != "context"].geometry, tr, shape, 1000)
+    both = site_window(part.geometry, tr, shape, 1000)
+    assert only_site == site_window([site], tr, shape, 1000) and both != only_site
+    assert only_site[3] < both[3]                                   # the context polygon would have widened it
+
+
+def test_check_labels_roles(tmp_path):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.labelling_kit import check_labels
+    base = {"label_class": "mining_disturbance", "mine_scale": "unknown", "protocol_version": "0.2", "scene_id": "S",
+            "image_date": "2026-01-01", "annotator": "a", "evidence_grade": "E1", "notes": ""}
+    rows = [{**base, "site_id": "ng-jos-001", "role": "site"}, {**base, "site_id": "ng-jos-001", "role": "context"},
+            {**base, "site_id": "ng-jos-002", "role": "context"}, {**base, "site_id": "ng-jos-003", "role": "edge"}]
+    g = gpd.GeoDataFrame(rows, geometry=[box(8.8 + i / 100, 9.7, 8.805 + i / 100, 9.705) for i in range(4)], crs=4326)
+    g.to_file(tmp_path / "l.gpkg", layer="mining_labels", driver="GPKG")
+    p = " ".join(check_labels(tmp_path / "l.gpkg")["problems"])
+    assert "only context polygons" in p and "ng-jos-002" in p and "role must be one of" in p
+
+
+def test_lock_refuses_unreviewed_drafts(tmp_path):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.labelling_kit import lock_labels
+    row = {"site_id": "ng-jos-001", "label_class": "mining_disturbance", "mine_scale": "unknown", "protocol_version": "0.2",
+           "scene_id": "S", "image_date": "2026-01-01", "annotator": "claude-draft", "evidence_grade": "E0", "notes": "", "role": "site"}
+    g = gpd.GeoDataFrame([row], geometry=[box(8.8, 9.7, 8.81, 9.71)], crs=4326)
+    g.to_file(tmp_path / "l.gpkg", layer="mining_labels", driver="GPKG")
+    with pytest.raises(ValueError, match="unreviewed drafts"):
+        lock_labels(tmp_path / "l.gpkg", tmp_path / "lock.json")
+    g["annotator"] = "founder"; g["evidence_grade"] = "E1"
+    g.to_file(tmp_path / "l.gpkg", layer="mining_labels", driver="GPKG")
+    assert lock_labels(tmp_path / "l.gpkg", tmp_path / "lock.json")["count"] == 1

@@ -111,6 +111,10 @@ def run_g3(run_dir, kit_dir, labels_path, lock_path, out_dir, negatives_path=Non
         evaluated = np.zeros_like(valid)
         errmap = np.zeros(valid.shape, "uint8")      # 0 none, 1 hit, 2 false alarm, 3 missed, 4 not assessed, 5 unverified
         for sid, part in lab.groupby("site_id"):
+            # Protocol v0.2: the window and the site's own extent come from its `site` polygons; `context`
+            # polygons (labelled surroundings) count through mining_all and ignore_all but never move the window.
+            if "role" in part.columns:
+                part = part[part["role"].fillna("site") != "context"]
             r0, r1, c0, c1 = site_window(part.geometry, tr, valid.shape, window_m)
             win = (slice(r0, r1), slice(c0, c1))
             usable = valid[win] & ~ignore_all[win]
