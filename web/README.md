@@ -183,6 +183,7 @@ Each processed tile, and each candidate, gets review prompts from `minefoot.cond
   - visits and photos are append-only;
   - a field decision goes through the normal review rules (evidence grade E3).
   - Photos open only for field, GIS and admin users of the same organisation, and appear in the review evidence panel.
+- **Server safety net:** faces (frontal and profile) are also detected with OpenCV and blurred on the server before a photo is stored (`MINEFOOT["FIELD_AUTO_BLUR"]`, on by default). The count is kept per photo. It can miss small, turned or covered faces, so on-phone blurring stays the observer's job.
 - **Tested:** the production build in a phone-sized browser. Load, go offline, reload (served from cache), record a visit with GPS, notes and a blurred photo, reconnect, and it synced (201). The stored photo had no EXIF.
   - Blurring is manual; there is no automatic face detection.
   - The demo project has one open field task (#320) to try this with `demo_field`.
@@ -297,4 +298,4 @@ Every export package's manifest lists each file's SHA-256 and size. It is signed
 ## Not built yet (next slices)
 
 - **Ingesting accepted pool labels** into a minefoot dataset version for training. Exports exist; the adapter does not.
-- **Automatic face and number-plate detection** in field photos. Blurring is manual.
+- **Number-plate detection** in field photos. Faces are detected automatically; plates are blurred by hand.

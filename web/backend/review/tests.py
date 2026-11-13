@@ -247,6 +247,7 @@ class FieldEvidenceTest(Base):
         self.assertEqual(self.client_for("A", "gis").get(f"/api/field/photos/{pid}/").status_code, 200)
         visits = self.client_for("A", "gis").get(f"/api/detections/{d.pk}/field-visits/").json()
         self.assertEqual((visits[0]["decision"]["action"], visits[0]["lat"]), ("field_confirm", 9.75))
+        self.assertEqual(p.auto_blurred, 0)                           # a plain photo: nothing found, nothing blurred
         # A decision the rules refuse stores nothing, so the phone keeps the visit queued with the reason.
         meta2 = {**meta, "client_uuid": str(uuid.uuid4())}
         r = field.post("/api/field/visits/", {"meta": json.dumps(meta2), "photos": []}, format="multipart")
@@ -293,3 +294,23 @@ class CorrectionTest(Base):
         rid2 = viewer.post("/api/corrections/", {**body, "kind": "location_sensitive", "description": "Community site."}, format="json").json()["id"]
         self.assertEqual(gis.post(f"/api/corrections/{rid2}/withdraw/", {}, format="json").status_code, 403)
         self.assertEqual(viewer.post(f"/api/corrections/{rid2}/withdraw/", {}, format="json").json()["state"], "withdrawn")
+
+
+class FaceBlurTest(Base):
+    def test_detected_faces_are_blurred(self):
+        """FR-095 safety net: every face the detector returns is blurred, with a margin; the rest is untouched."""
+        from unittest import mock
+        import numpy as np
+        from PIL import Image
+        from review import field
+        rng = np.random.default_rng(0)
+        im = Image.fromarray(rng.integers(0, 255, (400, 600, 3), dtype=np.uint8))
+        before = np.asarray(im).copy()
+        with mock.patch.object(field, "_faces", return_value=[(100, 100, 80, 80)]):
+            out, n = field.blur_faces(im.copy())
+        after = np.asarray(out).astype(int)
+        self.assertEqual(n, 1)
+        face = (slice(110, 170), slice(110, 170))
+        self.assertLess(after[face].std(), before[face].std() / 3)              # noise smoothed away inside the face
+        self.assertTrue((after[300:, 400:] == before[300:, 400:]).all())        # far from the face: unchanged
+        self.assertEqual(field._faces(Image.new("RGB", (640, 480), (90, 120, 60))), [])   # real detector, no face

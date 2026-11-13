@@ -165,6 +165,7 @@ class FieldPhoto(AppendOnly):
     path = models.CharField(max_length=500)
     sha256 = models.CharField(max_length=64)
     blurred_regions = models.IntegerField(default=0, help_text="areas the observer blurred before upload (people, plates)")
+    auto_blurred = models.IntegerField(default=0, help_text="faces the server found and blurred as a safety net")
     width = models.IntegerField(); height = models.IntegerField()
 
 

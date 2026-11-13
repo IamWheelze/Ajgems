@@ -91,7 +91,7 @@ Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required
 - *Jobs:* calibrated cost estimates and measured actuals (FR-086); organisation quotas (FR-087).
 - *Prompts:* condition prompts measured on 120 sites (FR-054): water against WorldCover, precision 0.98 and recall 0.63; haze not evaluable here; burn scars unlabelled.
 - *Verified:* 54 backend tests, 68 package tests and browser checks, including offline field sync and an interrupted upload.
-- *Not built:* automatic face detection (blurring is manual). Raster tiles via rio-tiler (TiTiler's core) added 2026-11-13: `/api/jobs/<id>/xyz/...`, used by the review map from zoom 10. `minefoot ingest-pool` (2026-11-13) turns accepted pool exports into the common dataset schema, refusing test sites and test regions.
+- *Not built:* number-plate detection (faces are auto-blurred on the server since 2026-11-13; plates are blurred by hand). Raster tiles via rio-tiler (TiTiler's core) added 2026-11-13: `/api/jobs/<id>/xyz/...`, used by the review map from zoom 10. `minefoot ingest-pool` (2026-11-13) turns accepted pool exports into the common dataset schema, refusing test sites and test regions.
 2026-11-11, Commercial items built: signed exports with a standalone verifier (FR-109; set `MINEFOOT_SIGNING_KEY` in production), correction requests with owner, state and outcome (FR-096), and drift monitoring per area and season with `check_drift` alerts (FR-105). The encoder weights' terms were read (no commercial grant found), and `docs/legal_review_brief.md` sets out both licence questions for a lawyer. 59 backend tests pass.
 
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.

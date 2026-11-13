@@ -42,8 +42,44 @@ def tasks(user):
     return out
 
 
+FACE_PAD = 0.35   # blur beyond the detected box, so hairline, ears and chin are covered
+
+
+def _faces(im):
+    """Frontal and profile faces (both directions) with OpenCV's Haar cascades. A safety net behind the observer's own
+    blurring, not a guarantee: small, turned or covered faces can be missed."""
+    try:
+        import cv2
+    except ImportError:
+        return None
+    import numpy as np
+    g = cv2.equalizeHist(cv2.cvtColor(np.asarray(im), cv2.COLOR_RGB2GRAY))
+    min_side = max(24, min(g.shape) // 40)
+    boxes = []
+    for name, flip in (("haarcascade_frontalface_default.xml", False), ("haarcascade_profileface.xml", False),
+                       ("haarcascade_profileface.xml", True)):
+        c = cv2.CascadeClassifier(cv2.data.haarcascades + name)
+        img = cv2.flip(g, 1) if flip else g
+        for x, y, w, h in c.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5, minSize=(min_side, min_side)):
+            boxes.append((g.shape[1] - x - w if flip else x, y, w, h))
+    return boxes
+
+
+def blur_faces(im):
+    """Blur every detected face in place. Returns (image, faces blurred), or (image, None) without OpenCV."""
+    from PIL import ImageFilter
+    boxes = _faces(im)
+    if not boxes:
+        return im, boxes if boxes is None else 0
+    for x, y, w, h in boxes:
+        px, py = int(w * FACE_PAD), int(h * FACE_PAD)
+        b = (max(0, x - px), max(0, y - py), min(im.width, x + w + px), min(im.height, y + h + py))
+        im.paste(im.crop(b).filter(ImageFilter.GaussianBlur(radius=max(8, (b[2] - b[0]) // 6))), b[:2])
+    return im, len(boxes)
+
+
 def _clean_photo(data: bytes):
-    """Decode and re-encode as JPEG with no metadata. Returns (bytes, width, height)."""
+    """Decode, blur faces the server finds, and re-encode as JPEG with no metadata. Returns (bytes, width, height, faces)."""
     from PIL import Image, ImageOps
     if len(data) > MAX_PHOTO_BYTES:
         raise ReviewError("a photo is larger than 20 MB")
@@ -52,9 +88,12 @@ def _clean_photo(data: bytes):
         im = ImageOps.exif_transpose(im).convert("RGB")   # keep the orientation, drop everything else
     except Exception:
         raise ReviewError("a photo could not be read as an image")
+    faces = 0
+    if settings.MINEFOOT.get("FIELD_AUTO_BLUR", True):
+        im, faces = blur_faces(im)
     out = io.BytesIO()
     im.save(out, "JPEG", quality=88)   # no exif= argument: EXIF, GPS and maker notes are not written
-    return out.getvalue(), im.width, im.height
+    return out.getvalue(), im.width, im.height, faces
 
 
 def sync_visit(user, meta: dict, photos: list, blurred: list):
@@ -88,13 +127,14 @@ def sync_visit(user, meta: dict, photos: list, blurred: list):
                                       observer_name=str(meta.get("observer_name") or "")[:200], visited_at=visited,
                                       lat=num("lat"), lon=num("lon"), accuracy_m=num("accuracy_m"),
                                       notes=str(meta.get("notes") or ""), review=rv)
-        for i, (data, w, h) in enumerate(cleaned):
+        for i, (data, w, h, faces) in enumerate(cleaned):
             path = root / f"{cid}_{i}.jpg"
             path.write_bytes(data)
             FieldPhoto.objects.create(organisation=user.organisation, visit=v, path=str(path),
                                       sha256=hashlib.sha256(data).hexdigest(), width=w, height=h,
-                                      blurred_regions=int(blurred[i]) if i < len(blurred) else 0)
+                                      blurred_regions=int(blurred[i]) if i < len(blurred) else 0, auto_blurred=faces or 0)
         record(user, "field.visit", v, after={"detection": d.pk, "photos": len(cleaned), "decision": dec.get("action"),
+                                              "faces_auto_blurred": sum(c[3] or 0 for c in cleaned),
                                               "has_position": v.lat is not None})
     return v, True
 
@@ -104,5 +144,5 @@ def visit_payload(v):
             "observer_name": v.observer_name, "visited_at": v.visited_at, "lat": v.lat, "lon": v.lon,
             "accuracy_m": v.accuracy_m, "notes": v.notes, "synced_at": v.synced_at,
             "decision": {"action": v.review.action, "reason_code": v.review.reason_code} if v.review else None,
-            "photos": [{"id": p.id, "width": p.width, "height": p.height, "blurred_regions": p.blurred_regions, "sha256": p.sha256}
+            "photos": [{"id": p.id, "width": p.width, "height": p.height, "blurred_regions": p.blurred_regions, "auto_blurred": p.auto_blurred, "sha256": p.sha256}
                        for p in v.photos.all()]}
