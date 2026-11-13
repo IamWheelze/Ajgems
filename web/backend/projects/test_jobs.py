@@ -155,6 +155,13 @@ class JobTest(TestCase):
         shown = px[px[..., 3] > 0]
         self.assertTrue(len(shown) and (np.abs(shown.astype(int) - expect[0, 0].astype(int)).max(axis=1) <= 1).all())
         self.assertEqual(expect[1, 0, 3], 0)   # 0.05 is under the 0.1 floor: transparent, so the imagery shows
+        # FR-090: the evidence panel shows imagery, score, scene, date, model and area.
+        ev = self.c.get(f"/api/detections/{d.pk}/").json()["properties"]
+        for k in ("score_band", "score_type", "model_version", "area_ha", "threshold"):
+            self.assertIsNotNone(ev[k], k)
+        self.assertTrue(ev["scene"]["source_id"] and ev["scene"]["acquired_at"].startswith("2026-01-03"))
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "cache"}):
+            self.assertEqual(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour").status_code, 200)
         # FR-122: an optional per-view stretch changes the picture; bad values are refused with a reason.
         with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "cache"}):
             img = lambda q: np.asarray(Image.open(BytesIO(b"".join(self.c.get(f"/api/detections/{d.pk}/image/?layer=true_colour{q}").streaming_content))))

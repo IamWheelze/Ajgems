@@ -239,10 +239,18 @@ class AreaTest(Base):
             self.assertIn(".prj", r.json()["detail"])
 
     def test_archived_project_read_only(self):
-        self.client_for("A", "gis").post(f"/api/projects/{self.projects['A'].pk}/archive/")
+        """FR-010: an archived project is read-only and keeps its history."""
+        c = self.client_for("A", "gis")
+        self.assertEqual(self.post({"geometry": SQUARE}).status_code, 201)
+        c.post(f"/api/projects/{self.projects['A'].pk}/archive/")
         self.assertEqual(self.post({"geometry": SQUARE}).status_code, 400)
-        r = self.client_for("A", "gis").patch(f"/api/projects/{self.projects['A'].pk}/", {"purpose": "x"}, format="json")
+        r = c.patch(f"/api/projects/{self.projects['A'].pk}/", {"purpose": "x"}, format="json")
         self.assertEqual(r.status_code, 400)
+        p = c.get(f"/api/projects/{self.projects['A'].pk}/").json()
+        self.assertEqual(p["status"], "archived")
+        self.assertEqual(len(c.get(f"/api/projects/{self.projects['A'].pk}/areas/").json()), 1)   # its areas remain
+        self.assertEqual(c.delete(f"/api/projects/{self.projects['A'].pk}/").status_code, 405)   # never deleted
+        self.assertTrue(AuditEvent.objects.filter(action="project.archive", object_id=str(self.projects["A"].pk)).exists())
 
 
 class AuthAuditTest(Base):

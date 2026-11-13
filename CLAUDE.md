@@ -94,4 +94,10 @@ Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required
 - *Not built:* number-plate detection (faces are auto-blurred on the server since 2026-11-13; plates are blurred by hand). Raster tiles via rio-tiler (TiTiler's core) added 2026-11-13: `/api/jobs/<id>/xyz/...`, used by the review map from zoom 10. `minefoot ingest-pool` (2026-11-13) turns accepted pool exports into the common dataset schema, refusing test sites and test regions.
 2026-11-11, Commercial items built: signed exports with a standalone verifier (FR-109; set `MINEFOOT_SIGNING_KEY` in production), correction requests with owner, state and outcome (FR-096), and drift monitoring per area and season with `check_drift` alerts (FR-105). The encoder weights' terms were read (no commercial grant found), and `docs/legal_review_brief.md` sets out both licence questions for a lawyer. 59 backend tests pass.
 
+2026-11-13:
+- *Production deployment* (`web/DEPLOY.md`, `web/docker-compose.prod.yml`). The full image build is not verified here: the proxy blocks downloads inside `docker build`.
+- *Acceptance tests* (`tests/test_acceptance.py`) for FR-031, FR-034, FR-078, FR-081 and FR-100, plus a check that every MVP requirement in the FRD is referenced in code or tests.
+- *Area fix:* `vectorise` now computes areas on local UTM when the score map is in degrees (FR-034).
+- *Retrain without pretrained weights:* `g2_nw`, then `g2_nw_hn` (`data/runs/run_g2_nw.sh`, then `eval_g2_nw.sh`), is running.
+
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.

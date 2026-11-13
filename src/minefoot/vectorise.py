@@ -21,6 +21,17 @@ def score_band(mean: float, threshold: float) -> str:
     return SCORE_BANDS[max(i, 0)]
 
 
+def _areas_ha(polys, crs) -> list:
+    """Area in hectares on a local UTM basis (FR-034). A projected raster's own metres are used as they are."""
+    if not polys:
+        return []
+    if crs.is_projected:
+        return [p.area / 1e4 for p in polys]
+    import geopandas as gpd
+    g = gpd.GeoSeries(polys, crs=crs)
+    return list(g.to_crs(g.estimate_utm_crs()).area / 1e4)
+
+
 def vectorise(score_path, threshold: float, mmu_ha: float = 1.0, prepared_dir=None):
     """Polygons (EPSG:4326 GeoDataFrame) where score >= threshold (scores in [0, 1], or uint8 levels / 255)."""
     import geopandas as gpd
@@ -42,7 +53,9 @@ def vectorise(score_path, threshold: float, mmu_ha: float = 1.0, prepared_dir=No
     # 0.75 px tolerance removes steps and stays below a pixel. preserve_topology keeps polygons valid.
     tol = 0.75 * abs(tr.a)
     polys = [p.simplify(tol, preserve_topology=True) for p in polys]
-    polys = [p for p in polys if p.area / 1e4 >= mmu_ha] if crs.is_projected else polys
+    areas = _areas_ha(polys, crs)   # FR-034: projected rasters are UTM here; geographic ones go to local UTM
+    keep = [i for i, a in enumerate(areas) if a >= mmu_ha]
+    polys, areas = [polys[i] for i in keep], [areas[i] for i in keep]
     cols = ["area_ha", "score_mean", "score_band", "threshold", "min_mapping_unit_ha"]
     if not polys:
         return gpd.GeoDataFrame({c: [] for c in cols}, geometry=[], crs=4326)
@@ -50,7 +63,7 @@ def vectorise(score_path, threshold: float, mmu_ha: float = 1.0, prepared_dir=No
     sums = np.bincount(ids.ravel(), weights=score.ravel(), minlength=len(polys) + 1)
     counts = np.bincount(ids.ravel(), minlength=len(polys) + 1)
     means = sums[1:] / np.maximum(counts[1:], 1)
-    g = gpd.GeoDataFrame({"area_ha": [p.area / 1e4 for p in polys], "score_mean": means.astype(float),
+    g = gpd.GeoDataFrame({"area_ha": areas, "score_mean": means.astype(float),
                           "score_band": [score_band(m, threshold) for m in means], "threshold": threshold,
                           "min_mapping_unit_ha": mmu_ha}, geometry=polys, crs=crs)
     if prepared_dir is not None:
