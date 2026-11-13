@@ -1,0 +1,17 @@
+Metadata-Version: 2.4
+Name: minefoot
+Version: 0.1.0
+Summary: Milestone 1 pipeline: Sentinel-2 retrieval, preprocessing and visual inspection for candidate mining footprints
+Requires-Python: >=3.10
+Requires-Dist: numpy
+Requires-Dist: rasterio>=1.3
+Requires-Dist: pystac-client>=0.8
+Requires-Dist: planetary-computer
+Requires-Dist: shapely>=2
+Requires-Dist: pyproj
+Requires-Dist: geopandas
+Requires-Dist: pyyaml
+Requires-Dist: pillow
+Requires-Dist: pyogrio
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"

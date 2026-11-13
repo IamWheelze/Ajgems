@@ -153,6 +153,23 @@ class ChipDataset:
 
 # ---------- model ----------
 
+def _pretrained_lineage(cfg, init_from) -> list:
+    """Every pretrained-weight source this model descends from: its own encoder weights, plus whatever the run it
+    was initialised from descended from (read from that run's config.json)."""
+    out = []
+    if cfg.get("encoder_weights") not in (None, "none", "None"):
+        out.append(f"{cfg['encoder']} {cfg['encoder_weights']} encoder weights")
+    if init_from:
+        parent = Path(init_from).parent / "config.json"
+        try:
+            pc = json.loads(parent.read_text())
+            out += pc.get("pretrained_lineage", [f"{pc['params']['encoder']} {pc['params']['encoder_weights']} encoder weights"]
+                          if pc.get("params", {}).get("encoder_weights") not in (None, "none", "None") else [])
+        except (OSError, KeyError, ValueError):
+            out.append(f"unknown: config of the initial weights {init_from} not found")
+    return sorted(set(out))
+
+
 def build_model(encoder="resnet34", encoder_weights="imagenet"):
     import segmentation_models_pytorch as smp
     w = None if encoder_weights in (None, "none", "None") else encoder_weights
@@ -223,8 +240,10 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     config.update({"model": "U-Net (segmentation_models_pytorch)", "params": cfg, "device": str(dev),
                    "loss": "masked binary cross-entropy + soft Dice; masked pixels excluded",
                    "checkpoint_rule": "lowest loss on fixed validation chips",
-                   "encoder_weights_note": "ImageNet-pretrained encoder weights: licence of the weights not yet "
-                                           "recorded in docs/licence_register.csv; internal research only"})
+                   "pretrained_lineage": _pretrained_lineage(cfg, init_from)})
+    if config["pretrained_lineage"]:   # kept for older readers; absent when no pretrained weights are in the lineage
+        config["encoder_weights_note"] = ("ImageNet-pretrained encoder weights in the lineage: no commercial licence found "
+                                          "(docs/licence_register.csv); internal research only")
     import segmentation_models_pytorch as smp
     config["environment"].update(torch=torch.__version__, smp=smp.__version__,
                                  gpu=torch.cuda.get_device_name(0) if dev.type == "cuda" else None)

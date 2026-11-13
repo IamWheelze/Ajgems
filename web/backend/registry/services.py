@@ -31,8 +31,13 @@ def json_safe(x):
 def _licences(cfg) -> list:
     out = [{"item": "Copernicus Sentinel-2 imagery", "licence": "Sentinel Data Legal Notice (free, full and open)"},
            {"item": cfg["dataset"]["name"], "licence": cfg["dataset"]["licence"]}]
-    if cfg.get("encoder_weights_note"):
-        out.append({"item": "pretrained encoder weights", "licence": "NOT VERIFIED (see docs/licence_register.csv)"})
+    lineage = cfg.get("pretrained_lineage")
+    if lineage is None:   # runs from before 2026-11-13: decide from the note and the parameters
+        lineage = ["pretrained encoder weights"] if (cfg.get("encoder_weights_note") or cfg.get("params", {}).get(
+            "encoder_weights") not in (None, "none", "None") or cfg.get("init_from")) else []
+    if lineage:
+        out.append({"item": "pretrained encoder weights", "licence": "NOT VERIFIED (see docs/licence_register.csv)",
+                    "lineage": lineage})
     if cfg.get("hard_negatives"):
         out.append({"item": "hard negatives", "licence": str(cfg["hard_negatives"].get("source"))})
     return out

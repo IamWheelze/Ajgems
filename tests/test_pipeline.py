@@ -1061,3 +1061,17 @@ def test_lock_refuses_unreviewed_drafts(tmp_path):
     g["annotator"] = "founder"; g["evidence_grade"] = "E1"
     g.to_file(tmp_path / "l.gpkg", layer="mining_labels", driver="GPKG")
     assert lock_labels(tmp_path / "l.gpkg", tmp_path / "lock.json")["count"] == 1
+
+
+def test_pretrained_lineage_follows_init_from(tmp_path):
+    """A fine-tune inherits the pretrained-weight lineage of the run it starts from; a scratch run has none."""
+    from minefoot.g2 import _pretrained_lineage
+    scratch, pre = tmp_path / "scratch", tmp_path / "pre"
+    scratch.mkdir(); pre.mkdir()
+    (scratch / "config.json").write_text(json.dumps({"params": {"encoder": "resnet34", "encoder_weights": "none"}, "pretrained_lineage": []}))
+    (pre / "config.json").write_text(json.dumps({"params": {"encoder": "resnet34", "encoder_weights": "imagenet"}}))   # older run, no field
+    none = {"encoder": "resnet34", "encoder_weights": "none"}
+    assert _pretrained_lineage(none, None) == []
+    assert _pretrained_lineage(none, scratch / "unet_best.pt") == []
+    assert _pretrained_lineage(none, pre / "unet_best.pt") == ["resnet34 imagenet encoder weights"]
+    assert _pretrained_lineage({"encoder": "resnet34", "encoder_weights": "imagenet"}, None) == ["resnet34 imagenet encoder weights"]
