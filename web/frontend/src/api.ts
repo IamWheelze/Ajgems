@@ -229,7 +229,7 @@ export const api = {
       "GET", `/api/scenes/${id}/image/?bounds=1&layer=${layer}`),
   sceneImageUrl: (id: number, layer: string) => `/api/scenes/${id}/image/?layer=${layer}`,
   detectionBounds: (id: number, layer: string, job: number | null = null) =>
-    call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string }>(
+    call<{ bounds: [number, number, number, number]; date: string; scene_id: string; licence_note: string; xyz?: string | null }>(
       "GET", `/api/detections/${id}/image/?bounds=1&layer=${layer}${job ? `&job=${job}` : ""}`),
   detectionImageUrl: (id: number, layer: string, stretch = "", job: number | null = null) =>
     `/api/detections/${id}/image/?layer=${layer}${stretch ? `&stretch=${stretch}` : ""}${job ? `&job=${job}` : ""}`,

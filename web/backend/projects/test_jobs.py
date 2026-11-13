@@ -385,6 +385,28 @@ class JobTest(TestCase):
         self.assertEqual(r.status_code, 400)
         self.assertIn("approved for internal research only", r.json()["detail"])
 
+    def test_xyz_tiles(self):
+        """Raster tiles: real pixels from the job tile, empty where the job has no imagery, organisation-scoped."""
+        import morecantile
+        from io import BytesIO
+        from PIL import Image
+        job = self.run_job(self.estimate()["id"])
+        t = job.tiles.exclude(prepared_path="").exclude(outcome="insufficient_usable_imagery").first()
+        c = t.geometry.centroid
+        tt = morecantile.tms.get("WebMercatorQuad").tile(c.x, c.y, 15)
+        with override_settings(MINEFOOT={**settings.MINEFOOT, "IMAGE_CACHE": self.tmp / "xyzcache"}):
+            r = self.c.get(f"/api/jobs/{job.pk}/xyz/15/{tt.x}/{tt.y}.png?layer=true_colour")
+            self.assertEqual(r.status_code, 200)
+            px = np.asarray(Image.open(BytesIO(r.content)))
+            self.assertEqual(px.shape, (256, 256, 4)); self.assertGreater((px[..., 3] == 255).mean(), 0.5)
+            self.assertEqual(self.c.get(f"/api/jobs/{job.pk}/xyz/15/0/0.png").status_code, 204)        # no imagery there
+            self.assertEqual(self.c.get(f"/api/jobs/{job.pk}/xyz/15/{tt.x}/{tt.y}.png?layer=bogus").status_code, 400)
+            v = APIClient(); v.force_authenticate(self.viewer)
+            self.assertEqual(v.get(f"/api/jobs/{job.pk}/xyz/15/{tt.x}/{tt.y}.png?layer=score").status_code, 403)
+            other = User.objects.create_user("o", password="pw-long-enough", organisation=Organisation.objects.create(name="Other"), roles=["gis"])
+            o = APIClient(); o.force_authenticate(other)
+            self.assertEqual(o.get(f"/api/jobs/{job.pk}/xyz/15/{tt.x}/{tt.y}.png").status_code, 404)
+
     def test_parameters_frozen_and_cancel_resume_skips_done_tiles(self):
         est = self.estimate()
         job = Job.objects.get(pk=est["id"])

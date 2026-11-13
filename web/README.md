@@ -288,8 +288,13 @@ Every export package's manifest lists each file's SHA-256 and size. It is signed
   - Without it, a development key derived from `DJANGO_SECRET_KEY` is used, and every signature, the verifier and the UI say "development key".
 - **Tested:** a valid package verifies. An altered file, a missing or added file, an edited manifest, a manifest re-hashed after altering a file, and a different key all fail. The standalone script gives the same answers, and so does the browser on a real package.
 
+## Raster tiles (FRD 11.1, TiTiler role)
+
+`/api/jobs/<id>/xyz/<z>/<x>/<y>.png?layer=` serves 256 px Web Mercator tiles of a job's stored imagery, from zoom 10 to 17. It uses rio-tiler (TiTiler's core): each tile reads only the windows it needs from the job tiles, mosaics them in a fixed order, and colours them with minefoot's fixed stretches, so tiles match the gallery, the PNG previews and QGIS. Tiles are cached on disk.
+- **In review:** imagery, the not-assessed hatch and the score heatmap switch to full-resolution tiles when zoomed in. The single overview image stays underneath for low zooms and for candidates without job tiles.
+- **Access:** organisation-scoped; customer viewers cannot fetch the model-score layer. Tested in the backend suite and in the browser (50 tiles served on the Ghana job).
+
 ## Not built yet (next slices)
 
-- **A raster tile server** (TiTiler) instead of whole-scene PNGs.
 - **Ingesting accepted pool labels** into a minefoot dataset version for training. Exports exist; the adapter does not.
 - **Automatic face and number-plate detection** in field photos. Blurring is manual.

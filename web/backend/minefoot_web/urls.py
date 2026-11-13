@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from accounts.views import CsrfView, LoginView, LogoutView, MeView, MfaConfirmView, MfaSetupView, MfaVerifyView
 from audit.views import AuditListView
-from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, SigningKeyView, VerifyExportView, MonitoringView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
+from projects.views import AreaViewSet, DetectionImageView, DetectionViewSet, DetectionDatesView, EditGeometryView, ExportView, PixelView, RestrictView, RestrictedGrantView, AreaDomainView, UploadListView, UploadView, SigningKeyView, VerifyExportView, MonitoringView, JobXYZView, JobViewSet, ModelCardView, ProjectViewSet, SceneImageView
 from datasets.views import DatasetListView, SampleDetailView, SampleListView
 from registry.views import ReleaseReviewView, ErrorImageView, ErrorSitesView, ModelActionView, ModelDashboardView, ModelListView
 from review.views import CorrectionActionView, CorrectionListView, AnnotationTaskListView, AnnotationTaskView, FieldPhotoView, FieldTasksView, FieldVisitListView, FieldVisitSyncView, MissedSiteView, PoolDecideView, PoolExportView, PoolImageView, PoolView, ReviewCreateView, ReviewOptionsView
@@ -87,6 +87,7 @@ urlpatterns = [
     path("api/projects/<int:project_pk>/jobs/", jobs),
     path("api/jobs/<int:pk>/", job),
     path("api/jobs/<int:pk>/tiles/", job_tiles),
+    path("api/jobs/<int:pk>/xyz/<int:z>/<int:x>/<int:y>.png", JobXYZView.as_view()),
     path("api/jobs/<int:pk>/start/", job_start),
     path("api/jobs/<int:pk>/preview/", job_preview),
     path("api/jobs/<int:pk>/rethreshold/", job_rethreshold),

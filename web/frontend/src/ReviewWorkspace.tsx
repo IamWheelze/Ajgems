@@ -1,7 +1,7 @@
 import maplibregl from "maplibre-gl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, Area, DetectionFeature, Me, MissedProps, PixelInfo, Project, ReviewOptions } from "./api";
-import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
+import { BASE_STYLE, markReady, setXYZ, whenReady } from "./mapStyle";
 import CompareMap, { CompareMode } from "./CompareMap";
 import { ACTION_LABEL, BAND_LABEL, human, SHORTCUTS, STATUS } from "./status";
 
@@ -219,7 +219,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   useEffect(() => {
     showScoreRef.current = showScore;
     const m = map.current;
-    if (m && m.getLayer("score")) m.setLayoutProperty("score", "visibility", showScore && !scoreMissing ? "visible" : "none");
+    for (const id of ["score", "score-xyz"]) if (m && m.getLayer(id)) m.setLayoutProperty(id, "visibility", showScore && !scoreMissing ? "visible" : "none");
   }, [showScore, scoreMissing]);
 
   useEffect(() => {
@@ -248,7 +248,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   useEffect(() => {
     showNARef.current = showNA;
     const m = map.current;
-    if (m && m.getLayer("na")) m.setLayoutProperty("na", "visibility", showNA ? "visible" : "none");
+    for (const id of ["na", "na-xyz"]) if (m && m.getLayer(id)) m.setLayoutProperty(id, "visibility", showNA ? "visible" : "none");
   }, [showNA]);
 
   // Edit mode: start from a simplified outline; show draggable vertices.
@@ -290,6 +290,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           m.addSource("scene", { type: "image", url, coordinates: corners });
           m.addLayer({ id: "scene", type: "raster", source: "scene", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-fill");
         }
+        setXYZ(m, "scene-xyz", meta.xyz, "dets-fill");   // full resolution when zoomed in
         // FR-125: pixels the quality mask removed are hatched, so unassessed ground never looks clean.
         const naMeta = await api.detectionBounds(detId, "not_assessed");
         const [nw, ns, ne, nn] = naMeta.bounds;
@@ -301,7 +302,8 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
           m.addSource("na", { type: "image", url: naUrl, coordinates: naCorners });
           m.addLayer({ id: "na", type: "raster", source: "na", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "dets-fill");
         }
-        m.setLayoutProperty("na", "visibility", showNARef.current ? "visible" : "none");
+        setXYZ(m, "na-xyz", naMeta.xyz, "dets-fill");
+        for (const id of ["na", "na-xyz"]) if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", showNARef.current ? "visible" : "none");
         // FR-124: the job's model-score map as a heatmap, between the imagery and the hatch.
         try {
           const sm = await api.detectionBounds(detId, "score");
@@ -314,10 +316,11 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
             m.addSource("score", { type: "image", url: sUrl, coordinates: sCorners });
             m.addLayer({ id: "score", type: "raster", source: "score", paint: { "raster-resampling": "nearest", "raster-fade-duration": 0 } }, "na");
           }
-          m.setLayoutProperty("score", "visibility", showScoreRef.current ? "visible" : "none");
+          setXYZ(m, "score-xyz", sm.xyz, "na");
+          for (const id of ["score", "score-xyz"]) if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", showScoreRef.current ? "visible" : "none");
           setScoreMissing(false);
         } catch {
-          if (m.getLayer("score")) m.setLayoutProperty("score", "visibility", "none");
+          for (const id of ["score", "score-xyz"]) if (m.getLayer(id)) m.setLayoutProperty(id, "visibility", "none");
           setScoreMissing(true);
         }
       } catch (e) { setError((e as Error).message); }

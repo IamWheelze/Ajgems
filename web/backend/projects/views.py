@@ -403,8 +403,11 @@ class DetectionImageView(APIView):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         if request.query_params.get("bounds") == "1":
+            xyz = (f"/api/jobs/{src.job.pk}/xyz/{{z}}/{{x}}/{{y}}.png?layer={layer}"
+                   if layer != "score" or not request.user.has_role("viewer") or request.user.has_role("admin", "gis", "field") else None)
+            has_tiles = src.job.tiles.exclude(prepared_path="").exists() and not request.query_params.get("stretch")
             return Response({"bounds": bounds, "date": src.scene.acquired_at.isoformat(), "scene_id": src.scene.source_id,
-                             "licence_note": src.scene.licence_note, "layer": layer})
+                             "licence_note": src.scene.licence_note, "layer": layer, "xyz": xyz if has_tiles else None})
         return FileResponse(open(path, "rb"), content_type="image/png")
 
 
@@ -667,3 +670,30 @@ class MonitoringView(APIView):
     def get(self, request):
         from .monitoring import report
         return Response(report(request.user.organisation))
+
+
+class JobXYZView(APIView):
+    """GET /api/jobs/<id>/xyz/<z>/<x>/<y>.png?layer= : Web Mercator raster tiles of the job's imagery (rio-tiler)."""
+    permission_classes = [RolePermission]
+    read_roles = ("admin", "gis", "field", "viewer", "ml")
+
+    def get(self, request, pk, z, x, y):
+        from django.http import HttpResponse
+        from .models import Job
+        from .xyz import render
+        try:
+            job = Job.objects.get(pk=pk, organisation=request.user.organisation)
+        except Job.DoesNotExist:
+            raise Http404
+        layer = request.query_params.get("layer", "true_colour")
+        if layer == "score" and not request.user.has_role("admin", "gis", "field", "ml"):
+            return Response({"detail": "model scores are for reviewers"}, status=403)
+        try:
+            png = render(job, layer, int(z), int(x), int(y))
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        if png is None:
+            return HttpResponse(status=204)   # no imagery of this job here
+        r = HttpResponse(png, content_type="image/png")
+        r["Cache-Control"] = "private, max-age=86400"
+        return r
