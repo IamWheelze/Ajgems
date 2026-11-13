@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { createMap } from "./mapStyle";
 import { useEffect, useRef, useState } from "react";
 import { api, DatasetInfo, SampleDetail } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
@@ -27,7 +28,7 @@ export default function DatasetExplorer() {
 
   useEffect(() => {
     if (!mapEl.current) return;
-    const m = new maplibregl.Map({ container: mapEl.current, style: BASE_STYLE, center: [10, 5], zoom: 1.3 });
+    const m = createMap({ container: mapEl.current, style: BASE_STYLE, center: [10, 5], zoom: 1.3 });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     m.on("load", () => {
       markReady(m);

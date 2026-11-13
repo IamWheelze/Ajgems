@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { createMap } from "./mapStyle";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, Area, DetectionFeature, Me, MissedProps, PixelInfo, Project, ReviewOptions } from "./api";
 import { BASE_STYLE, markReady, setXYZ, whenReady } from "./mapStyle";
@@ -119,7 +120,7 @@ export default function ReviewWorkspace({ projectId, me }: { projectId: number; 
   // Map setup: one line layer per status so each status has its own dash pattern (MapLibre dashes are not data-driven).
   useEffect(() => {
     if (!mapEl.current) return;
-    const m = new maplibregl.Map({ container: mapEl.current, style: BASE_STYLE, center: [0, 0], zoom: 2 });
+    const m = createMap({ container: mapEl.current, style: BASE_STYLE, center: [0, 0], zoom: 2 });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     m.addControl(new maplibregl.ScaleControl({ unit: "metric" }));
     m.on("load", () => {

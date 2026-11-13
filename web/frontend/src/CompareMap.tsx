@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { createMap } from "./mapStyle";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
@@ -26,7 +27,7 @@ export default function CompareMap({ main, mode, detectionId, layer, job, label,
 
   useEffect(() => {
     if (!el.current) return;
-    const m = new maplibregl.Map({
+    const m = createMap({
       container: el.current, style: BASE_STYLE, interactive: mode === "side", attributionControl: false,
       center: main.getCenter(), zoom: main.getZoom(), bearing: main.getBearing(), pitch: main.getPitch(),
     });

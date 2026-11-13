@@ -1,4 +1,5 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { createMap } from "./mapStyle";
 import { useEffect, useRef, useState } from "react";
 import { api, Me, PoolFeature } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
@@ -26,7 +27,7 @@ export default function Pool({ me }: { me: Me }) {
 
   useEffect(() => {
     if (!mapEl.current) return;
-    const m = new maplibregl.Map({ container: mapEl.current, style: BASE_STYLE, center: [0, 0], zoom: 2 });
+    const m = createMap({ container: mapEl.current, style: BASE_STYLE, center: [0, 0], zoom: 2 });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     m.addControl(new maplibregl.ScaleControl({ unit: "metric" }));
     m.on("load", () => {

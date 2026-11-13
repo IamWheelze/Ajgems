@@ -1,6 +1,7 @@
 import Uploads from "./Uploads";
 import RestrictedGrants from "./RestrictedGrants";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
+import { createMap } from "./mapStyle";
 import { useEffect, useRef, useState } from "react";
 import { api, Domain, Area, Me, Project } from "./api";
 import { BASE_STYLE, markReady, whenReady } from "./mapStyle";
@@ -31,7 +32,7 @@ export default function ProjectAreas({ projectId, me }: { projectId: number; me:
 
   useEffect(() => {
     if (!mapEl.current) return;
-    const m = new maplibregl.Map({ container: mapEl.current, style: BASE_STYLE, center: [8.0, 9.0], zoom: 5 });
+    const m = createMap({ container: mapEl.current, style: BASE_STYLE, center: [8.0, 9.0], zoom: 5 });
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }));
     m.addControl(new maplibregl.ScaleControl({ unit: "metric" }));
     m.on("load", () => {

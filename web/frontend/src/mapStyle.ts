@@ -1,4 +1,5 @@
 import type { StyleSpecification } from "maplibre-gl";
+import { Map as MapCtor } from "maplibre-gl";
 
 // OpenStreetMap for orientation only. Never label or judge from it: decisions use the dated
 // Sentinel-2 scene shown in the review workspace (FRD 10.3).
@@ -35,4 +36,17 @@ const ready = new WeakSet<object>();
 export function markReady(m: object) { ready.add(m); }
 export function whenReady(m: { once: (ev: "load", fn: () => void) => unknown }, fn: () => void) {
   if (ready.has(m)) fn(); else m.once("load", fn);
+}
+
+/** A map whose superseded image and tile requests stay quiet. maplibre-gl 6 aborts a request when a newer one replaces
+ *  it (quick switching between candidates or layers) and reports the abort as a map error; every other error is still
+ *  logged. */
+export function createMap(options: import("maplibre-gl").MapOptions): import("maplibre-gl").Map {
+  const m = new MapCtor(options);
+  m.on("error", (e) => {
+    const err = (e as { error?: unknown }).error;
+    if (err instanceof Error && err.name === "AbortError") return;
+    console.error(err ?? e);
+  });
+  return m;
 }
