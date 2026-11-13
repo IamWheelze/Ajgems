@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, ingest-pool, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, ingest-pool, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, labels-progress, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -125,6 +125,8 @@ def main(argv=None):
     a.add_argument("config", help="regions YAML, e.g. configs/nigeria_aois.yaml"); a.add_argument("--out", required=True)
     a = sub.add_parser("labels-check", help="problems and per-site counts in a mining-label layer")
     a.add_argument("path"); a.add_argument("--kit", help="kit.json, to check scene IDs")
+    a = sub.add_parser("labels-progress", help="review progress per site, and whether the labels can be locked")
+    a.add_argument("path"); a.add_argument("--kit")
     a = sub.add_parser("lock-labels", help="freeze labelled Nigerian sites as the locked test set; never overwrites")
     a.add_argument("path"); a.add_argument("--out", required=True); a.add_argument("--kit"); a.add_argument("--note", default="")
     a = sub.add_parser("verify-lock", help="detect edits to locked Nigerian sites")
@@ -382,6 +384,16 @@ def main(argv=None):
     if x.cmd == "labels-check":
         from .labelling_kit import check_labels
         r = check_labels(x.path, x.kit); print(json.dumps(r, indent=2)); return 1 if r["problems"] else 0
+    if x.cmd == "labels-progress":
+        from .labelling_kit import review_progress
+        r = review_progress(x.path, x.kit)
+        print(f"{'site':<16}{'polygons':>9}{'draft':>7}{'mining ha':>11}  scale")
+        for s in r["sites"]:
+            print(f"{s['site_id']:<16}{s['polygons']:>9}{s['draft']:>7}{s['mining_ha']:>11}  {','.join(s['mine_scale'])}"
+                  + ("" if s["draft"] else "  reviewed"))
+        print(f"\n{r['reviewed_sites']} of {r['total_sites']} sites reviewed. "
+              + ("Ready to lock." if r["ready_to_lock"] else "Not ready to lock: " + "; ".join(r["blockers"])))
+        return 0 if r["ready_to_lock"] else 1
     if x.cmd == "lock-labels":
         from .labelling_kit import lock_labels
         lk = lock_labels(x.path, x.out, x.kit, x.note)

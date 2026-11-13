@@ -255,3 +255,23 @@ def verify_lock(labels_path, lock_path) -> dict:
            "removed": sorted(set(old) - set(now)), "added": sorted(set(now) - set(old))}
     res["intact"] = not res["edited"] and not res["removed"]
     return res
+
+
+def review_progress(path, kit_json=None) -> dict:
+    """Per site: polygons, still-draft polygons, mining ha; and whether the file would lock now."""
+    import geopandas as gpd
+    from .splits import _utm_epsg
+    g = gpd.read_file(path, layer=LABEL_LAYER)
+    draft = g["annotator"].astype(str).str.strip().isin(DRAFT_ANNOTATORS)
+    c = g.geometry.representative_point().to_crs(4326) if len(g) else None
+    ha = g.to_crs(_utm_epsg(float(c.x.median()), float(c.y.median()))).area / 1e4 if len(g) else []
+    sites = []
+    for sid, part in g.groupby("site_id"):
+        m = part["label_class"] == "mining_disturbance"
+        sites.append({"site_id": sid, "polygons": int(len(part)), "draft": int(draft[part.index].sum()),
+                      "mining_ha": round(float(ha[part.index][m].sum()), 1),
+                      "mine_scale": sorted(set(part.loc[m, "mine_scale"].astype(str)))})
+    rep = check_labels(path, kit_json)
+    blockers = list(rep["problems"]) + ([f"{int(draft.sum())} draft polygon(s) not yet taken over"] if draft.any() else [])
+    return {"sites": sites, "reviewed_sites": sum(s["draft"] == 0 for s in sites), "total_sites": len(sites),
+            "mining_sites": rep.get("sites", 0), "ready_to_lock": not blockers, "blockers": blockers}

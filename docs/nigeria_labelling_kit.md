@@ -31,12 +31,27 @@ Open `review.html` first: it shows every site with its outlines, its window and 
 cp docs/evidence/nigeria_draft_labels_v1/mining_labels.gpkg docs/evidence/nigeria_draft_labels_v1/hard_negatives.gpkg data/labelling_kit/nigeria_v1/labels/
 ```
 
-Every draft polygon has `annotator = claude-draft` and `evidence_grade = E0`, and `lock-labels` refuses to lock while any remain. For each site:
-1. Check it against the scene and fix or delete outlines.
-2. Select the polygons you have checked and use the Field Calculator to set `annotator` to your name and `evidence_grade` to `E1`.
-3. Set `mine_scale` where you know it.
+Every draft polygon has `annotator = claude-draft` and `evidence_grade = E0`, and `lock-labels` refuses to lock while any remain. Review site by site:
 
-Delete any site you are not sure is mining. Kogi/Kwara has only one draft site, so add the sites you know there.
+1. **Make drafts stand out.** In QGIS, open the Layer Styling panel on *Mining labels*, choose *Categorized* by `annotator`, and classify. Drafts and your reviewed polygons now differ in colour, so progress is visible on the map.
+2. **Go to a site.** Open the attribute table, filter `"site_id" = 'ng-jos-001'`, select all, then *Zoom to selection*. Turn on the SWIR false-colour layer too: spoil and tailings stand out from vegetation there.
+3. **Judge each polygon against the scene, never the base map:**
+   - mining, outline fine: keep it;
+   - mining, outline wrong: use the Vertex tool (or Reshape) to fix it;
+   - not mining (farm dam, quarry, construction): delete it, or change `label_class` to `ignore` if you can't tell;
+   - missed mining within 1 km: add a polygon with the same `site_id` and `role = context`.
+   - If you doubt the whole site, delete all its polygons.
+4. **Take over what you checked.** Select the site's remaining polygons, then open the Field Calculator ("Update existing field", "Only update selected features"):
+   - set `annotator` to `'your name'`;
+   - set `evidence_grade` to `'E1'`;
+   - set `mine_scale` to `'artisanal'` or `'industrial'` where you know it.
+5. **Save edits**, then check progress:
+
+```bash
+minefoot labels-progress data/labelling_kit/nigeria_v1/labels/mining_labels.gpkg --kit data/labelling_kit/nigeria_v1/kit.json
+```
+
+It lists each site with its remaining drafts and ends with "Ready to lock" or the reasons it isn't. Do the hard negatives the same way (`hard_negatives.gpkg`). Kogi/Kwara has only one draft site, so add the sites you know there to reach 30 or more in total.
 
 ## 2. Digitise mining sites
 

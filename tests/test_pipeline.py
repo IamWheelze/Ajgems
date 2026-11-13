@@ -1113,3 +1113,17 @@ def test_ingest_pool_export(tmp_path):
         z.writestr("labels.geojson", body.replace(b"mining", b"minink", 1)); z.writestr("manifest.json", json.dumps(man))
     with pytest.raises(ValueError, match="altered"):
         load_pool_export(tmp_path / "bad.zip")
+
+
+def test_review_progress(tmp_path):
+    import geopandas as gpd
+    from shapely.geometry import box
+    from minefoot.labelling_kit import review_progress
+    base = {"label_class": "mining_disturbance", "mine_scale": "unknown", "protocol_version": "0.2", "scene_id": "S",
+            "image_date": "2026-01-01", "evidence_grade": "E0", "notes": "", "role": "site"}
+    rows = [{**base, "site_id": "ng-jos-001", "annotator": "claude-draft"}, {**base, "site_id": "ng-jos-002", "annotator": "founder"}]
+    gpd.GeoDataFrame(rows, geometry=[box(8.8, 9.7, 8.81, 9.71), box(8.9, 9.7, 8.91, 9.71)], crs=4326).to_file(
+        tmp_path / "l.gpkg", layer="mining_labels", driver="GPKG")
+    r = review_progress(tmp_path / "l.gpkg")
+    assert (r["reviewed_sites"], r["total_sites"], r["ready_to_lock"]) == (1, 2, False)
+    assert any("draft" in b for b in r["blockers"])
