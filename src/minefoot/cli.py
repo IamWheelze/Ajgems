@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, ingest-pool, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -115,6 +115,10 @@ def main(argv=None):
     a.add_argument("--prepared-root", required=True); a.add_argument("--worldcover-root", required=True)
     a.add_argument("--sites", required=True, help="sites.json from a run (uses its test and validation sites)"); a.add_argument("--out")
     a.add_argument("--labels-root", help="mining labels, to measure how often each prompt fires on mining ground")
+    a = sub.add_parser("ingest-pool", help="accepted annotation-pool labels (web export zip) into the common dataset schema")
+    a.add_argument("zip"); a.add_argument("--out", required=True); a.add_argument("--version")
+    a.add_argument("--locked-split", help="split GeoPackage whose test sites must not be overlapped")
+    a.add_argument("--test-regions", default="configs/nigeria_aois.yaml")
     a = sub.add_parser("curves", help="precision-recall and reliability data for a stored run (curves.json)")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
     a = sub.add_parser("labelling-kit", help="Nigerian labelling kit: imagery per region and a QGIS project to digitise in")
@@ -358,6 +362,10 @@ def main(argv=None):
         ids = ids["val"] + ids["test"] if isinstance(ids, dict) else ids
         print(json.dumps({k: v for k, v in evaluate(x.prepared_root, x.worldcover_root, ids, x.out, x.labels_root).items() if k != "site_ids"}, indent=1))
         return 0
+    if x.cmd == "ingest-pool":
+        from .pool import load_pool_export, write_pool
+        sites, labels, negs, rep = load_pool_export(x.zip, x.locked_split, x.test_regions, version=x.version)
+        print(write_pool(sites, labels, negs, rep, x.out)); print(json.dumps(rep, indent=2)); return 0
     if x.cmd == "curves":
         from .baseline import run_curves
         c = run_curves(x.run, x.prepared_root, x.labels_root, log=lambda t: print(t, file=sys.stderr, flush=True))

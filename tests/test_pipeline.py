@@ -1075,3 +1075,41 @@ def test_pretrained_lineage_follows_init_from(tmp_path):
     assert _pretrained_lineage(none, scratch / "unet_best.pt") == []
     assert _pretrained_lineage(none, pre / "unet_best.pt") == ["resnet34 imagenet encoder weights"]
     assert _pretrained_lineage({"encoder": "resnet34", "encoder_weights": "imagenet"}, None) == ["resnet34 imagenet encoder weights"]
+
+
+def test_ingest_pool_export(tmp_path):
+    """Accepted pool labels become common-schema sites; test sites, test regions and unknown types are refused."""
+    import hashlib, zipfile
+    import geopandas as gpd
+    from shapely.geometry import box, mapping
+    from minefoot.pool import load_pool_export, write_pool
+    def ex(i, cls, lon, lat, neg="", scene="S2B_X"):
+        return {"type": "Feature", "geometry": mapping(box(lon, lat, lon + 0.003, lat + 0.003)),
+                "properties": {"example_id": f"pool-{i}", "label_class": cls, "negative_type": neg, "scene_id": scene,
+                               "scene_date": "2026-01-25", "protocol_version": "0.1", "source": "reviewed detection",
+                               "qc_reason": "matches_imagery", "qc_at": "2026-11-12", "independent_qc": True}}
+    feats = [ex(1, "mining", -1.920, 6.090), ex(2, "mining", -1.915, 6.091), ex(3, "hard_negative", -1.917, 6.094, "farmland"),
+             ex(4, "mining", -1.700, 6.300),                                  # far away: its own site
+             ex(5, "mining", 8.80, 9.70),                                     # inside the Jos test region
+             ex(6, "mining", 30.00, 0.00),                                    # on a locked test site
+             ex(7, "hard_negative", -1.69, 6.30, "other_land_use")]           # no protocol type
+    body = json.dumps({"type": "FeatureCollection", "features": feats}).encode()
+    man = {"created_at": "2026-11-13T00:00:00", "examples": len(feats), "sha256": hashlib.sha256(body).hexdigest()}
+    with zipfile.ZipFile(tmp_path / "pool.zip", "w") as z:
+        z.writestr("labels.geojson", body); z.writestr("manifest.json", json.dumps(man))
+    gpd.GeoDataFrame({"site_id": ["t1"], "split": ["test"]}, geometry=[box(29.99, -0.01, 30.01, 0.01)], crs=4326).to_file(
+        tmp_path / "split.gpkg", layer="sites", driver="GPKG")
+    sites, labels, negs, rep = load_pool_export(tmp_path / "pool.zip", tmp_path / "split.gpkg", "configs/nigeria_aois.yaml")
+    assert rep["dropped"] == {"inside a Nigerian test region (ML-07)": 1, "overlaps a locked test site (FR-077)": 1,
+                              "hard negative type not in the protocol": 1}
+    assert len(sites) == 2 and sorted(sites["examples"]) == [1, 3] and rep["schema_problems"] == []
+    assert len(labels) == 3 and list(negs["neg_type"]) == ["farmland"] and labels["site_id"].notna().all()
+    big = sites.loc[sites["examples"].idxmax()].geometry
+    assert all(big.contains(g) for g in labels[labels.site_id == sites.loc[sites["examples"].idxmax(), "site_id"]].geometry)
+    p = write_pool(sites, labels, negs, rep, tmp_path / "out")
+    import pyogrio
+    assert {l[0] for l in pyogrio.list_layers(p)} == {"sites", "labels", "hard_negatives"}
+    with zipfile.ZipFile(tmp_path / "bad.zip", "w") as z:            # altered after export
+        z.writestr("labels.geojson", body.replace(b"mining", b"minink", 1)); z.writestr("manifest.json", json.dumps(man))
+    with pytest.raises(ValueError, match="altered"):
+        load_pool_export(tmp_path / "bad.zip")
