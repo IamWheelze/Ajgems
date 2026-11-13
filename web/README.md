@@ -299,3 +299,6 @@ Every export package's manifest lists each file's SHA-256 and size. It is signed
 
 - **Ingesting accepted pool labels** into a minefoot dataset version for training. Exports exist; the adapter does not.
 - **Number-plate detection** in field photos. Faces are detected automatically; plates are blurred by hand.
+
+## Production
+See `DEPLOY.md`: `docker-compose.prod.yml` (PostGIS, Redis, gunicorn, Celery worker and beat, Caddy with automatic HTTPS), `.env.example`, and the startup refusal without `MINEFOOT_MFA_KEY` and `MINEFOOT_SIGNING_KEY`.

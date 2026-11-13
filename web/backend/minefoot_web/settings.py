@@ -14,6 +14,22 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "1") == "1"
 if not DEBUG and SECRET_KEY == "dev-only-not-secret":
     raise RuntimeError("set DJANGO_SECRET_KEY when DJANGO_DEBUG is off")
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+if not DEBUG:
+    # Production: real keys or no start. Development fallbacks (derived from SECRET_KEY) would make MFA secrets and
+    # export signatures depend on one leaked value, and signatures would be marked "development key".
+    _missing = [k for k in ("MINEFOOT_MFA_KEY", "MINEFOOT_SIGNING_KEY") if not os.environ.get(k)]
+    if _missing:
+        raise RuntimeError(f"set {', '.join(_missing)} when DJANGO_DEBUG is off (see web/DEPLOY.md)")
+    # HTTPS only. Behind a proxy that terminates TLS, it must send X-Forwarded-Proto.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = os.environ.get("DJANGO_SSL_REDIRECT", "1") == "1"
+    SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_HSTS_SECONDS", "31536000"))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    X_FRAME_OPTIONS = "DENY"
+    SECURE_REFERRER_POLICY = "same-origin"
 CSRF_TRUSTED_ORIGINS = os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:4173").split(",")
 
 INSTALLED_APPS = [
@@ -75,6 +91,7 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
+STATIC_ROOT = Path(os.environ.get("DJANGO_STATIC_ROOT", BASE_DIR / "staticfiles"))   # collectstatic target (admin assets)
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
@@ -85,13 +102,14 @@ REST_FRAMEWORK = {
 }
 
 # Product limits (FRD). Provisional values are flagged where the FRD says so.
+_DATA = Path(os.environ.get("MINEFOOT_DATA_ROOT", REPO_ROOT / "data"))   # every data folder defaults under it
 MINEFOOT = {
     "AOI_MAX_KM2": float(os.environ.get("MINEFOOT_AOI_MAX_KM2", "10000")),          # FR-013
-    "DATA_ROOT": Path(os.environ.get("MINEFOOT_DATA_ROOT", REPO_ROOT / "data")),
-    "IMAGE_CACHE": Path(os.environ.get("MINEFOOT_IMAGE_CACHE", REPO_ROOT / "data" / "web_cache")),
+    "DATA_ROOT": _DATA,
+    "IMAGE_CACHE": Path(os.environ.get("MINEFOOT_IMAGE_CACHE", _DATA / "web_cache")),
     # Detection jobs (W2). The model is a finished minefoot G2 run until the registry exists (FR-102).
-    "MODEL_RUN": Path(os.environ.get("MINEFOOT_MODEL_RUN", REPO_ROOT / "data" / "runs" / "g2_hn")),
-    "JOB_ROOT": Path(os.environ.get("MINEFOOT_JOB_ROOT", REPO_ROOT / "data" / "jobs")),
+    "MODEL_RUN": Path(os.environ.get("MINEFOOT_MODEL_RUN", _DATA / "runs" / "g2_hn")),
+    "JOB_ROOT": Path(os.environ.get("MINEFOOT_JOB_ROOT", _DATA / "jobs")),
     "TILE_KM": float(os.environ.get("MINEFOOT_TILE_KM", "10")),
     "MMU_HA": float(os.environ.get("MINEFOOT_MMU_HA", "1.0")),
     # Measured 2026-11-09: 13 s per 10 km tile on 4 CPU cores (fetch, prepare, score, vectorise). 20 s is cautious.
@@ -101,7 +119,7 @@ MINEFOOT = {
     "STORAGE_COST_PER_GB_MONTH": float(os.environ.get("MINEFOOT_STORAGE_COST_PER_GB_MONTH", "0")),
     "COST_CURRENCY": os.environ.get("MINEFOOT_COST_CURRENCY", "USD"),
     # FR-022 uploads: where products are kept, the largest accepted, and the chunk size clients should use.
-    "UPLOAD_ROOT": Path(os.environ.get("MINEFOOT_UPLOAD_ROOT", REPO_ROOT / "data" / "uploads")),
+    "UPLOAD_ROOT": Path(os.environ.get("MINEFOOT_UPLOAD_ROOT", _DATA / "uploads")),
     "MAX_UPLOAD_BYTES": int(float(os.environ.get("MINEFOOT_MAX_UPLOAD_GB", "4")) * 1e9),
     "UPLOAD_CHUNK_BYTES": 8 * 1024 * 1024,
     # FR-053 coverage thresholds (provisional): warn below 80% usable pixels, block below 40%.
@@ -119,3 +137,7 @@ CELERY_TASK_ALWAYS_EAGER = os.environ.get("CELERY_TASK_ALWAYS_EAGER", "0") == "1
 
 LOGGING = {"version": 1, "handlers": {"console": {"class": "logging.StreamHandler"}},
            "root": {"handlers": ["console"], "level": "INFO"}}
+
+
+# FR-105: drift alerts once a day (Celery beat). Run `celery -A minefoot_web beat` alongside the worker.
+CELERY_BEAT_SCHEDULE = {"daily-drift-check": {"task": "projects.tasks.daily_drift_check", "schedule": 24 * 3600}}

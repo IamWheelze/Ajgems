@@ -1,0 +1,28 @@
+# DOMAIN is the public name (Caddy gets and renews its certificate). Use DOMAIN=localhost for a local trial.
+{$DOMAIN} {
+	encode gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		X-Frame-Options DENY
+	}
+	request_body /api/uploads/* {
+		max_size 20MB
+	}
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle /admin/* {
+		reverse_proxy backend:8000
+	}
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+	handle {
+		root * /srv/app
+		try_files {path} /index.html
+		file_server
+	}
+}

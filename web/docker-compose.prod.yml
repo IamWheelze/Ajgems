@@ -1,0 +1,59 @@
+# Production stack. Copy web/.env.example to web/.env, fill it in, then from the repository root:
+#   docker compose -f web/docker-compose.prod.yml --env-file web/.env up -d --build
+# See web/DEPLOY.md.
+x-backend: &backend
+  build: {context: .., dockerfile: web/backend/Dockerfile}
+  image: minefoot-backend
+  env_file: .env
+  environment:
+    POSTGRES_HOST: db
+    CELERY_BROKER_URL: redis://redis:6379/0
+  volumes:
+    - minefoot-data:/data
+    - ${MINEFOOT_RUNS_DIR:-../data/runs}:/data/runs:ro      # trained model runs, read-only
+  depends_on: [db, redis]
+  restart: unless-stopped
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    restart: unless-stopped
+  redis:
+    image: redis:7
+    restart: unless-stopped
+  migrate:
+    <<: *backend
+    command: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+    volumes: [minefoot-data:/data, static:/app/web/backend/staticfiles]
+    restart: "no"
+  backend:
+    <<: *backend
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  worker:
+    <<: *backend
+    command: celery -A minefoot_web worker -l info --concurrency 1
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  beat:
+    <<: *backend
+    command: celery -A minefoot_web beat -l info --schedule /data/celerybeat-schedule
+    volumes: [minefoot-data:/data]
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  web:
+    build: {context: .., dockerfile: web/frontend/Dockerfile}
+    image: minefoot-web
+    environment: {DOMAIN: "${DOMAIN}"}
+    ports: ["80:80", "443:443"]
+    volumes: [static:/srv/static:ro, caddy-data:/data]
+    depends_on: [backend]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  minefoot-data:
+  static:
+  caddy-data:

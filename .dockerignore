@@ -1,0 +1,10 @@
+.git
+.venv
+data
+results
+**/__pycache__
+**/*.pyc
+web/frontend/node_modules
+web/frontend/dist
+web/backend/staticfiles
+docs/evidence/nigeria_draft_labels_v1/review.html

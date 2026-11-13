@@ -7,3 +7,4 @@ node_modules/
 web/frontend/dist/
 *.tsbuildinfo
 dump.rdb
+web/.env

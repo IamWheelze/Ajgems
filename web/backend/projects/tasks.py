@@ -247,3 +247,13 @@ def run_detection_job(self, job_id):
         _set(job, state=Job.State.RESUMABLE, message=f"stopped: {exc}"[:500], failure_reason=FAILURE_REASONS["worker"])
         log.error("job %s stopped: %s", job.pk, traceback.format_exc())
         raise
+
+
+@shared_task
+def daily_drift_check():
+    """FR-105: record drift alerts for every organisation in the audit trail (scheduled by Celery beat)."""
+    import io
+    from django.core.management import call_command
+    out = io.StringIO()
+    call_command("check_drift", stdout=out)
+    return out.getvalue().strip().splitlines()[-1] if out.getvalue().strip() else "0 alert(s)"
