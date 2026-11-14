@@ -1,0 +1,430 @@
+{
+ "what": "Share of SCL-cloud pixels (classes 8, 9) each candidate rule would re-admit as 'suspect bright'. Proxy groups, no labelled cloud: on_mines is mostly mislabelled tailings, far (>1 km from labels) is mostly real cloud but impure. A good rule is high on on_mines and low on far.",
+ "sites": 40,
+ "sites_with_pixels": {
+  "on_mines": 40,
+  "far": 38,
+  "bare_on_mines": 40
+ },
+ "sampled_pixels": {
+  "on_mines": 358700,
+  "far": 313867,
+  "bare_on_mines": 764378
+ },
+ "per_site_cap": 20000,
+ "distributions": {
+  "on_mines": {
+   "B02": {
+    "p5": 0.08460000157356262,
+    "p25": 0.11540000140666962,
+    "p50": 0.15440000593662262,
+    "p75": 0.23360000550746918,
+    "p95": 0.37860000133514404
+   },
+   "B11": {
+    "p5": 0.09830000251531601,
+    "p25": 0.15860000252723694,
+    "p50": 0.2126999944448471,
+    "p75": 0.3156999945640564,
+    "p95": 0.5888000130653381
+   },
+   "B02/B11": {
+    "p5": 0.4948871433734894,
+    "p25": 0.6023029088973999,
+    "p50": 0.694150984287262,
+    "p75": 0.8479722738265991,
+    "p95": 1.3853784799575806
+   }
+  },
+  "far": {
+   "B02": {
+    "p5": 0.08980000019073486,
+    "p25": 0.14659999310970306,
+    "p50": 0.22139999270439148,
+    "p75": 0.31839999556541443,
+    "p95": 0.4952000081539154
+   },
+   "B11": {
+    "p5": 0.08449999988079071,
+    "p25": 0.18940000236034393,
+    "p50": 0.2906999886035919,
+    "p75": 0.3912000060081482,
+    "p95": 0.5230000019073486
+   },
+   "B02/B11": {
+    "p5": 0.491664320230484,
+    "p25": 0.6510171890258789,
+    "p50": 0.7759562730789185,
+    "p75": 0.9767083525657654,
+    "p95": 2.018613338470459
+   }
+  },
+  "bare_on_mines": {
+   "B02": {
+    "p5": 0.03240000084042549,
+    "p25": 0.061900001019239426,
+    "p50": 0.09600000083446503,
+    "p75": 0.14380000531673431,
+    "p95": 0.22540000081062317
+   },
+   "B11": {
+    "p5": 0.1446000039577484,
+    "p25": 0.2110999971628189,
+    "p50": 0.2689000070095062,
+    "p75": 0.3418000042438507,
+    "p95": 0.5047000050544739
+   },
+   "B02/B11": {
+    "p5": 0.15549936890602112,
+    "p25": 0.24073736369609833,
+    "p50": 0.34425491094589233,
+    "p75": 0.4831293821334839,
+    "p95": 0.762033224105835
+   }
+  }
+ },
+ "rules": {
+  "B02 < 0.15": {
+   "on_mines": 0.4754976303317536,
+   "far": 0.2631847247400969,
+   "bare_on_mines": 0.7729618068547237
+  },
+  "B02 < 0.2": {
+   "on_mines": 0.6701728463897407,
+   "far": 0.43441967457553676,
+   "bare_on_mines": 0.9116601995347852
+  },
+  "B02 < 0.25": {
+   "on_mines": 0.7783161416225258,
+   "far": 0.5852255891826793,
+   "bare_on_mines": 0.9719850649809387
+  },
+  "B02 < 0.3": {
+   "on_mines": 0.8502007248396989,
+   "far": 0.7133053172203513,
+   "bare_on_mines": 0.9917095991773703
+  },
+  "B02 < 0.35": {
+   "on_mines": 0.9184945637022581,
+   "far": 0.8046306237992525,
+   "bare_on_mines": 0.9973534036824713
+  },
+  "B02 < 0.4": {
+   "on_mines": 0.9659520490660719,
+   "far": 0.8699958899788764,
+   "bare_on_mines": 0.9988919095002734
+  },
+  "B02/B11 < 0.6": {
+   "on_mines": 0.2435935321996097,
+   "far": 0.15156419757413173,
+   "bare_on_mines": 0.8756374463943233
+  },
+  "B02/B11 < 0.8": {
+   "on_mines": 0.6951129077223306,
+   "far": 0.5395533777045691,
+   "bare_on_mines": 0.9584446438803838
+  },
+  "B02/B11 < 1.0": {
+   "on_mines": 0.857178700864232,
+   "far": 0.7691729299352911,
+   "bare_on_mines": 0.9815483962123452
+  },
+  "B02 < 0.2 and B02/B11 < 0.8": {
+   "on_mines": 0.46470030666294954,
+   "far": 0.3012581762338825,
+   "bare_on_mines": 0.8765885465044781
+  },
+  "B02 < 0.25 and B02/B11 < 0.8": {
+   "on_mines": 0.5274323947588514,
+   "far": 0.4012846205558405,
+   "bare_on_mines": 0.9329337055749903
+  },
+  "B02 < 0.3 and B02/B11 < 0.8": {
+   "on_mines": 0.5791441315862838,
+   "far": 0.47840645878668353,
+   "bare_on_mines": 0.9511982291484057
+  }
+ },
+ "per_site": [
+  {
+   "site": "gmlr-1052",
+   "on_mines": 7412,
+   "far": 0,
+   "bare_on_mines": 190739,
+   "label_px": 273303
+  },
+  {
+   "site": "gmlr-1057",
+   "on_mines": 16518,
+   "far": 76,
+   "bare_on_mines": 89842,
+   "label_px": 649365
+  },
+  {
+   "site": "gmlr-1061",
+   "on_mines": 16160,
+   "far": 180,
+   "bare_on_mines": 43729,
+   "label_px": 647660
+  },
+  {
+   "site": "gmlr-1076",
+   "on_mines": 52003,
+   "far": 3514,
+   "bare_on_mines": 171534,
+   "label_px": 454663
+  },
+  {
+   "site": "gmlr-1086",
+   "on_mines": 12495,
+   "far": 1194,
+   "bare_on_mines": 46096,
+   "label_px": 331631
+  },
+  {
+   "site": "gmlr-1090",
+   "on_mines": 13287,
+   "far": 1156,
+   "bare_on_mines": 45066,
+   "label_px": 152076
+  },
+  {
+   "site": "gmlr-1202",
+   "on_mines": 17419,
+   "far": 537,
+   "bare_on_mines": 86741,
+   "label_px": 201542
+  },
+  {
+   "site": "gmlr-1263",
+   "on_mines": 40728,
+   "far": 28,
+   "bare_on_mines": 187661,
+   "label_px": 382052
+  },
+  {
+   "site": "gmlr-1270",
+   "on_mines": 70608,
+   "far": 192,
+   "bare_on_mines": 179041,
+   "label_px": 267570
+  },
+  {
+   "site": "gmlr-1272",
+   "on_mines": 9231,
+   "far": 340,
+   "bare_on_mines": 223299,
+   "label_px": 292191
+  },
+  {
+   "site": "gmlr-1288",
+   "on_mines": 10741,
+   "far": 196,
+   "bare_on_mines": 270333,
+   "label_px": 300358
+  },
+  {
+   "site": "gmlr-1330",
+   "on_mines": 7928,
+   "far": 64,
+   "bare_on_mines": 140905,
+   "label_px": 178472
+  },
+  {
+   "site": "gmlr-1375",
+   "on_mines": 8768,
+   "far": 808,
+   "bare_on_mines": 409768,
+   "label_px": 530815
+  },
+  {
+   "site": "gmlr-1417",
+   "on_mines": 9764,
+   "far": 2312,
+   "bare_on_mines": 188955,
+   "label_px": 326033
+  },
+  {
+   "site": "gmlr-1452",
+   "on_mines": 6924,
+   "far": 0,
+   "bare_on_mines": 717911,
+   "label_px": 731271
+  },
+  {
+   "site": "gmlr-1459",
+   "on_mines": 32800,
+   "far": 816,
+   "bare_on_mines": 102082,
+   "label_px": 156873
+  },
+  {
+   "site": "gmlr-1500",
+   "on_mines": 7289,
+   "far": 3907,
+   "bare_on_mines": 233371,
+   "label_px": 255079
+  },
+  {
+   "site": "gmlr-1513",
+   "on_mines": 204,
+   "far": 74150,
+   "bare_on_mines": 64296,
+   "label_px": 64575
+  },
+  {
+   "site": "gmlr-1597",
+   "on_mines": 21532,
+   "far": 645,
+   "bare_on_mines": 96026,
+   "label_px": 235613
+  },
+  {
+   "site": "gmlr-1813",
+   "on_mines": 124,
+   "far": 16322,
+   "bare_on_mines": 18587,
+   "label_px": 180593
+  },
+  {
+   "site": "gmlr-1914",
+   "on_mines": 1842,
+   "far": 36310,
+   "bare_on_mines": 25714,
+   "label_px": 170371
+  },
+  {
+   "site": "gmlr-2025",
+   "on_mines": 7770,
+   "far": 29317,
+   "bare_on_mines": 64202,
+   "label_px": 251647
+  },
+  {
+   "site": "gmlr-212",
+   "on_mines": 2318,
+   "far": 5040,
+   "bare_on_mines": 112371,
+   "label_px": 144617
+  },
+  {
+   "site": "gmlr-2268",
+   "on_mines": 2891,
+   "far": 62911,
+   "bare_on_mines": 49615,
+   "label_px": 262820
+  },
+  {
+   "site": "gmlr-2272",
+   "on_mines": 1135,
+   "far": 37260,
+   "bare_on_mines": 24264,
+   "label_px": 90019
+  },
+  {
+   "site": "gmlr-2342",
+   "on_mines": 326,
+   "far": 45428,
+   "bare_on_mines": 58702,
+   "label_px": 215630
+  },
+  {
+   "site": "gmlr-2408",
+   "on_mines": 27928,
+   "far": 1688,
+   "bare_on_mines": 83331,
+   "label_px": 221017
+  },
+  {
+   "site": "gmlr-2645",
+   "on_mines": 740,
+   "far": 6680,
+   "bare_on_mines": 108169,
+   "label_px": 213364
+  },
+  {
+   "site": "gmlr-2665",
+   "on_mines": 4906,
+   "far": 5670,
+   "bare_on_mines": 30347,
+   "label_px": 75312
+  },
+  {
+   "site": "gmlr-2711",
+   "on_mines": 128,
+   "far": 5392,
+   "bare_on_mines": 134537,
+   "label_px": 345618
+  },
+  {
+   "site": "gmlr-568",
+   "on_mines": 51219,
+   "far": 27178,
+   "bare_on_mines": 428604,
+   "label_px": 504681
+  },
+  {
+   "site": "gmlr-586",
+   "on_mines": 21482,
+   "far": 39379,
+   "bare_on_mines": 405816,
+   "label_px": 461443
+  },
+  {
+   "site": "gmlr-632",
+   "on_mines": 2218,
+   "far": 49130,
+   "bare_on_mines": 22535,
+   "label_px": 195351
+  },
+  {
+   "site": "gmlr-637",
+   "on_mines": 204,
+   "far": 77534,
+   "bare_on_mines": 8088,
+   "label_px": 57917
+  },
+  {
+   "site": "gmlr-659",
+   "on_mines": 380,
+   "far": 19394,
+   "bare_on_mines": 21285,
+   "label_px": 100339
+  },
+  {
+   "site": "gmlr-755",
+   "on_mines": 11050,
+   "far": 104,
+   "bare_on_mines": 28979,
+   "label_px": 379936
+  },
+  {
+   "site": "gmlr-874",
+   "on_mines": 474,
+   "far": 140512,
+   "bare_on_mines": 12227,
+   "label_px": 54472
+  },
+  {
+   "site": "gmlr-912",
+   "on_mines": 639,
+   "far": 11452,
+   "bare_on_mines": 5476,
+   "label_px": 102530
+  },
+  {
+   "site": "gmlr-937",
+   "on_mines": 10568,
+   "far": 12,
+   "bare_on_mines": 115953,
+   "label_px": 948349
+  },
+  {
+   "site": "gmlr-956",
+   "on_mines": 6847,
+   "far": 6148,
+   "bare_on_mines": 24660,
+   "label_px": 156317
+  }
+ ]
+}

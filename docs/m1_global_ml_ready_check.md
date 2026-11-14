@@ -53,6 +53,31 @@ Option 3 is cheap and fits FR-052 whichever of 1 or 2 is chosen.
 
 **Decision (2026-11-06): option 3 adopted.** The mask is unchanged. `minefoot mask-report` and the gallery now give each polygon's masked share with a status (`assessed`, `partly_masked` at 5% or more, `mostly_masked` at 50% or more, `outside_image`; thresholds provisional). On gmlr-1270 it reports 28.3% masked (28.1% cloud) and on gmlr-1076 11.4%, matching the audit above. Options 1 and 2 remain open.
 
+### Option 1 checked on 40 sites (2026-11-14): a simple threshold does not separate them
+
+`scripts/cloud_mask_study.py` ([evidence/cloud_mask_study_40.json](evidence/cloud_mask_study_40.json)). No mask was changed. Prepared reflectance blanks these pixels, so the 40 sites were re-fetched (same scenes, Planetary Computer) and the raw bands converted with the preprocessing path's `to_reflectance`, unmasked.
+
+- Across all 180 G1 sites, SCL cloud (classes 8, 9) inside labels totals 671,016 pixels, against 747,575 more than 1 km from any label, an area 14 times larger (634 million against 45 million pixels): 1.49% of labelled pixels against 0.12% far away. 112 sites have over 200 such pixels on mines; 19 have over 5,000 far away.
+- The 40 sites: the 19 with most far cloud, plus the 21 with most cloud on mines. Groups (sampled, capped at 20,000 pixels per site): SCL cloud on mines, SCL cloud more than 1 km from labels ("far"), and usable bare ground on mines.
+
+| Rule re-admitting a cloud pixel | On mines | Far | Bare on mines (reference) |
+| --- | --- | --- | --- |
+| B02 < 0.20 | 0.670 | 0.434 | 0.912 |
+| B02 < 0.25 | 0.778 | 0.585 | 0.972 |
+| B02 < 0.30 | 0.850 | 0.713 | 0.992 |
+| B02/B11 < 0.8 | 0.695 | 0.540 | 0.958 |
+| B02 < 0.25 and B02/B11 < 0.8 | 0.527 | 0.401 | 0.933 |
+
+Median B02 is 0.154 on mines and 0.221 far; median B02/B11 is 0.69 and 0.78. The groups overlap heavily.
+
+Why this does not settle option 1:
+- The "far" group is not clean cloud. These scenes are almost cloud-free: median scene cloud cover is 0.49%, and 24 of the 40 are below 1%. Those 24 scenes hold 175,056 of the 712,976 far-cloud pixels. Thick cloud usually has blue reflectance well above 0.3, and most far pixels are below it, so much of "far" is probably bright ground away from the labels, which SCL makes the same mistake on.
+- So the table cannot tell "the rule re-admits real cloud" from "the rule re-admits bright ground that is not labelled mining". A threshold needs labelled cloud, as option 1 already said.
+
+What this does show:
+- On these scenes SCL classes 8 and 9 are mostly not cloud near mines, and probably not far from them either.
+- That points to option 2 (an independent cloud mask) or to testing option 1 on a labelled cloud set (for example CloudSEN12). Either needs its licence recorded in `docs/licence_register.csv` first. Founder decision; the mask stays as it is.
+
 ## Overlaps and splits (2026-11-06)
 
 `minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.
