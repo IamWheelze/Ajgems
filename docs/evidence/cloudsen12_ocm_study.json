@@ -1,0 +1,815 @@
+{
+ "protocol": "- Test patches as in scripts/cloudsen12_scl_study.py (label_type \"high\", 509 px, test split, 975 patches). Nothing is\n  fitted, so validation is not used.\n- OmniCloudMask 1.8.1, model version 4.0 (its default ensemble), inputs B04, B03, B8A (its Sentinel-2 default), L2A\n  reflectance, no-data value 0. Its output classes follow CloudSEN12: 0 clear, 1 thick, 2 thin, 3 shadow.\n- Training overlap: its training-data map (model version 4) counts exactly twice the CloudSEN12 \"high\" training-split\n  patches per tile in all 2,158 tiles (L1C plus L2A), so the test split was not trained on. Other training sets\n  (scribble, 2k, KappaSet, its own hard negatives and scribbles) touch 243 test patches' tiles. Results are given for\n  all 975 patches and for the 732 in tiles with no OmniCloudMask training data at all (\"clean\").\n- Compared masks on the same pixels: SCL classes 8, 9 (what our mask drops); OmniCloudMask thick (1); OmniCloudMask\n  thick or thin (1, 2).\n- Measures: share of expert-clear pixels called cloud, pooled and per WorldCover class; share of expert thick and thin\n  cloud caught. Paired differences against SCL with 95% intervals from resampling regions (roi_id), 1000 times.",
+ "model": "OmniCloudMask 1.8.1, model version 4.0",
+ "weights_sha256": {
+  "PM_model_OCM_7.97_R_G_NIR_3_smp_edgenext_small.usi_in1k_PT_state.safetensors": "d5fe67ad00f6fdb73eb8382ad925849e97fb82cedb46225344afff1a734a9c1d",
+  "PM_model_OCM_7.97_R_G_NIR_3_smp_regnety_004.pycls_in1k_PT_state.safetensors": "7f6e4202e17ee73efa4aba7abb5c34f4f90a9f7eb42480820714994dff2db660"
+ },
+ "failed": [],
+ "all": {
+  "patches": 975,
+  "regions": 195,
+  "pooled": {
+   "scl_cloud": {
+    "false_cloud_on_clear": 0.039545136388182696,
+    "thick_caught": 0.6319004493605254,
+    "thin_caught": 0.3274628477212606,
+    "false_cloud_on_clear.tree": 0.02325492952083642,
+    "false_cloud_on_clear.shrub": 0.012959388989759641,
+    "false_cloud_on_clear.grass": 0.03062138102126923,
+    "false_cloud_on_clear.crop": 0.031205036524650294,
+    "false_cloud_on_clear.built-up": 0.08361719769871125,
+    "false_cloud_on_clear.bare / sparse": 0.07877596710743745,
+    "false_cloud_on_clear.snow / ice": 0.3047926874157676,
+    "false_cloud_on_clear.water": 0.008123437600535488,
+    "false_cloud_on_clear.wetland": 0.03322784772884276,
+    "false_cloud_on_clear.moss / lichen": 0.022460829307915077
+   },
+   "ocm_thick": {
+    "false_cloud_on_clear": 0.012017907529297244,
+    "thick_caught": 0.9325907328375423,
+    "thin_caught": 0.11984210722547138,
+    "false_cloud_on_clear.tree": 0.009372216895061418,
+    "false_cloud_on_clear.shrub": 0.008469058072647565,
+    "false_cloud_on_clear.grass": 0.011770337570538171,
+    "false_cloud_on_clear.crop": 0.012012168729319622,
+    "false_cloud_on_clear.built-up": 0.009352267724825376,
+    "false_cloud_on_clear.bare / sparse": 0.00970364837577233,
+    "false_cloud_on_clear.snow / ice": 0.027621342351365978,
+    "false_cloud_on_clear.water": 0.017782178520255213,
+    "false_cloud_on_clear.wetland": 0.025988059610154393,
+    "false_cloud_on_clear.moss / lichen": 0.01507357689625184
+   },
+   "ocm_thick_or_thin": {
+    "false_cloud_on_clear": 0.034254402154654785,
+    "thick_caught": 0.9587024466705225,
+    "thin_caught": 0.8011937512453593,
+    "false_cloud_on_clear.tree": 0.03177529943937217,
+    "false_cloud_on_clear.shrub": 0.02583146810248168,
+    "false_cloud_on_clear.grass": 0.03142098955065073,
+    "false_cloud_on_clear.crop": 0.0293748858925205,
+    "false_cloud_on_clear.built-up": 0.0312817293238665,
+    "false_cloud_on_clear.bare / sparse": 0.04017572502514416,
+    "false_cloud_on_clear.snow / ice": 0.03024932064121497,
+    "false_cloud_on_clear.water": 0.05092472424308662,
+    "false_cloud_on_clear.wetland": 0.04903703686268787,
+    "false_cloud_on_clear.moss / lichen": 0.02702383105011036
+   }
+  },
+  "ci95": {
+   "scl_cloud": {
+    "false_cloud_on_clear": [
+     0.025148929366800084,
+     0.055061769530800685
+    ],
+    "thick_caught": [
+     0.6048775356128373,
+     0.6602387278076566
+    ],
+    "thin_caught": [
+     0.25998543648448363,
+     0.3913979139034978
+    ],
+    "false_cloud_on_clear.tree": [
+     0.011018809087512212,
+     0.037579391604971826
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.0020213990242587123,
+     0.03262447218731863
+    ],
+    "false_cloud_on_clear.grass": [
+     0.01653051091947649,
+     0.0484499766428043
+    ],
+    "false_cloud_on_clear.crop": [
+     0.005886957783856919,
+     0.06603836711824117
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.03169650010945592,
+     0.14441386493082564
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.03767670263204106,
+     0.12843648780973238
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.0276824447346088,
+     0.6294752073153967
+    ],
+    "false_cloud_on_clear.water": [
+     0.003413718153113538,
+     0.014679454336000385
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.001726809433151953,
+     0.08633222364359813
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.008929800841629656,
+     0.046851673379320724
+    ]
+   },
+   "ocm_thick": {
+    "false_cloud_on_clear": [
+     0.010558693333783765,
+     0.013702334218798073
+    ],
+    "thick_caught": [
+     0.9204571458560087,
+     0.9429578157398949
+    ],
+    "thin_caught": [
+     0.09648303733825742,
+     0.14379517656903196
+    ],
+    "false_cloud_on_clear.tree": [
+     0.008006458835156485,
+     0.010835365642213093
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.005686975846729265,
+     0.012138992135595258
+    ],
+    "false_cloud_on_clear.grass": [
+     0.009921486104567358,
+     0.013827793591087054
+    ],
+    "false_cloud_on_clear.crop": [
+     0.009692340392706406,
+     0.014542478821495487
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.00597982741215322,
+     0.01316722546423175
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.007201563558070997,
+     0.013191207936247342
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.00819321179667442,
+     0.05674753696560157
+    ],
+    "false_cloud_on_clear.water": [
+     0.011734927835426059,
+     0.02418675704964234
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.014795305999753575,
+     0.037696214873714246
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.01158021262491951,
+     0.019173261484807975
+    ]
+   },
+   "ocm_thick_or_thin": {
+    "false_cloud_on_clear": [
+     0.028942311909523014,
+     0.039522107232207906
+    ],
+    "thick_caught": [
+     0.9496665164455124,
+     0.9661160278554045
+    ],
+    "thin_caught": [
+     0.7601722091218356,
+     0.8410852435568555
+    ],
+    "false_cloud_on_clear.tree": [
+     0.0210535660547781,
+     0.04347030902610615
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.017071772854537398,
+     0.036127075430698215
+    ],
+    "false_cloud_on_clear.grass": [
+     0.025038294614120098,
+     0.037717995164402045
+    ],
+    "false_cloud_on_clear.crop": [
+     0.020710225374109513,
+     0.03898680313131186
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.013169632175089537,
+     0.051619105008494155
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.02745943244511188,
+     0.0537083729048251
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.009380582816167061,
+     0.061649209690867686
+    ],
+    "false_cloud_on_clear.water": [
+     0.03064516189524118,
+     0.07398614244520894
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.026915200083982505,
+     0.07399531195278422
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.018142538366605013,
+     0.04291839358064012
+    ]
+   }
+  },
+  "paired": {
+   "ocm_thick_minus_scl": {
+    "false_cloud_on_clear": {
+     "point": -0.02752722885888545,
+     "ci95": [
+      -0.04238517233829254,
+      -0.013293612474039661
+     ]
+    },
+    "thick_caught": {
+     "point": 0.300690283477017,
+     "ci95": [
+      0.27411280119046816,
+      0.32614599954537676
+     ]
+    },
+    "thin_caught": {
+     "point": -0.2076207404957892,
+     "ci95": [
+      -0.2748729308226206,
+      -0.13411974219028075
+     ]
+    },
+    "false_cloud_on_clear.tree": {
+     "point": -0.013882712625775001,
+     "ci95": [
+      -0.028214720197268218,
+      -0.0020574601080146993
+     ]
+    },
+    "false_cloud_on_clear.shrub": {
+     "point": -0.004490330917112076,
+     "ci95": [
+      -0.02353787552917081,
+      0.0070272781641066385
+     ]
+    },
+    "false_cloud_on_clear.grass": {
+     "point": -0.018851043450731058,
+     "ci95": [
+      -0.03699675842382579,
+      -0.004840705737836678
+     ]
+    },
+    "false_cloud_on_clear.crop": {
+     "point": -0.01919286779533067,
+     "ci95": [
+      -0.053211410311375995,
+      0.005169452296262839
+     ]
+    },
+    "false_cloud_on_clear.built-up": {
+     "point": -0.07426492997388587,
+     "ci95": [
+      -0.13197878942698968,
+      -0.022825347947854274
+     ]
+    },
+    "false_cloud_on_clear.bare / sparse": {
+     "point": -0.06907231873166512,
+     "ci95": [
+      -0.11870715173584964,
+      -0.02787643293358826
+     ]
+    },
+    "false_cloud_on_clear.snow / ice": {
+     "point": -0.2771713450644016,
+     "ci95": [
+      -0.5674222397631706,
+      -0.014729716015325254
+     ]
+    },
+    "false_cloud_on_clear.water": {
+     "point": 0.009658740919719725,
+     "ci95": [
+      0.0007967623449832541,
+      0.0177622938993452
+     ]
+    },
+    "false_cloud_on_clear.wetland": {
+     "point": -0.007239788118688369,
+     "ci95": [
+      -0.06878778988630702,
+      0.03357231472105262
+     ]
+    },
+    "false_cloud_on_clear.moss / lichen": {
+     "point": -0.007387252411663237,
+     "ci95": [
+      -0.0309961210477803,
+      0.006401768355742323
+     ]
+    }
+   },
+   "ocm_thick_or_thin_minus_scl": {
+    "false_cloud_on_clear": {
+     "point": -0.005290734233527911,
+     "ci95": [
+      -0.021167695038692404,
+      0.008861657048139416
+     ]
+    },
+    "thick_caught": {
+     "point": 0.32680199730999715,
+     "ci95": [
+      0.30118863534993984,
+      0.35213884820929
+     ]
+    },
+    "thin_caught": {
+     "point": 0.4737309035240987,
+     "ci95": [
+      0.4150213307708222,
+      0.5334070635530285
+     ]
+    },
+    "false_cloud_on_clear.tree": {
+     "point": 0.00852036991853575,
+     "ci95": [
+      -0.0015588067099122438,
+      0.017241726595357516
+     ]
+    },
+    "false_cloud_on_clear.shrub": {
+     "point": 0.012872079112722038,
+     "ci95": [
+      -0.009019023335590287,
+      0.028956094182622967
+     ]
+    },
+    "false_cloud_on_clear.grass": {
+     "point": 0.0007996085293815007,
+     "ci95": [
+      -0.019330382969371146,
+      0.015964920260535743
+     ]
+    },
+    "false_cloud_on_clear.crop": {
+     "point": -0.0018301506321297956,
+     "ci95": [
+      -0.03829161565390247,
+      0.024570158183288553
+     ]
+    },
+    "false_cloud_on_clear.built-up": {
+     "point": -0.05233546837484475,
+     "ci95": [
+      -0.11469689707773863,
+      -0.00039363293710892024
+     ]
+    },
+    "false_cloud_on_clear.bare / sparse": {
+     "point": -0.03860024208229329,
+     "ci95": [
+      -0.09033380553405615,
+      0.007075329051641733
+     ]
+    },
+    "false_cloud_on_clear.snow / ice": {
+     "point": -0.2745433667745526,
+     "ci95": [
+      -0.5636735103972716,
+      -0.013899912095612262
+     ]
+    },
+    "false_cloud_on_clear.water": {
+     "point": 0.04280128664255113,
+     "ci95": [
+      0.021230135559956616,
+      0.06747508533965448
+     ]
+    },
+    "false_cloud_on_clear.wetland": {
+     "point": 0.01580918913384511,
+     "ci95": [
+      -0.013421171996461572,
+      0.037624902235649946
+     ]
+    },
+    "false_cloud_on_clear.moss / lichen": {
+     "point": 0.0045630017421952815,
+     "ci95": [
+      -0.01186176961928843,
+      0.015997291529677004
+     ]
+    }
+   }
+  }
+ },
+ "clean": {
+  "patches": 732,
+  "regions": 151,
+  "pooled": {
+   "scl_cloud": {
+    "false_cloud_on_clear": 0.04207733694657652,
+    "thick_caught": 0.6186702100503739,
+    "thin_caught": 0.3340464539894754,
+    "false_cloud_on_clear.tree": 0.024517959518972402,
+    "false_cloud_on_clear.shrub": 0.016271537149084688,
+    "false_cloud_on_clear.grass": 0.030102321059707855,
+    "false_cloud_on_clear.crop": 0.03826745449254708,
+    "false_cloud_on_clear.built-up": 0.1193829604182585,
+    "false_cloud_on_clear.bare / sparse": 0.07941026420515541,
+    "false_cloud_on_clear.snow / ice": 0.3282065708745203,
+    "false_cloud_on_clear.water": 0.009961828593129964,
+    "false_cloud_on_clear.wetland": 0.04316234481242042,
+    "false_cloud_on_clear.moss / lichen": 0.025659028728297922
+   },
+   "ocm_thick": {
+    "false_cloud_on_clear": 0.011940745772617112,
+    "thick_caught": 0.928733607290745,
+    "thin_caught": 0.11987101055568988,
+    "false_cloud_on_clear.tree": 0.009498950835247214,
+    "false_cloud_on_clear.shrub": 0.006490396203623704,
+    "false_cloud_on_clear.grass": 0.011999105939418452,
+    "false_cloud_on_clear.crop": 0.011468796753592636,
+    "false_cloud_on_clear.built-up": 0.01172733356667437,
+    "false_cloud_on_clear.bare / sparse": 0.010587756176704063,
+    "false_cloud_on_clear.snow / ice": 0.03587674295249119,
+    "false_cloud_on_clear.water": 0.01547008817503106,
+    "false_cloud_on_clear.wetland": 0.023684281814748537,
+    "false_cloud_on_clear.moss / lichen": 0.016510631337408203
+   },
+   "ocm_thick_or_thin": {
+    "false_cloud_on_clear": 0.035834908019403304,
+    "thick_caught": 0.9562796873565966,
+    "thin_caught": 0.8011543411145918,
+    "false_cloud_on_clear.tree": 0.0370566234161988,
+    "false_cloud_on_clear.shrub": 0.026480050305625405,
+    "false_cloud_on_clear.grass": 0.03157710951288941,
+    "false_cloud_on_clear.crop": 0.03184231157522522,
+    "false_cloud_on_clear.built-up": 0.024429674043334192,
+    "false_cloud_on_clear.bare / sparse": 0.039925746263511794,
+    "false_cloud_on_clear.snow / ice": 0.03970785614427663,
+    "false_cloud_on_clear.water": 0.047445251748544456,
+    "false_cloud_on_clear.wetland": 0.054749684087407,
+    "false_cloud_on_clear.moss / lichen": 0.030647169837524708
+   }
+  },
+  "ci95": {
+   "scl_cloud": {
+    "false_cloud_on_clear": [
+     0.02547824448993323,
+     0.06116225575987945
+    ],
+    "thick_caught": [
+     0.5854405666004028,
+     0.6500887002570426
+    ],
+    "thin_caught": [
+     0.2606228635433413,
+     0.40706670099237313
+    ],
+    "false_cloud_on_clear.tree": [
+     0.010752460946261054,
+     0.040329714913073925
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.0026445539675571195,
+     0.039883529435235494
+    ],
+    "false_cloud_on_clear.grass": [
+     0.013509856724538348,
+     0.04999772942292639
+    ],
+    "false_cloud_on_clear.crop": [
+     0.004521202613345877,
+     0.08510801447397856
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.034363667924783216,
+     0.209247979113111
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.03186476181593841,
+     0.13626841502910536
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.012952172309041242,
+     0.6958539552374889
+    ],
+    "false_cloud_on_clear.water": [
+     0.003919464676729242,
+     0.019905167882577575
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.0010338327591261913,
+     0.10624611396408444
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.00853804538612429,
+     0.05396478553806942
+    ]
+   },
+   "ocm_thick": {
+    "false_cloud_on_clear": [
+     0.010326419038538133,
+     0.013681541014616497
+    ],
+    "thick_caught": [
+     0.9125078924180751,
+     0.9419432975803498
+    ],
+    "thin_caught": [
+     0.09453601014150141,
+     0.14969488399156092
+    ],
+    "false_cloud_on_clear.tree": [
+     0.007507100912032553,
+     0.01148631538058909
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.004401572125704921,
+     0.00900781145057606
+    ],
+    "false_cloud_on_clear.grass": [
+     0.009997535299131988,
+     0.01433099531556932
+    ],
+    "false_cloud_on_clear.crop": [
+     0.00850326205866581,
+     0.014451066007906787
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.005989624023757176,
+     0.016139882713733324
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.007560001826743885,
+     0.014695186298495307
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.00892186016481002,
+     0.06631644729405718
+    ],
+    "false_cloud_on_clear.water": [
+     0.009876067986188121,
+     0.021824776947914418
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.012719735656427361,
+     0.039462647538551374
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.012500435601199247,
+     0.020359925579407547
+    ]
+   },
+   "ocm_thick_or_thin": {
+    "false_cloud_on_clear": [
+     0.02973587354968457,
+     0.04226875869326588
+    ],
+    "thick_caught": [
+     0.9429839051796564,
+     0.9657772448880354
+    ],
+    "thin_caught": [
+     0.7595679001925512,
+     0.8434708051845788
+    ],
+    "false_cloud_on_clear.tree": [
+     0.023983063706393727,
+     0.05343620868234897
+    ],
+    "false_cloud_on_clear.shrub": [
+     0.015905801277576077,
+     0.03933974812124055
+    ],
+    "false_cloud_on_clear.grass": [
+     0.025078244481239707,
+     0.038591662034135
+    ],
+    "false_cloud_on_clear.crop": [
+     0.02282124279180913,
+     0.044499058695035044
+    ],
+    "false_cloud_on_clear.built-up": [
+     0.01291319498969938,
+     0.04216795419753834
+    ],
+    "false_cloud_on_clear.bare / sparse": [
+     0.027490666068921036,
+     0.05490605514987411
+    ],
+    "false_cloud_on_clear.snow / ice": [
+     0.011595510588329076,
+     0.07283311452429612
+    ],
+    "false_cloud_on_clear.water": [
+     0.025672982373386558,
+     0.07641865034224164
+    ],
+    "false_cloud_on_clear.wetland": [
+     0.026140894559278836,
+     0.08523031336182457
+    ],
+    "false_cloud_on_clear.moss / lichen": [
+     0.020054065810306398,
+     0.04492665273819952
+    ]
+   }
+  },
+  "paired": {
+   "ocm_thick_minus_scl": {
+    "false_cloud_on_clear": {
+     "point": -0.030136591173959407,
+     "ci95": [
+      -0.0480652901238025,
+      -0.013992719407250899
+     ]
+    },
+    "thick_caught": {
+     "point": 0.310063397240371,
+     "ci95": [
+      0.27844243729471185,
+      0.340460892545984
+     ]
+    },
+    "thin_caught": {
+     "point": -0.21417544343378553,
+     "ci95": [
+      -0.2911911141326072,
+      -0.136999302006489
+     ]
+    },
+    "false_cloud_on_clear.tree": {
+     "point": -0.015019008683725188,
+     "ci95": [
+      -0.030553988074824134,
+      -0.0021201343516458328
+     ]
+    },
+    "false_cloud_on_clear.shrub": {
+     "point": -0.009781140945460984,
+     "ci95": [
+      -0.03167486310238226,
+      0.0035928183825292663
+     ]
+    },
+    "false_cloud_on_clear.grass": {
+     "point": -0.018103215120289402,
+     "ci95": [
+      -0.038284001970718726,
+      -0.0013105182156647863
+     ]
+    },
+    "false_cloud_on_clear.crop": {
+     "point": -0.026798657738954443,
+     "ci95": [
+      -0.07146646708781376,
+      0.006608129360101156
+     ]
+    },
+    "false_cloud_on_clear.built-up": {
+     "point": -0.10765562685158413,
+     "ci95": [
+      -0.19408460744458303,
+      -0.02569485035561152
+     ]
+    },
+    "false_cloud_on_clear.bare / sparse": {
+     "point": -0.06882250802845136,
+     "ci95": [
+      -0.1254804956942319,
+      -0.02131172575581556
+     ]
+    },
+    "false_cloud_on_clear.snow / ice": {
+     "point": -0.2923298279220291,
+     "ci95": [
+      -0.6290368101806253,
+      0.002170139874740077
+     ]
+    },
+    "false_cloud_on_clear.water": {
+     "point": 0.0055082595819010965,
+     "ci95": [
+      -0.0056493910018001565,
+      0.014229588019371143
+     ]
+    },
+    "false_cloud_on_clear.wetland": {
+     "point": -0.019478062997671883,
+     "ci95": [
+      -0.08991358780572006,
+      0.03511344054085787
+     ]
+    },
+    "false_cloud_on_clear.moss / lichen": {
+     "point": -0.009148397390889719,
+     "ci95": [
+      -0.038379680637742476,
+      0.008367717905608283
+     ]
+    }
+   },
+   "ocm_thick_or_thin_minus_scl": {
+    "false_cloud_on_clear": {
+     "point": -0.0062424289271732145,
+     "ci95": [
+      -0.02545444439182406,
+      0.010086596480342347
+     ]
+    },
+    "thick_caught": {
+     "point": 0.3376094773062227,
+     "ci95": [
+      0.3096240661761227,
+      0.36894205136582964
+     ]
+    },
+    "thin_caught": {
+     "point": 0.4671078871251164,
+     "ci95": [
+      0.40502956045670024,
+      0.532694268516179
+     ]
+    },
+    "false_cloud_on_clear.tree": {
+     "point": 0.0125386638972264,
+     "ci95": [
+      0.0022183471936004255,
+      0.02217650401977865
+     ]
+    },
+    "false_cloud_on_clear.shrub": {
+     "point": 0.010208513156540717,
+     "ci95": [
+      -0.01674316607687216,
+      0.030655491268897026
+     ]
+    },
+    "false_cloud_on_clear.grass": {
+     "point": 0.001474788453181556,
+     "ci95": [
+      -0.02070072352221724,
+      0.019437110407105364
+     ]
+    },
+    "false_cloud_on_clear.crop": {
+     "point": -0.006425142917321859,
+     "ci95": [
+      -0.054404663321369603,
+      0.032268348541793494
+     ]
+    },
+    "false_cloud_on_clear.built-up": {
+     "point": -0.0949532863749243,
+     "ci95": [
+      -0.18204187309596467,
+      -0.008934948412943549
+     ]
+    },
+    "false_cloud_on_clear.bare / sparse": {
+     "point": -0.03948451794164362,
+     "ci95": [
+      -0.10059488041815026,
+      0.009504317576764515
+     ]
+    },
+    "false_cloud_on_clear.snow / ice": {
+     "point": -0.2884987147302437,
+     "ci95": [
+      -0.6247881154983717,
+      0.003192535898864463
+     ]
+    },
+    "false_cloud_on_clear.water": {
+     "point": 0.03748342315541449,
+     "ci95": [
+      0.0124803694613477,
+      0.06815101441145069
+     ]
+    },
+    "false_cloud_on_clear.wetland": {
+     "point": 0.011587339274986577,
+     "ci95": [
+      -0.022869824916693045,
+      0.041546720413945734
+     ]
+    },
+    "false_cloud_on_clear.moss / lichen": {
+     "point": 0.004988141109226785,
+     "ci95": [
+      -0.01650271639733385,
+      0.022590317124251434
+     ]
+    }
+   }
+  }
+ }
+}

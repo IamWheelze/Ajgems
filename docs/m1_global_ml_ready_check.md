@@ -124,6 +124,44 @@ What this means:
   - adopt the B02 < 0.12 re-admit as a labelled "suspect bright" class, as class 11 (snow) is handled today;
   - test OmniCloudMask on these test patches and our 40 sites. Check first whether CloudSEN12 is in its training data, which would make this test optimistic.
 
+### OmniCloudMask (option 2) against the same expert labels (2026-11-14)
+
+`scripts/cloudsen12_ocm_study.py` ([evidence/cloudsen12_ocm_study.json](evidence/cloudsen12_ocm_study.json)). The founder approved the test; no mask was changed. The protocol is in the script and was fixed before running:
+- OmniCloudMask 1.8.1, model 4.0, the two-model default. Inputs are B04, B03 and B8A L2A reflectance. Weight SHA-256 hashes are in the evidence.
+- Same 975 test patches as the SCL study, with nothing fitted. None failed.
+- Training overlap was checked first, on its published training-data map. Its CloudSEN12 "high" count is exactly twice the CloudSEN12+ training-split count in every one of 2,158 tiles (L1C plus L2A), so it never saw these test patches. Its other training sets touch the tiles of 243 test patches. The "clean" subset (732 patches, 151 regions) has no training data of any kind in its tiles.
+- Compared on the same pixels; paired 95% intervals come from resampling regions.
+
+All 975 test patches:
+
+| | SCL classes 8, 9 | OCM thick | OCM thick or thin |
+| --- | --- | --- | --- |
+| Expert-clear pixels called cloud | 3.9% | **1.2%** (1.1–1.4%) | 3.4% (2.9–4.0%) |
+| on bare / sparse | 7.9% | **1.0%** (0.7–1.3%) | 4.0% (2.8–5.4%) |
+| on built-up | 8.4% | 0.9% (0.6–1.3%) | 3.1% |
+| on trees | 2.3% | 0.9% (0.8–1.1%) | 3.2% |
+| on water | 0.8% | 1.8% (1.2–2.4%) | 5.1% |
+| Expert thick cloud caught | 63.2% | **93.3%** (92.1–94.3%) | 95.9% |
+| Expert thin cloud caught | 32.8% | 12.0% | 80.1% |
+
+Paired, OCM thick minus SCL:
+- False cloud on clear: −2.8 points (−4.2 to −1.3).
+- On bare ground: −6.9 points (−11.9 to −2.8).
+- On built-up: −7.4 points (−13.2 to −2.3).
+- Thick cloud caught: +30.1 points (+27.4 to +32.6).
+
+The clean subset gives the same picture: on bare ground SCL 7.9% against OCM thick 1.1%, paired −6.9 points (−12.6 to −2.1); thick cloud caught 61.9% against 92.9%.
+
+What this means:
+- At the thick-cloud setting, OmniCloudMask calls clear bare ground cloud about eight times less often than SCL does, and still catches far more thick cloud. That is the trade we want for bright mine ground.
+- Two costs:
+  - OCM thick misses most thin cloud. That is no worse for us than SCL, whose class 10 (cirrus) we do not mask.
+  - Its false cloud on clear water is about twice SCL's (1.8% against 0.8%). Tailings ponds and pit lakes are water.
+- Still to check:
+  - These patches are from 2018–2020; our Nigerian scenes are baseline 05.xx.
+  - The weights are MIT-licensed but start from ImageNet-pretrained encoders, the same commercial-use question as our U-Net encoder.
+  - It costs about 4 s per 512 px patch on two CPU threads.
+
 ## Overlaps and splits (2026-11-06)
 
 `minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.
