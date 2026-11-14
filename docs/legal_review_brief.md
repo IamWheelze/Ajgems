@@ -42,7 +42,7 @@ Prepared 2026-11-11 for minefoot (satellite detection of visible mining disturba
 2. Does fine-tuning or non-distribution change the answer?
 
 **Options we can take**
-- Retrain from random initialisation (`minefoot g2 --encoder-weights none`). This removes the question, possibly at some cost in accuracy, which we would measure with the paired comparison.
+- Retrain from random initialisation (`minefoot g2 --encoder-weights none`). **Done 2026-11-14:** `g2_nw_hn` has no pretrained weights in its lineage and is registered. It still beats the G1 baseline clearly. Against the ImageNet-initialised `g2_hn` it shows no clear difference on validation, and is worse on test by 0.059 F1 (interval −0.102 to −0.001), mostly on artisanal sites (`docs/g2_results.md`). So this question now decides whether the commercial model may be the better `g2_hn` or must be `g2_nw_hn`. It no longer decides whether a commercial model can exist.
 - Use encoder weights with an explicit commercial licence, for example weights pretrained on satellite imagery under a permissive licence.
 
 ## Not in question

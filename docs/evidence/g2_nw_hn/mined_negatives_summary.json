@@ -1,0 +1,570 @@
+{
+  "source": "model-mined from run g2_nw at threshold level 195",
+  "buffer_px": 50,
+  "mmu_pixels": 100,
+  "sites": {
+    "gmlr-1003": {
+      "patches": 12,
+      "ha": 850.98,
+      "by_worldcover": {
+        "grass": 5,
+        "tree": 5,
+        "water": 2
+      }
+    },
+    "gmlr-1018": {
+      "patches": 27,
+      "ha": 1055.4,
+      "by_worldcover": {
+        "water": 1,
+        "shrub": 11,
+        "tree": 1,
+        "grass": 14
+      }
+    },
+    "gmlr-1029": {
+      "patches": 59,
+      "ha": 2081.8,
+      "by_worldcover": {
+        "bare": 3,
+        "grass": 48,
+        "tree": 7,
+        "shrub": 1
+      }
+    },
+    "gmlr-1030": {
+      "patches": 8,
+      "ha": 154.23,
+      "by_worldcover": {
+        "built": 1,
+        "grass": 4,
+        "crop": 2,
+        "bare": 1
+      }
+    },
+    "gmlr-1051": {
+      "patches": 19,
+      "ha": 420.47,
+      "by_worldcover": {
+        "tree": 16,
+        "built": 3
+      }
+    },
+    "gmlr-1057": {
+      "patches": 7,
+      "ha": 39.44,
+      "by_worldcover": {
+        "tree": 7
+      }
+    },
+    "gmlr-1059": {
+      "patches": 18,
+      "ha": 310.40000000000003,
+      "by_worldcover": {
+        "tree": 18
+      }
+    },
+    "gmlr-1061": {
+      "patches": 35,
+      "ha": 964.34,
+      "by_worldcover": {
+        "tree": 32,
+        "built": 3
+      }
+    },
+    "gmlr-1073": {
+      "patches": 10,
+      "ha": 150.32,
+      "by_worldcover": {
+        "shrub": 1,
+        "grass": 3,
+        "tree": 4,
+        "built": 1,
+        "bare": 1
+      }
+    },
+    "gmlr-1076": {
+      "patches": 41,
+      "ha": 1318.8500000000001,
+      "by_worldcover": {
+        "tree": 34,
+        "built": 6,
+        "bare": 1
+      }
+    },
+    "gmlr-1082": {
+      "patches": 1,
+      "ha": 15.71,
+      "by_worldcover": {
+        "grass": 1
+      }
+    },
+    "gmlr-1083": {
+      "patches": 15,
+      "ha": 147.07,
+      "by_worldcover": {
+        "tree": 11,
+        "shrub": 1,
+        "grass": 2,
+        "built": 1
+      }
+    },
+    "gmlr-1086": {
+      "patches": 29,
+      "ha": 675.84,
+      "by_worldcover": {
+        "tree": 14,
+        "built": 13,
+        "grass": 2
+      }
+    },
+    "gmlr-1154": {
+      "patches": 5,
+      "ha": 1477.8600000000001,
+      "by_worldcover": {
+        "bare": 4,
+        "water": 1
+      }
+    },
+    "gmlr-1170": {
+      "patches": 3,
+      "ha": 91.61,
+      "by_worldcover": {
+        "tree": 2,
+        "wetland": 1
+      }
+    },
+    "gmlr-1196": {
+      "patches": 17,
+      "ha": 591.92,
+      "by_worldcover": {
+        "crop": 9,
+        "grass": 5,
+        "built": 1,
+        "tree": 2
+      }
+    },
+    "gmlr-1225": {
+      "patches": 0,
+      "ha": 0.0,
+      "by_worldcover": {}
+    },
+    "gmlr-1239": {
+      "patches": 12,
+      "ha": 73.88,
+      "by_worldcover": {
+        "shrub": 4,
+        "bare": 2,
+        "built": 4,
+        "grass": 2
+      }
+    },
+    "gmlr-1245": {
+      "patches": 19,
+      "ha": 2830.4700000000003,
+      "by_worldcover": {
+        "grass": 10,
+        "bare": 4,
+        "water": 1,
+        "built": 3,
+        "tree": 1
+      }
+    },
+    "gmlr-1267": {
+      "patches": 1,
+      "ha": 1.26,
+      "by_worldcover": {
+        "grass": 1
+      }
+    },
+    "gmlr-1292": {
+      "patches": 22,
+      "ha": 1039.0,
+      "by_worldcover": {
+        "grass": 7,
+        "water": 4,
+        "crop": 2,
+        "wetland": 1,
+        "built": 7,
+        "tree": 1
+      }
+    },
+    "gmlr-1295": {
+      "patches": 6,
+      "ha": 33.6,
+      "by_worldcover": {
+        "crop": 1,
+        "built": 2,
+        "grass": 1,
+        "water": 1,
+        "bare": 1
+      }
+    },
+    "gmlr-1296": {
+      "patches": 15,
+      "ha": 306.41,
+      "by_worldcover": {
+        "built": 7,
+        "water": 2,
+        "bare": 2,
+        "grass": 2,
+        "shrub": 2
+      }
+    },
+    "gmlr-1308": {
+      "patches": 50,
+      "ha": 3048.73,
+      "by_worldcover": {
+        "built": 24,
+        "grass": 10,
+        "water": 14,
+        "bare": 2
+      }
+    },
+    "gmlr-1315": {
+      "patches": 16,
+      "ha": 522.94,
+      "by_worldcover": {
+        "built": 9,
+        "grass": 6,
+        "crop": 1
+      }
+    },
+    "gmlr-1327": {
+      "patches": 38,
+      "ha": 627.19,
+      "by_worldcover": {
+        "built": 11,
+        "grass": 7,
+        "tree": 15,
+        "bare": 2,
+        "crop": 1,
+        "water": 2
+      }
+    },
+    "gmlr-1328": {
+      "patches": 5,
+      "ha": 32.7,
+      "by_worldcover": {
+        "water": 1,
+        "tree": 4
+      }
+    },
+    "gmlr-1365": {
+      "patches": 20,
+      "ha": 210.77,
+      "by_worldcover": {
+        "bare": 1,
+        "water": 4,
+        "grass": 11,
+        "crop": 4
+      }
+    },
+    "gmlr-1375": {
+      "patches": 50,
+      "ha": 825.73,
+      "by_worldcover": {
+        "crop": 5,
+        "built": 3,
+        "water": 20,
+        "grass": 19,
+        "bare": 3
+      }
+    },
+    "gmlr-1388": {
+      "patches": 41,
+      "ha": 1917.1000000000001,
+      "by_worldcover": {
+        "grass": 24,
+        "bare": 11,
+        "built": 4,
+        "water": 1,
+        "shrub": 1
+      }
+    },
+    "gmlr-1389": {
+      "patches": 20,
+      "ha": 204.1,
+      "by_worldcover": {
+        "bare": 9,
+        "grass": 1,
+        "built": 7,
+        "water": 2,
+        "crop": 1
+      }
+    },
+    "gmlr-142": {
+      "patches": 26,
+      "ha": 1068.84,
+      "by_worldcover": {
+        "tree": 11,
+        "water": 10,
+        "bare": 1,
+        "grass": 3,
+        "built": 1
+      }
+    },
+    "gmlr-1459": {
+      "patches": 52,
+      "ha": 3632.8,
+      "by_worldcover": {
+        "grass": 36,
+        "bare": 11,
+        "crop": 4,
+        "water": 1
+      }
+    },
+    "gmlr-1597": {
+      "patches": 24,
+      "ha": 410.90000000000003,
+      "by_worldcover": {
+        "grass": 13,
+        "bare": 2,
+        "crop": 4,
+        "built": 5
+      }
+    },
+    "gmlr-1872": {
+      "patches": 4,
+      "ha": 35.13,
+      "by_worldcover": {
+        "bare": 1,
+        "tree": 3
+      }
+    },
+    "gmlr-1878": {
+      "patches": 12,
+      "ha": 1384.34,
+      "by_worldcover": {
+        "tree": 10,
+        "bare": 2
+      }
+    },
+    "gmlr-1975": {
+      "patches": 76,
+      "ha": 14238.32,
+      "by_worldcover": {
+        "bare": 55,
+        "grass": 5,
+        "built": 15,
+        "tree": 1
+      }
+    },
+    "gmlr-2199": {
+      "patches": 21,
+      "ha": 398.94,
+      "by_worldcover": {
+        "tree": 18,
+        "moss": 1,
+        "water": 1,
+        "bare": 1
+      }
+    },
+    "gmlr-2244": {
+      "patches": 7,
+      "ha": 106.79,
+      "by_worldcover": {
+        "water": 4,
+        "tree": 3
+      }
+    },
+    "gmlr-2268": {
+      "patches": 84,
+      "ha": 10474.59,
+      "by_worldcover": {
+        "tree": 77,
+        "moss": 6,
+        "bare": 1
+      }
+    },
+    "gmlr-2342": {
+      "patches": 53,
+      "ha": 5117.47,
+      "by_worldcover": {
+        "tree": 40,
+        "moss": 10,
+        "grass": 3
+      }
+    },
+    "gmlr-2408": {
+      "patches": 34,
+      "ha": 2432.82,
+      "by_worldcover": {
+        "water": 9,
+        "tree": 18,
+        "grass": 1,
+        "crop": 1,
+        "built": 4,
+        "bare": 1
+      }
+    },
+    "gmlr-2665": {
+      "patches": 40,
+      "ha": 2161.79,
+      "by_worldcover": {
+        "tree": 28,
+        "crop": 4,
+        "water": 5,
+        "grass": 2,
+        "built": 1
+      }
+    },
+    "gmlr-2680": {
+      "patches": 8,
+      "ha": 375.0,
+      "by_worldcover": {
+        "tree": 8
+      }
+    },
+    "gmlr-2719": {
+      "patches": 1,
+      "ha": 1.31,
+      "by_worldcover": {
+        "tree": 1
+      }
+    },
+    "gmlr-2892": {
+      "patches": 35,
+      "ha": 1352.98,
+      "by_worldcover": {
+        "water": 4,
+        "tree": 2,
+        "moss": 29
+      }
+    },
+    "gmlr-2908": {
+      "patches": 8,
+      "ha": 149.33,
+      "by_worldcover": {
+        "tree": 1,
+        "grass": 5,
+        "bare": 2
+      }
+    },
+    "gmlr-2980": {
+      "patches": 53,
+      "ha": 6149.7300000000005,
+      "by_worldcover": {
+        "moss": 50,
+        "grass": 1,
+        "bare": 1,
+        "water": 1
+      }
+    },
+    "gmlr-321": {
+      "patches": 6,
+      "ha": 61.76,
+      "by_worldcover": {
+        "grass": 3,
+        "tree": 3
+      }
+    },
+    "gmlr-340": {
+      "patches": 24,
+      "ha": 2256.19,
+      "by_worldcover": {
+        "tree": 23,
+        "built": 1
+      }
+    },
+    "gmlr-568": {
+      "patches": 25,
+      "ha": 6170.5,
+      "by_worldcover": {
+        "bare": 25
+      }
+    },
+    "gmlr-581": {
+      "patches": 31,
+      "ha": 1221.2,
+      "by_worldcover": {
+        "tree": 24,
+        "grass": 5,
+        "bare": 2
+      }
+    },
+    "gmlr-755": {
+      "patches": 3,
+      "ha": 51.52,
+      "by_worldcover": {
+        "tree": 3
+      }
+    },
+    "gmlr-767": {
+      "patches": 8,
+      "ha": 2593.61,
+      "by_worldcover": {
+        "grass": 3,
+        "water": 4,
+        "tree": 1
+      }
+    },
+    "gmlr-814": {
+      "patches": 4,
+      "ha": 8.02,
+      "by_worldcover": {
+        "tree": 2,
+        "grass": 2
+      }
+    },
+    "gmlr-821": {
+      "patches": 12,
+      "ha": 229.20000000000002,
+      "by_worldcover": {
+        "tree": 12
+      }
+    },
+    "gmlr-825": {
+      "patches": 33,
+      "ha": 757.57,
+      "by_worldcover": {
+        "grass": 13,
+        "wetland": 6,
+        "water": 1,
+        "tree": 9,
+        "built": 4
+      }
+    },
+    "gmlr-874": {
+      "patches": 22,
+      "ha": 391.45,
+      "by_worldcover": {
+        "grass": 8,
+        "tree": 13,
+        "water": 1
+      }
+    },
+    "gmlr-990": {
+      "patches": 13,
+      "ha": 675.94,
+      "by_worldcover": {
+        "bare": 3,
+        "grass": 4,
+        "tree": 1,
+        "shrub": 5
+      }
+    },
+    "gmlr-999": {
+      "patches": 4,
+      "ha": 441.49,
+      "by_worldcover": {
+        "bare": 4
+      }
+    }
+  },
+  "total": {
+    "patches": 1344,
+    "ha": 86369.65000000001,
+    "by_worldcover": {
+      "grass": 292,
+      "tree": 486,
+      "water": 97,
+      "shrub": 26,
+      "bare": 159,
+      "built": 141,
+      "crop": 39,
+      "wetland": 8,
+      "moss": 96
+    }
+  }
+}

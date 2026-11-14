@@ -113,3 +113,51 @@ Digitised hard negatives use the same route: `minefoot rasterize-negatives hard_
 4. **The artisanal recall (0.43) is still limited by loose labels**, which enclose forest. Tighter Nigerian labels will show the real figure.
 5. **The pretrained encoder's licence must be resolved before release**, or the model retrained with `--encoder-weights none`.
 6. **The web app may now start** under CLAUDE.md's rule "not until G2 has passed". It must carry the FR-052 masking report, "model score" wording and the FR-110 limits.
+
+## Retrain without pretrained weights: `g2_nw` and `g2_nw_hn` (2026-11-14)
+
+**Why:** the ImageNet encoder weights carry no commercial grant (licence register; `docs/legal_review_brief.md`, question 2). This retrain removes them from the lineage.
+
+**What was run.** Both runs were on CPU in the cloud session, with the same sites, split, preprocessing and evaluation as `g2_hn`. `data/runs/run_g2_nw.sh` then `eval_g2_nw.sh` ran them.
+
+| Run | Same as | Except | Kept checkpoint |
+| --- | --- | --- | --- |
+| `g2_nw` | `g2_v1` | `--encoder-weights none`; 60 epochs instead of 40, to give random initialisation more time. Resumed from saved state after container restarts, each recorded in its config. | Epoch 10, validation-chip loss 0.646. Later epochs overfit: training loss fell to 0.44 while validation-chip loss rose to 0.77–0.82. |
+| `g2_nw_hn` | `g2_hn` | Hard negatives mined from `g2_nw`'s own errors on training sites; fine-tuned from `g2_nw`'s checkpoint for 12 epochs at learning rate 3e-4. | Epoch 2. |
+
+Validation chose a threshold of 0.77 for `g2_nw` and 0.53 for `g2_nw_hn`.
+
+**Lineage.** `g2_nw_hn` was made at commit `7df37c1`, and its `pretrained_lineage` is empty: no pretrained weights anywhere in its ancestry. `g2_nw` was started two minutes before commit `1f75d1e`, so its config says `d381256+uncommitted`. The only uncommitted change was the code that writes `pretrained_lineage` into the config, which does not affect training. The registry still refuses `g2_nw` under its reproducibility rule. That leaves `g2_nw_hn` as the registrable model without pretrained weights.
+
+**Results** (pixel F1 with 95% site-bootstrap intervals; evidence in [`evidence/g2_nw`](evidence/g2_nw) and [`evidence/g2_nw_hn`](evidence/g2_nw_hn)):
+
+| | Validation F1 | Test F1 | Test precision | Test recall | Test false-alarm km² per 1,000 km² |
+| --- | --- | --- | --- | --- | --- |
+| `g2_hn` (ImageNet encoder, current best) | 0.555 (0.471–0.636) | 0.479 (0.383–0.593) | 0.404 | 0.588 | 46.0 |
+| `g2_nw_hn` (no pretrained weights) | 0.502 (0.408–0.600) | 0.420 (0.321–0.538) | 0.341 | 0.548 | 56.3 |
+| `g2_nw` (no pretrained weights, before hard negatives) | 0.486 (0.391–0.582) | 0.383 (0.296–0.493) | 0.286 | 0.582 | 77.2 |
+| G1 random forest | 0.319 | 0.229 | 0.193 | 0.280 | 62.0 |
+
+**Paired comparisons** (same sites, B − A, 95% interval):
+
+| B against A | Validation F1 | Test F1 | Other clear differences |
+| --- | --- | --- | --- |
+| `g2_nw_hn` vs `g2_hn` | −0.054 (−0.113 to +0.022), no clear difference | −0.059 (−0.102 to −0.001), worse | Test: recall −0.040 (−0.068 to −0.010), false candidates +10.7 per 1,000 km² (+2.6 to +20.0) |
+| `g2_nw_hn` vs G1 random forest | +0.183 (+0.134 to +0.239), better | +0.192 (+0.129 to +0.273), better | Recall and precision better on both sets |
+| `g2_nw` vs `g2_v1` | −0.042 (−0.097 to +0.005), no clear difference | −0.043 (−0.128 to +0.030), no clear difference | False candidates worse on both sets (validation +13.9, test +13.3 per 1,000 km²) |
+| `g2_nw_hn` vs `g2_nw` | +0.016 (−0.014 to +0.051), no clear difference | +0.037 (+0.003 to +0.086), better | Validation false-alarm area −10.0 (−18.3 to −2.6) km² per 1,000 km²; recall −0.046 (−0.076 to −0.018) |
+
+On test strata (no paired intervals per stratum), `g2_nw_hn` against `g2_hn`:
+- Artisanal: F1 0.46 against 0.57; footprints covered ≥25% 0.54 against 0.70.
+- Industrial: F1 0.41 against 0.45; footprints covered ≥25% 0.78 against 0.70.
+
+**Calibration** (`minefoot calibrate`, [`calibration.json`](evidence/g2_nw_hn/calibration.json)): not calibrated, the same pattern as `g2_hn`. On test, ECE over pixels predicted ≥ 0.1 is 0.293 raw and 0.129 after Platt (0.021–0.250). Platt makes artisanal sites worse (0.117 raw against 0.249).
+
+**What this means.**
+1. **Removing the pretrained weights costs accuracy, but not all of G2's gain.** `g2_nw_hn` still beats G1 by a margin well beyond its interval, so the G2 criterion holds without pretrained weights. Against `g2_hn` it is worse on test by about 0.06 F1 (interval just below zero) and no clearly different on validation, where decisions are made. The loss is mostly in artisanal sites.
+2. **Hard-negative mining helps the no-pretrained model in the same way as before:** less false-alarm area and better precision, at a small cost in recall.
+3. **For commercial use, `g2_nw_hn` is the only registered candidate whose weights have no open licence question.** The share-alike question on the Global ML-ready labels (question 1 of the legal brief) still applies to it. `g2_hn` stays the best model for internal research.
+4. **Ways to close the gap without ImageNet weights**, each needing its own paired comparison:
+   - longer training with stronger augmentation; the overfit from epoch 10 suggests regularisation matters more than epochs;
+   - encoder weights pretrained on satellite imagery under an explicit permissive licence;
+   - more labelled data, which the Nigerian labels and the QC pool will add.
