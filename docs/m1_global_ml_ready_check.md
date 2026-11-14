@@ -78,6 +78,13 @@ What this does show:
 - On these scenes SCL classes 8 and 9 are mostly not cloud near mines, and probably not far from them either.
 - That points to option 2 (an independent cloud mask) or to testing option 1 on a labelled cloud set (for example CloudSEN12). Either needs its licence recorded in `docs/licence_register.csv` first. Founder decision; the mask stays as it is.
 
+Licences read 2026-11-14 (rows in `docs/licence_register.csv`):
+- **CloudSEN12+ v1.1.2: CC0 1.0.** Expert cloud and shadow labels on Sentinel-2, with an L2A mode and the Sen2Cor (SCL) mask included per patch, plus WorldCover. It can measure SCL cloud against expert labels directly, including on bright bare ground, and set a threshold for option 1. Its L2A was processed by Google Earth Engine, so check the radiometric offset first.
+- **OmniCloudMask 1.8.1** (option 2, red, green and NIR input, L1C or L2A): code and weights MIT. The weights start from ImageNet-pretrained encoders, the same open question as our U-Net encoder, and its training-data terms are not read yet.
+- **s2cloudless:** CC BY-SA 4.0, and it needs B01 and B10, which L2A and our input schema lack. Not planned.
+
+Suggested order, founder's call: measure SCL, and any option-1 rule, on CloudSEN12+ L2A patches first (free, public domain). Then test OmniCloudMask on the same patches and on our 40 study sites.
+
 ## Overlaps and splits (2026-11-06)
 
 `minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.
