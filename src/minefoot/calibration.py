@@ -115,6 +115,32 @@ def _boot(site_h: list[tuple[np.ndarray, np.ndarray]], tables: dict, n_boot=1000
             for name, d in out.items()}
 
 
+def measure_on_sites(entries, tables: dict, cols=("mine_scale", "region"), n_boot=1000, seed=0) -> dict:
+    """Reliability of fixed maps on (row, pos histogram, neg histogram) per site, pooled and per stratum of `cols`."""
+    def block(rows):
+        P = sum(p for _, p, _ in rows); N = sum(q for _, _, q in rows)
+        res = {name: reliability(P, N, tab) for name, tab in tables.items()}
+        ci = _boot([(p, q) for _, p, q in rows], tables, n_boot=n_boot, seed=seed) if len(rows) > 1 else {}
+        for name in res:
+            res[name]["ci95"] = ci.get(name)
+        return {"sites": len(rows), **res}
+    strata = {"all": entries}
+    for col in cols:
+        for val in sorted({str(row.get(col)) for row, *_ in entries}):
+            strata[f"{col}={val}"] = [x for x in entries if str(x[0].get(col)) == val]
+    return {name: block(rs) for name, rs in strata.items()}
+
+
+def stored_tables(run_dir) -> dict | None:
+    """The raw identity and the maps a run's calibration study fitted on global validation, or None if not run."""
+    p = Path(run_dir) / "calibration.json"
+    if not p.exists():
+        return None
+    c = json.loads(p.read_text())
+    return {"fitted_on": f"{c['run']} {c['fitted_on']}", "applied_method": c["applied_method"],
+            "tables": {k: np.asarray(v, float) for k, v in c["tables"].items()}}
+
+
 def run_calibration(run_dir, prepared_root, labels_root, model="unet", n_boot=1000, seed=0, log=print) -> dict:
     """Fit on validation sites, measure on test sites; writes calibration.json in the run directory."""
     import rasterio
@@ -142,14 +168,6 @@ def run_calibration(run_dir, prepared_root, labels_root, model="unet", n_boot=10
     a, b = fit_platt(vp, vn)
     tables = {"raw": level_scores(), "platt": platt_table(a, b), "isotonic": fit_isotonic(vp, vn)}
 
-    def block(rows):
-        P = sum(p for *_, p, _ in rows); N = sum(q for *_, q in rows)
-        res = {name: reliability(P, N, tab) for name, tab in tables.items()}
-        ci = _boot([(p, q) for *_, p, q in rows], tables, n_boot=n_boot, seed=seed) if len(rows) > 1 else {}
-        for name in res:
-            res[name]["ci95"] = ci.get(name)
-        return {"sites": len(rows), **res}
-
     out = {"created_at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(), "model": model,
            "run": run_dir.name, "fitted_on": "validation sites", "measured_on": "test sites",
            "applied_method": METHOD, "platt": {"a": a, "b": b},
@@ -160,12 +178,7 @@ def run_calibration(run_dir, prepared_root, labels_root, model="unet", n_boot=10
                             **{name: float(tab[t]) for name, tab in tables.items() if name != "raw"}},
            "val": {}, "test": {}}
     for k in ("val", "test"):
-        rows = [v[1:] for v in per_site.values() if v[0] == k]
-        strata = {"all": rows}
-        for col in ("mine_scale", "region"):
-            for val in sorted({row[col] for row, *_ in rows}):
-                strata[f"{col}={val}"] = [x for x in rows if x[0][col] == val]
-        out[k] = {name: block(rs) for name, rs in strata.items()}
+        out[k] = measure_on_sites([v[1:] for v in per_site.values() if v[0] == k], tables, n_boot=n_boot, seed=seed)
         a = out[k]["all"]
         log(f"{k}: ECE raw {a['raw']['ece']:.3f}, platt {a['platt']['ece']:.3f}, isotonic {a['isotonic']['ece']:.3f}; "
             f"ECE >= {ACTIVE_FROM} raw {a['raw']['ece_active']:.3f}, platt {a['platt']['ece_active']:.3f}")

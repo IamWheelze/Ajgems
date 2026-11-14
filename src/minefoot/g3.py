@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .baseline import MMU_PIXELS, SCORE_LEVELS, _git_commit, object_metrics, summarise, to_levels
+from .baseline import MMU_PIXELS, SCORE_LEVELS, _git_commit, histograms, object_metrics, summarise, to_levels
 
 ACCESS_LOG_FIELDS = ["at", "run", "model_version", "code_commit", "lock_file", "lock_sha256", "sites", "purpose"]
 
@@ -86,7 +86,7 @@ def run_g3(run_dir, kit_dir, labels_path, lock_path, out_dir, negatives_path=Non
     model, norm, level, cfg, dev = load_run_model(run_dir, device)
     threshold = level / (SCORE_LEVELS - 1)
     out.mkdir(parents=True, exist_ok=True)
-    rows, neg_rows, regions_out = [], [], {}
+    rows, neg_rows, regions_out, site_hists = [], [], {}, []
     global_metrics = json.loads((run_dir / "metrics.json").read_text())["models"]["unet"]
 
     for region in sorted({region_of[s] for s in labels["scene_id"]}):
@@ -134,6 +134,8 @@ def run_g3(run_dir, kit_dir, labels_path, lock_path, out_dir, negatives_path=Non
                          "site_pixels": npx, "site_ha": npx * abs(tr.a * tr.e) / 1e4,
                          "site_found": found, "site_covered_25pct": covered,
                          "site_masked_fraction": float(np.nanmean(mask["masked_fraction"])) if len(mask) else None})
+            h = histograms(lv[win], usable, m & usable)          # for the calibration check: no fitting here
+            site_hists.append((rows[-1], h["pos"], h["neg"]))
             e = errmap[win]
             e[pr & m] = 1; e[pr & ~m] = 2; e[~pr & m & usable] = 3; e[~valid[win]] = 4
         outside = pred & ~evaluated
@@ -175,6 +177,13 @@ def run_g3(run_dir, kit_dir, labels_path, lock_path, out_dir, negatives_path=Non
         rs = [n for n in neg_rows if n["neg_type"] == t]
         neg_summary[t] = {"polygons": len(rs), "pixels": sum(n["pixels"] for n in rs),
                           "flagged_share": sum(n["flagged"] for n in rs) / max(sum(n["pixels"] for n in rs), 1)}
+    # FRD 8.5: measure, never fit, the global-validation calibration maps on these sites (ML-07).
+    from .calibration import measure_on_sites, stored_tables
+    st = stored_tables(run_dir)
+    calibration = ({"fitted_on": st["fitted_on"], "applied_method": st["applied_method"],
+                    "rule": "maps fitted on global validation; only measured here, never fitted on Nigerian sites",
+                    "measured": measure_on_sites(site_hists, st["tables"], cols=("region", "mine_scale"), seed=seed)}
+                   if st else None)
     g_test = global_metrics["test"]["strata"]["all"]
     result = {
         "gate": "G3", "purpose": "first Nigerian test, no Nigerian training", "run": str(run_dir),
@@ -183,6 +192,7 @@ def run_g3(run_dir, kit_dir, labels_path, lock_path, out_dir, negatives_path=Non
         "lock_sha256": lock["sha256"], "sites": len(rows), "window_m": window_m,
         "created_at": datetime.now(timezone.utc).isoformat(), "code_commit": _git_commit(),
         "strata": strata, "site_recall": site_recall, "regions": regions_out, "hard_negatives": neg_summary,
+        "calibration": calibration,
         "global_test": {"f1": g_test["f1"], "f1_ci95": g_test["ci95"]["f1"], "precision": g_test["precision"],
                         "recall": g_test["recall"]},
         "gap_f1_nigeria_minus_global": strata["all"]["f1"] - g_test["f1"],

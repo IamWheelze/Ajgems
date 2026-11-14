@@ -46,5 +46,5 @@ The raw scores are overconfident on both sets. Raw scores of 0.9 to 1.0 cover 73
 
 ## Next
 
-- Recheck on the locked Nigerian test set at G3, using the same command on the G3 run. Do not fit there: the Nigerian test set must not be used for threshold or calibration choices (ML-07). A Nigerian calibration needs a separate Nigerian calibration set, which belongs to G4/G5.
+- Recheck on the locked Nigerian test set at G3. `minefoot g3` now does this automatically when the run has a `calibration.json`: it applies the stored global-validation maps to each site window and reports the same table under `calibration` in `g3_metrics.json`. It never fits there: the Nigerian test set must not be used for threshold or calibration choices (ML-07). A Nigerian calibration needs a separate Nigerian calibration set, which belongs to G4/G5.
 - Repeat for `g2_nw_hn` once its retrain finishes.

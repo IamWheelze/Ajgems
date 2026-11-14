@@ -899,9 +899,16 @@ def test_g3_on_synthetic_kit_refuses_edits_and_logs_access(tmp_path):
                        "image_date": "2026-01-03", "annotator": "A", "evidence_grade": "E1", "notes": "",
                        "geometry": box(c.x + 0.002, c.y + 0.002, c.x + 0.004, c.y + 0.004)}], crs=4326).to_file(
         negs, layer="hard_negatives", driver="GPKG")
+    from minefoot.calibration import run_calibration
+    run_calibration(tmp_path / "run", tmp_path / "prep", tmp_path / "lab", n_boot=20, log=lambda *_: None)
+    fitted = (tmp_path / "run" / "calibration.json").read_bytes()
     r = run_g3(tmp_path / "run", kit, labels, kit / "lock.json", tmp_path / "g3", negatives_path=negs,
                window_m=200, access_log=tmp_path / "access.csv", device="cpu", log=lambda *_: None)
     assert r["sites"] == 2 and r["lock_sha256"] == lock["sha256"]
+    cal = r["calibration"]                                              # FRD 8.5: measured on Nigerian sites, never fitted
+    assert cal["fitted_on"].startswith("run validation") and "never fitted" in cal["rule"]
+    assert cal["measured"]["all"]["sites"] == 2 and {"raw", "platt", "isotonic"} <= set(cal["measured"]["all"])
+    assert (tmp_path / "run" / "calibration.json").read_bytes() == fitted
     assert 0 <= r["strata"]["all"]["f1"] <= 1 and "region=region_a" in r["strata"]
     assert "GLOBAL validation" in r["threshold_rule"] and r["site_recall"]["frd_o1_target"] == 0.70
     assert (tmp_path / "g3" / "region_a_errors.tif").exists() and (tmp_path / "g3" / "g3_per_site.csv").exists()
