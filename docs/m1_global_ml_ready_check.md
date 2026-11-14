@@ -197,3 +197,37 @@ The decision is the founder's. Neither the mask nor the masking report has been 
 ## Attribution
 
 Evidence images contain modified Copernicus Sentinel data 2016 to 2019. Label outlines are from the Global ML-ready dataset (Jasansky, Maus, Popa, Wilbik), CC BY-SA 4.0, derived from Maus et al. v2 and Tang and Werner.
+
+## OmniCloudMask on current Nigerian scenes (2026-11-14)
+
+Founder decision, 2026-11-14: adopt OmniCloudMask (option 2) after a check on current-baseline Nigerian scenes. This is that check. Protocol and pass marks were committed before measuring (`scripts/ocm_nigeria_check.py`). One amendment was made before any window was assessed: the first Kano scene covered only a sliver of its window, so a 90% coverage rule was added.
+
+**Windows.** Six 20 km windows, 134 km or more from both labelling regions. No mining model was run, and no mine label was used. All scenes are baseline 05.11 or 05.12, with offset −1000 DN read from the scenes.
+
+| Window | Kind | Scene date | SCL cloud | OCM thick / thin / shadow | SCL bare → OCM thick | SCL water → OCM thick | SCL thick cloud (9) caught |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Kano (city, farmland) | clear | 2026-01-06 | 0% | 0 / 0 / 0% | 0% | 0% | – |
+| Maiduguri (sand) | clear | 2025-12-01 | 0% | 0 / 0 / 0% | 0% | 0% | – |
+| Lake Kainji (water) | clear | 2025-12-30 | 0% | 0 / 0 / 0% | 0% | 0% | – |
+| Abuja | cloudy | 2026-06-02 | 14% | 14.6 / 1.3 / 8.8% | 5.3% | 0% | 98.6% |
+| Niger Delta | cloudy | 2026-01-06 | 21% | 23.1 / 0 / 18.2% | 6.8% | 8.3% | 99.99% |
+| Lagos | cloudy | 2026-01-06 | 37% | 34.7 / 0 / 11.2% | 6.3% | 2.2% | 99.99% |
+
+**Pass marks, all met.**
+- Clear windows: SCL bare called thick cloud, 0% (mark: at most 1%).
+- Clear windows: SCL water called thick cloud, 0% (mark: at most 2%).
+- Cloudy windows: SCL thick cloud caught, 99.8% (mark: at least 80%).
+- Cloudy windows: all SCL cloud (8, 9) caught, 87%.
+
+**Panels.** `docs/evidence/ocm_nigeria_*.png`, each showing true colour, SCL cloud (cyan), OCM cloud (magenta) and their disagreement (white means both).
+- On the cloudy windows, OCM-only pixels are cloud edges and small clouds that are visible in true colour.
+- Bare or water pixels called cloud there are the same edge cloud, which SCL labels as the ground beneath.
+- At Abuja, SCL also masks two large patches of town and bright ground with no visible cloud; OCM leaves them clear.
+- The Lagos lagoon and Lake Kainji are clear in both masks. The extra water false cloud seen on CloudSEN12+ did not appear here.
+
+**Limits.**
+- There are no cloud labels here. This is agreement plus a visual check, on six windows from one season's scenes.
+- The clear windows have no SCL cloud at all, so they test only whether OCM invents cloud on bright Nigerian ground. It did not.
+- The licence questions are still open: the ImageNet-pretrained encoders and the terms of the training data.
+
+**Implementation choices still to settle.** Which OCM classes to drop (thick, thin, shadow), and what to keep from SCL (no data, saturated). Changing the mask changes the training inputs, so models must be re-scored, and retrained before release.

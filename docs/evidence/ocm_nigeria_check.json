@@ -1,0 +1,796 @@
+{
+ "protocol": "- Six 20 km windows in Nigeria, each at least 50 km from both labelling regions in configs/nigeria_aois.yaml (the\n  split's block size), so the locked-test regions are not looked at. No mining model is run and no mine label is used.\n- Window types: three dry-season clear windows (Kano: dry farmland and bare ground; Maiduguri: sand; Lake Kainji:\n  open water) and three cloudy windows (Abuja, Niger Delta, Lagos) for real cloud on current scenes.\n- Scenes: Planetary Computer, current processing baselines (offset -1000 DN, read from the scene, converted with the\n  preprocessing path's own `to_reflectance`). Clear windows: the clearest scene in the season. Cloudy windows: scenes\n  ordered by distance of tile cloud cover from 30%; the first whose window has at least 5% SCL cloud (8, 9) is used.\n  Scene IDs are pinned in the output.\n- Amendment, 2026-11-14, before any window was assessed: the first run picked a Kano scene covering only a sliver of\n  the window (swath edge). Every window now also needs at least 90% of its pixels covered (SCL > 0); scenes are tried\n  in the order above, up to 8, and the first meeting all rules is used.\n- OmniCloudMask 1.8.1, model 4.0, inputs B04, B03, B8A, patch 1000, overlap 300, as in the other studies.\n- There are no cloud labels here, so the measures are agreement and a visual check, not accuracy:\n  share of SCL bare (5) and SCL water (6) pixels OmniCloudMask calls cloud (thick, and thick or thin); share of SCL\n  thick cloud (9) and of all SCL cloud (8, 9) it calls cloud; the full SCL x OmniCloudMask table; panels per window.\n- Pass marks, provisional because unlabelled: on the clear windows OmniCloudMask thick calls at most 1% of SCL-bare\n  pixels cloud, and at most 2% of SCL-water pixels; on the cloudy windows it calls cloud at least 80% of SCL thick\n  cloud (9). Disagreements are inspected in the panels before anything is concluded.",
+ "summary": {
+  "clear_bare_called_cloud_thick": 0.0,
+  "clear_water_called_cloud_thick": 0.0,
+  "cloudy_scl_high_cloud_caught_any": 0.9979962253543749,
+  "cloudy_scl_cloud_caught_any": 0.8708195221027647
+ },
+ "pass_marks": {
+  "clear bare <= 1%": true,
+  "clear water <= 2%": true,
+  "cloudy SCL 9 caught >= 80%": true
+ },
+ "windows": [
+  {
+   "name": "kano_dry",
+   "kind": "clear",
+   "lon": 8.52,
+   "lat": 12.0,
+   "start": "2025-12-01",
+   "end": "2026-02-28",
+   "km_from_labelling_regions": {
+    "jos_plateau": 228.5,
+    "kogi_kwara": 452.2
+   },
+   "scene_id": "S2B_MSIL2A_20260106T095309_R079_T32PMU_20260106T133830",
+   "datetime": "2026-01-06T09:53:09.024000Z",
+   "processing_baseline": "05.11",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2C_MSIL2A_20251229T094421_R036_T32PMU_20251229T134611",
+     "window_scl_cloud": 0.0,
+     "window_covered": 0.1147
+    },
+    {
+     "scene_id": "S2A_MSIL2A_20251231T094431_R036_T32PMU_20251231T133311",
+     "window_scl_cloud": 0.0,
+     "window_covered": 0.0855
+    },
+    {
+     "scene_id": "S2B_MSIL2A_20260106T095309_R079_T32PMU_20260106T133830",
+     "window_scl_cloud": 0.0,
+     "window_covered": 1.0
+    }
+   ],
+   "valid_px": 3918180,
+   "min_reflectance_inputs": -0.013799999840557575,
+   "scl_share": {
+    "dark": 0.00019703025384234518,
+    "vegetation": 0.011794761853717797,
+    "bare": 0.9871465833626837,
+    "water": 0.0003746637469437341,
+    "unclassified": 0.0004716475506485154,
+    "cloud medium": 2.0417642885217114e-06,
+    "cirrus": 1.3271467875391125e-05
+   },
+   "ocm_share": {
+    "clear": 1.0,
+    "thick": 0.0,
+    "thin": 0.0,
+    "shadow": 0.0
+   },
+   "bare_called_cloud_thick": 0.0,
+   "bare_called_cloud_any": 0.0,
+   "water_called_cloud_thick": 0.0,
+   "water_called_cloud_any": 0.0,
+   "veg_called_cloud_thick": 0.0,
+   "scl_high_cloud_caught_any": null,
+   "scl_cloud_caught_any": 0.0,
+   "scl_cloud_caught_thick": 0.0,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     772,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     46214,
+     0,
+     0,
+     0
+    ],
+    [
+     3867818,
+     0,
+     0,
+     0
+    ],
+    [
+     1468,
+     0,
+     0,
+     0
+    ],
+    [
+     1848,
+     0,
+     0,
+     0
+    ],
+    [
+     8,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     52,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "maiduguri_sand",
+   "kind": "clear",
+   "lon": 13.15,
+   "lat": 11.85,
+   "start": "2025-12-01",
+   "end": "2026-02-28",
+   "km_from_labelling_regions": {
+    "jos_plateau": 483.6,
+    "kogi_kwara": 832.9
+   },
+   "scene_id": "S2B_MSIL2A_20251201T093249_R136_T33PTP_20251201T121818",
+   "datetime": "2025-12-01T09:32:49.024000Z",
+   "processing_baseline": "05.11",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2B_MSIL2A_20251201T093249_R136_T33PTP_20251201T121818",
+     "window_scl_cloud": 0.0,
+     "window_covered": 1.0
+    }
+   ],
+   "valid_px": 3959875,
+   "min_reflectance_inputs": -0.029999999329447746,
+   "scl_share": {
+    "dark": 0.0001080842198301714,
+    "vegetation": 0.03537788440291676,
+    "bare": 0.9630301461536034,
+    "water": 0.00029293853972663276,
+    "unclassified": 0.0011909466839231037
+   },
+   "ocm_share": {
+    "clear": 1.0,
+    "thick": 0.0,
+    "thin": 0.0,
+    "shadow": 0.0
+   },
+   "bare_called_cloud_thick": 0.0,
+   "bare_called_cloud_any": 0.0,
+   "water_called_cloud_thick": 0.0,
+   "water_called_cloud_any": 0.0,
+   "veg_called_cloud_thick": 0.0,
+   "scl_high_cloud_caught_any": null,
+   "scl_cloud_caught_any": null,
+   "scl_cloud_caught_thick": null,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     428,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     140092,
+     0,
+     0,
+     0
+    ],
+    [
+     3813479,
+     0,
+     0,
+     0
+    ],
+    [
+     1160,
+     0,
+     0,
+     0
+    ],
+    [
+     4716,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "kainji_water",
+   "kind": "clear",
+   "lon": 4.55,
+   "lat": 10.35,
+   "start": "2025-12-01",
+   "end": "2026-02-28",
+   "km_from_labelling_regions": {
+    "jos_plateau": 447.8,
+    "kogi_kwara": 236.1
+   },
+   "scene_id": "S2B_MSIL2A_20251230T100329_R122_T31PFM_20251230T135233",
+   "datetime": "2025-12-30T10:03:29.024000Z",
+   "processing_baseline": "05.11",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2B_MSIL2A_20251230T100329_R122_T31PFM_20251230T135233",
+     "window_scl_cloud": 0.0,
+     "window_covered": 1.0
+    }
+   ],
+   "valid_px": 3965982,
+   "min_reflectance_inputs": -0.04320000112056732,
+   "scl_share": {
+    "vegetation": 0.0009546185534881399,
+    "bare": 0.07080415392707279,
+    "water": 0.9275755664044869,
+    "unclassified": 0.0006656611149521102
+   },
+   "ocm_share": {
+    "clear": 1.0,
+    "thick": 0.0,
+    "thin": 0.0,
+    "shadow": 0.0
+   },
+   "bare_called_cloud_thick": 0.0,
+   "bare_called_cloud_any": 0.0,
+   "water_called_cloud_thick": 0.0,
+   "water_called_cloud_any": 0.0,
+   "veg_called_cloud_thick": 0.0,
+   "scl_high_cloud_caught_any": null,
+   "scl_cloud_caught_any": null,
+   "scl_cloud_caught_thick": null,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     3786,
+     0,
+     0,
+     0
+    ],
+    [
+     280808,
+     0,
+     0,
+     0
+    ],
+    [
+     3678748,
+     0,
+     0,
+     0
+    ],
+    [
+     2640,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "abuja_cloudy",
+   "kind": "cloudy",
+   "lon": 7.45,
+   "lat": 9.05,
+   "start": "2026-04-01",
+   "end": "2026-10-31",
+   "km_from_labelling_regions": {
+    "jos_plateau": 134.4,
+    "kogi_kwara": 140.3
+   },
+   "scene_id": "S2A_MSIL2A_20260602T095041_R079_T32PLR_20260602T163112",
+   "datetime": "2026-06-02T09:50:41.024000Z",
+   "processing_baseline": "05.12",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2C_MSIL2A_20260401T095031_R079_T32PLQ_20260401T150112",
+     "window_scl_cloud": 0.0371,
+     "window_covered": 0.4638
+    },
+    {
+     "scene_id": "S2C_MSIL2A_20260501T095031_R079_T32PLQ_20260501T150316",
+     "window_scl_cloud": 0.0151,
+     "window_covered": 0.4638
+    },
+    {
+     "scene_id": "S2C_MSIL2A_20260401T095031_R079_T32PLR_20260401T150112",
+     "window_scl_cloud": 0.0408,
+     "window_covered": 1.0
+    },
+    {
+     "scene_id": "S2A_MSIL2A_20260602T095041_R079_T32PLR_20260602T163112",
+     "window_scl_cloud": 0.1397,
+     "window_covered": 1.0
+    }
+   ],
+   "valid_px": 3979989,
+   "min_reflectance_inputs": -0.08250000327825546,
+   "scl_share": {
+    "dark": 0.0003592974754452839,
+    "shadow": 0.09209623443682885,
+    "vegetation": 0.23125089039190813,
+    "bare": 0.47486739284957824,
+    "water": 4.924636726382912e-05,
+    "unclassified": 0.005080918565352819,
+    "cloud medium": 0.08795149936344045,
+    "cloud high": 0.051746374173395955,
+    "cirrus": 0.056598146376786465
+   },
+   "ocm_share": {
+    "clear": 0.7529390156605961,
+    "thick": 0.14609211231488328,
+    "thin": 0.01337265002491213,
+    "shadow": 0.08759622199960854
+   },
+   "bare_called_cloud_thick": 0.0527093859310771,
+   "bare_called_cloud_any": 0.0527093859310771,
+   "water_called_cloud_thick": 0.0,
+   "water_called_cloud_any": 0.0,
+   "veg_called_cloud_thick": 0.021866063434943978,
+   "scl_high_cloud_caught_any": 0.9861422675406653,
+   "scl_cloud_caught_any": 0.8319754098950353,
+   "scl_cloud_caught_thick": 0.7740379427190124,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     539,
+     1,
+     0,
+     890
+    ],
+    [
+     68250,
+     16694,
+     0,
+     281598
+    ],
+    [
+     889964,
+     20125,
+     0,
+     10287
+    ],
+    [
+     1773686,
+     99619,
+     0,
+     16662
+    ],
+    [
+     137,
+     0,
+     0,
+     59
+    ],
+    [
+     10538,
+     7845,
+     0,
+     1839
+    ],
+    [
+     61488,
+     227552,
+     31927,
+     29079
+    ],
+    [
+     2841,
+     202810,
+     286,
+     13
+    ],
+    [
+     189246,
+     6799,
+     21010,
+     8205
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "delta_cloudy",
+   "kind": "cloudy",
+   "lon": 6.95,
+   "lat": 4.85,
+   "start": "2025-11-01",
+   "end": "2026-10-31",
+   "km_from_labelling_regions": {
+    "jos_plateau": 534.4,
+    "kogi_kwara": 358.9
+   },
+   "scene_id": "S2B_MSIL2A_20260106T095309_R079_T32NKL_20260106T133830",
+   "datetime": "2026-01-06T09:53:09.024000Z",
+   "processing_baseline": "05.11",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2B_MSIL2A_20260106T095309_R079_T32NKL_20260106T133830",
+     "window_scl_cloud": 0.2067,
+     "window_covered": 0.9995
+    }
+   ],
+   "valid_px": 4001994,
+   "min_reflectance_inputs": -0.019200000911951065,
+   "scl_share": {
+    "dark": 0.0008520752404926144,
+    "shadow": 0.1707708707209456,
+    "vegetation": 0.27823729870659475,
+    "bare": 0.2359044016557746,
+    "water": 0.044903615547649496,
+    "unclassified": 0.0625008433296002,
+    "cloud medium": 0.10697517287632115,
+    "cloud high": 0.09983972989464752,
+    "cirrus": 1.5992027974054932e-05
+   },
+   "ocm_share": {
+    "clear": 0.5870506052732712,
+    "thick": 0.23074572325695641,
+    "thin": 0.0,
+    "shadow": 0.18220367146977232
+   },
+   "bare_called_cloud_thick": 0.06803497131623323,
+   "bare_called_cloud_any": 0.06803497131623323,
+   "water_called_cloud_thick": 0.08308106664292392,
+   "water_called_cloud_any": 0.08308106664292392,
+   "veg_called_cloud_thick": 0.028078929218036036,
+   "scl_high_cloud_caught_any": 0.9999224142677658,
+   "scl_cloud_caught_any": 0.8936535245846181,
+   "scl_cloud_caught_thick": 0.8936535245846181,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     3122,
+     89,
+     0,
+     199
+    ],
+    [
+     131762,
+     17122,
+     0,
+     534540
+    ],
+    [
+     1060403,
+     31266,
+     0,
+     21835
+    ],
+    [
+     836300,
+     64231,
+     0,
+     43557
+    ],
+    [
+     144135,
+     14930,
+     0,
+     20639
+    ],
+    [
+     120186,
+     56153,
+     0,
+     73789
+    ],
+    [
+     53371,
+     340125,
+     0,
+     34618
+    ],
+    [
+     30,
+     399527,
+     0,
+     1
+    ],
+    [
+     64,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "lagos_cloudy",
+   "kind": "cloudy",
+   "lon": 3.45,
+   "lat": 6.5,
+   "start": "2025-11-01",
+   "end": "2026-10-31",
+   "km_from_labelling_regions": {
+    "jos_plateau": 656.0,
+    "kogi_kwara": 304.4
+   },
+   "scene_id": "S2A_MSIL2A_20260106T101601_R122_T31NEH_20260106T134208",
+   "datetime": "2026-01-06T10:16:01.024000Z",
+   "processing_baseline": "05.11",
+   "offset_dn": {
+    "B04": -1000,
+    "B03": -1000,
+    "B8A": -1000
+   },
+   "tried": [
+    {
+     "scene_id": "S2A_MSIL2A_20260106T101601_R122_T31NEH_20260106T134208",
+     "window_scl_cloud": 0.3693,
+     "window_covered": 1.0
+    }
+   ],
+   "valid_px": 3970056,
+   "min_reflectance_inputs": 0.034699998795986176,
+   "scl_share": {
+    "shadow": 0.06993201103460506,
+    "vegetation": 0.008029105886667593,
+    "bare": 0.16958501341039017,
+    "water": 0.3667787053885386,
+    "unclassified": 0.0163942271847047,
+    "cloud medium": 0.14543724320261478,
+    "cloud high": 0.2238436938924791
+   },
+   "ocm_share": {
+    "clear": 0.5403830575689612,
+    "thick": 0.34747746631281773,
+    "thin": 0.0,
+    "shadow": 0.112139476118221
+   },
+   "bare_called_cloud_thick": 0.06291161538895705,
+   "bare_called_cloud_any": 0.06291161538895705,
+   "water_called_cloud_thick": 0.022344128142228865,
+   "water_called_cloud_any": 0.022344128142228865,
+   "veg_called_cloud_thick": 0.0005646881666457522,
+   "scl_high_cloud_caught_any": 0.9998773450721976,
+   "scl_cloud_caught_any": 0.872659893892908,
+   "scl_cloud_caught_thick": 0.872659893892908,
+   "table_scl_by_ocm": [
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     36429,
+     13152,
+     0,
+     228053
+    ],
+    [
+     31808,
+     18,
+     0,
+     50
+    ],
+    [
+     605458,
+     42356,
+     0,
+     25448
+    ],
+    [
+     1328765,
+     32536,
+     0,
+     94831
+    ],
+    [
+     41420,
+     12066,
+     0,
+     11600
+    ],
+    [
+     101378,
+     390814,
+     0,
+     85202
+    ],
+    [
+     93,
+     888563,
+     0,
+     16
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ],
+    [
+     0,
+     0,
+     0,
+     0
+    ]
+   ]
+  }
+ ]
+}
