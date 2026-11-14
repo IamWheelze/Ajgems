@@ -171,7 +171,7 @@ On test strata (no paired intervals per stratum), `g2_nw_hn` against `g2_hn`:
 - We keep the filters of our 10 L2A bands and fold the training-site normalisation into the first layer.
 - ResNet-18 rather than ResNet-34, because no ResNet-34 Sentinel-2 weights are published. The encoder size therefore differs from the other runs, and the comparison cannot separate pretraining from encoder size.
 
-**Runs.** Both are made from commit `ab52650` by `data/runs/run_g2_s2.sh`, with the same sites, split, preprocessing and evaluation as before.
+**Runs.** Both are made from commit `ab3e065` (the code of `ab52650` plus this plan) by `data/runs/run_g2_s2.sh`, with the same sites, split, preprocessing and evaluation as before.
 
 | Run | Same as | Except |
 | --- | --- | --- |
