@@ -14,6 +14,9 @@ from django.conf import settings
 
 SCOPES = ["internal_research", "evaluation", "commercial"]
 MIN_REASON = 20
+# Provisional (no FRD figure yet): scores count as calibrated on the measured data only if, on test sites, the applied
+# map's ECE over pixels predicted >= 0.1 is at most this, in the pooled set and in every stratum with 10 or more sites.
+CALIBRATED_MAX_ECE = 0.05
 
 
 def _register():
@@ -58,23 +61,55 @@ def issues(mv):
                     "detail": "Performance in Nigeria is unknown; global test F1 does not transfer automatically. "
                               "Lock the Nigerian labels and run G3.",
                     "blocks": ["commercial"], "needs_reason": ["internal_research", "evaluation"]})
-    try:
-        c = json.loads((Path(mv.run_path) / "curves.json").read_text())["models"]["unet"]["test"]["reliability"]
-        top = next(b for b in reversed(c) if b["pixels"])
-        if top["labelled_fraction"] is not None and top["mean_score"] - top["labelled_fraction"] > 0.15:
-            out.append({"id": "calibration", "title": "Scores are not calibrated",
-                        "detail": f"On test sites, pixels scored {top['score_from']:.1f}-{top['score_to']:.1f} are only "
-                                  f"{top['labelled_fraction']:.0%} labelled mining. Outputs must say \"model score\", never probability.",
-                        "blocks": [], "needs_reason": SCOPES})
-    except (OSError, KeyError, ValueError, StopIteration):
-        out.append({"id": "calibration", "title": "Calibration not measured", "detail": "Run `minefoot curves` on this run.",
-                    "blocks": [], "needs_reason": SCOPES})
+    cal_issue = _calibration_issue(Path(mv.run_path))
+    if cal_issue:
+        out.append(cal_issue)
     if not any((r.result or {}).get("metrics") for r in mv.reports.all()):
         out.append({"id": "comparison", "title": "No paired comparison with a production model",
                     "detail": "There is no production model yet, so the registry comparison has no baseline. "
                               "Check the paired comparisons with earlier runs shown above.",
                     "blocks": [], "needs_reason": SCOPES})
     return out
+
+
+def _calibration_issue(run: Path):
+    """From calibration.json (`minefoot calibrate`) when present, else from the reliability table in curves.json."""
+    try:
+        c = json.loads((run / "calibration.json").read_text())
+        method = c["applied_method"]; test = c["test"]
+        a = test["all"]
+        bad = {k: v[method]["ece_active"] for k, v in test.items()
+               if (k == "all" or v["sites"] >= 10) and v[method]["ece_active"] is not None and v[method]["ece_active"] > CALIBRATED_MAX_ECE}
+        if not bad:
+            return {"id": "calibration", "title": "Calibration measured on global test sites only",
+                    "detail": f"After {method} scaling fitted on validation, ECE on test pixels predicted >= 0.1 is "
+                              f"{a[method]['ece_active']:.3f}. This holds only for the data measured; recheck per region and season. "
+                              "Nothing applies the map, so outputs still say \"model score\".",
+                    "blocks": [], "needs_reason": SCOPES}
+        worst = max(bad, key=bad.get)
+        ci = a[method].get("ci95") or {}
+        return {"id": "calibration", "title": "Scores are not calibrated",
+                "detail": f"On test sites, ECE over pixels predicted >= 0.1 is {a['raw']['ece_active']:.3f} raw and "
+                          f"{a[method]['ece_active']:.3f} after {method} scaling fitted on validation"
+                          + (f" (95% interval {ci['ece_active'][0]:.3f}-{ci['ece_active'][1]:.3f})" if ci.get("ece_active") else "")
+                          + f"; worst stratum {worst} at {bad[worst]:.3f} (provisional limit {CALIBRATED_MAX_ECE}). "
+                          "Outputs must say \"model score\", never probability.",
+                "blocks": [], "needs_reason": SCOPES}
+    except (OSError, KeyError, ValueError, TypeError):
+        pass
+    try:
+        c = json.loads((run / "curves.json").read_text())["models"]["unet"]["test"]["reliability"]
+        top = next(b for b in reversed(c) if b["pixels"])
+        if top["labelled_fraction"] is not None and top["mean_score"] - top["labelled_fraction"] > 0.15:
+            return {"id": "calibration", "title": "Scores are not calibrated",
+                    "detail": f"On test sites, pixels scored {top['score_from']:.1f}-{top['score_to']:.1f} are only "
+                              f"{top['labelled_fraction']:.0%} labelled mining. Outputs must say \"model score\", never probability. "
+                              "Run `minefoot calibrate` for a full calibration study.",
+                    "blocks": [], "needs_reason": SCOPES}
+        return None
+    except (OSError, KeyError, ValueError, StopIteration):
+        return {"id": "calibration", "title": "Calibration not measured", "detail": "Run `minefoot calibrate` on this run.",
+                "blocks": [], "needs_reason": SCOPES}
 
 
 def evidence(mv):

@@ -124,6 +124,32 @@ class RegistryTest(TestCase):
         self.assertEqual(d["curves"]["test"]["pr"][0]["precision"], 0.1)
         self.assertEqual(d["missing"], [])
 
+    def test_calibration_study_in_review_and_dashboard(self):
+        """FRD 8.5: the release review states the measured calibration from calibration.json, per stratum; the
+        dashboard shows the study without the large tables; without a study the review says how to run one."""
+        from pathlib import Path
+        from registry.release import _calibration_issue
+        run = fake_run(self.tmp / "runs", "cal")
+        self.assertEqual(_calibration_issue(Path(run))["title"], "Calibration not measured")
+
+        def blk(ece, sites):
+            m = {"ece": ece / 5, "ece_active": ece, "brier": 0.04, "pixels": 10, "ci95": {"ece_active": [ece / 2, ece * 2]}}
+            return {"sites": sites, "raw": {**m, "ece_active": 0.29}, "platt": m, "isotonic": m}
+        def write(strata):
+            (run / "calibration.json").write_text(json.dumps({
+                "created_at": "t", "applied_method": "platt", "platt": {"a": 0.66, "b": -0.82}, "note": "n",
+                "at_threshold": {"level": 104}, "tables": {"raw": [0.0] * 256}, "val": {"all": blk(0.03, 60)}, "test": strata}))
+        write({"all": blk(0.149, 60), "mine_scale=Artisanal": blk(0.209, 20)})
+        i = _calibration_issue(Path(run))
+        self.assertEqual(i["title"], "Scores are not calibrated")
+        self.assertIn("0.290 raw and 0.149 after platt", i["detail"]); self.assertIn("mine_scale=Artisanal at 0.209", i["detail"])
+        write({"all": blk(0.03, 60), "region=x": blk(0.2, 4)})         # a stratum of 4 sites is too small to judge
+        self.assertEqual(_calibration_issue(Path(run))["title"], "Calibration measured on global test sites only")
+        pk = self.reg(self.ml1, "cal").json()["id"]
+        d = self.c(self.ml1).get(f"/api/models/{pk}/dashboard/").json()["calibration"]
+        self.assertEqual(d["test"]["all"]["platt"]["ece_active"], 0.03)
+        self.assertNotIn("tables", d); self.assertNotIn("bins", d["test"]["all"]["platt"])
+
     def test_error_maps_ranked_and_rendered(self):
         """FR-129: test sites ranked by worst F1; the image shows the stored error classes, each one switchable."""
         import numpy as np

@@ -83,7 +83,13 @@ export type RunDashboard = { id: number; name: string; state: string; run: strin
   curves: { created_at: string } & Record<"val" | "test", {
     at_threshold: { precision: number | null; recall: number | null; f1: number | null };
     pr: { level: number; score: number; precision: number | null; recall: number }[];
-    reliability: { score_from: number; score_to: number; pixels: number; mean_score: number | null; labelled_fraction: number | null }[] }> | null };
+    reliability: { score_from: number; score_to: number; pixels: number; mean_score: number | null; labelled_fraction: number | null }[] }> | null;
+  calibration: CalibrationStudy | null };
+export type CalibrationFit = { ece: number | null; ece_active: number | null; brier: number | null; pixels: number;
+  ci95: { ece: [number, number]; ece_active: [number, number]; brier: [number, number] } | null };
+export type CalibrationStudy = { created_at: string; applied_method: "platt"; platt: { a: number; b: number }; note: string | null;
+  at_threshold: { level: number; raw_score: number; platt: number; isotonic: number } }
+  & Record<"val" | "test", Record<string, { sites: number } & Record<"raw" | "platt" | "isotonic", CalibrationFit>>>;
 export type DatasetInfo = { id: number; name: string; version: string; state: string; licence: string; licence_status: string;
   source: string; split_name: string; split_sha256: string; test_lock_sha256: string; samples: number;
   split_check: Record<string, number | boolean>; overlaps: { pairs: number; cross_split: number; by_kind: Record<string, number> };

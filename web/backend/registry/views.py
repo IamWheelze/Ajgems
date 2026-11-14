@@ -103,6 +103,17 @@ def run_dashboard(run_dir: Path) -> dict:
         out["curves"] = {"created_at": c["created_at"], **{k: c["models"]["unet"][k] for k in ("val", "test")}}
     except (OSError, KeyError, ValueError):
         out["missing"].append("curves.json (run `minefoot curves`)")
+    out["calibration"] = None
+    try:
+        c = json.loads((run_dir / "calibration.json").read_text())
+        keep = ("ece", "ece_active", "brier", "ci95", "pixels")
+        out["calibration"] = {
+            "created_at": c["created_at"], "applied_method": c["applied_method"], "platt": c["platt"],
+            "at_threshold": c["at_threshold"], "note": c.get("note"),
+            **{k: {s: {"sites": v["sites"], **{m: {f: v[m].get(f) for f in keep} for m in ("raw", "platt", "isotonic")}}
+                   for s, v in c[k].items()} for k in ("val", "test")}}
+    except (OSError, KeyError, ValueError):
+        pass   # optional: the dashboard says how to produce it
     return services.json_safe(out)
 
 

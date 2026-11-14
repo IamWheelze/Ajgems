@@ -98,7 +98,7 @@ Model registry done (`web/backend/registry`, FR-101 to FR-104): lineage required
 - *Production deployment* (`web/DEPLOY.md`, `web/docker-compose.prod.yml`). The full image build is not verified here: the proxy blocks downloads inside `docker build`.
 - *Acceptance tests* (`tests/test_acceptance.py`) for FR-031, FR-034, FR-078, FR-081 and FR-100, plus a check that every MVP requirement in the FRD is referenced in code or tests.
 - *Area fix:* `vectorise` now computes areas on local UTM when the score map is in degrees (FR-034).
-- *Calibration* (FRD 8.5): `minefoot calibrate` (`calibration.py`) fits Platt (fixed in advance) and isotonic maps on validation and measures on test. `g2_hn` is **not calibrated**: on test, ECE on pixels predicted ≥ 0.1 is 0.290 raw and 0.149 after Platt (0.059–0.245), and Platt makes artisanal sites worse. Nothing applies the maps; keep "model score". See `docs/calibration_results.md`.
+- *Calibration* (FRD 8.5): `minefoot calibrate` (`calibration.py`) fits Platt (fixed in advance) and isotonic maps on validation and measures on test. `g2_hn` is **not calibrated**: on test, ECE on pixels predicted ≥ 0.1 is 0.290 raw and 0.149 after Platt (0.059–0.245), and Platt makes artisanal sites worse. Nothing applies the maps; keep "model score". See `docs/calibration_results.md`. The release review and run dashboard read `calibration.json` (provisional limit: ECE ≥ 0.1 at most 0.05 on test, pooled and in strata of 10+ sites).
 - *Retrain without pretrained weights:* `g2_nw`, then `g2_nw_hn` (`data/runs/run_g2_nw.sh`, then `eval_g2_nw.sh`), is running.
 
 Do not start the web app until gate G2 has passed. Ask the founder before anything that costs money, and before using university compute or data for company work.

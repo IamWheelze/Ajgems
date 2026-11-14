@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, ModelVersion, RunDashboard as Dash } from "./api";
+import { api, CalibrationFit, ModelVersion, RunDashboard as Dash } from "./api";
 
 // FR-130 run dashboard: training curves, per-stratum metrics with 95% intervals, precision-recall,
 // reliability, and model comparison. Every value is read from the run's stored records (history.csv,
@@ -226,6 +226,26 @@ export default function RunDashboard() {
               {curveRuns.map(({ d }) => { const r = d.curves![split].reliability[k];
                 return <td key={d.id}>{r.pixels.toLocaleString()} · {fmt(r.labelled_fraction)}</td>; })}</tr>)}</tbody></table>
         </details>}
+      </section>
+
+      <section className="card">
+        <h2>Calibration study</h2>
+        <p className="small muted">From <code>minefoot calibrate</code>: a map fitted on validation sites (Platt, fixed in advance; isotonic as a check),
+          measured on test sites. ECE ≥ 0.1 counts only pixels predicted at 0.1 or above, so easy background cannot hide errors.
+          Nothing applies these maps: outputs keep the model score.</p>
+        {runs.filter(({ d }) => d.calibration).length === 0 ? <p className="small muted">No calibration study stored. Run <code>minefoot calibrate &lt;run&gt; --prepared-root … --labels-root …</code>.</p> :
+          runs.filter(({ d }) => d.calibration).map(({ d }) => {
+            const c = d.calibration!; const rows = c[split];
+            const cell = (f: CalibrationFit) => <>{fmt(f.ece_active, 3)}{f.ci95 && <span className="muted"> ({fmt(f.ci95.ece_active[0], 3)}–{fmt(f.ci95.ece_active[1], 3)})</span>}</>;
+            return <div key={d.id}>
+              <h3 className="small">{d.name}: {split === "val" ? "validation (where the map was fitted)" : "test (held out)"}</h3>
+              <p className="small muted">Platt: p = sigmoid({fmt(c.platt.a, 3)} · logit(score) {c.platt.b < 0 ? "−" : "+"} {fmt(Math.abs(c.platt.b), 3)}).
+                At the run threshold (score {fmt(c.at_threshold.raw_score, 2)}) the Platt value is {fmt(c.at_threshold.platt, 2)}. {c.note}</p>
+              <table className="table"><thead><tr><th>Stratum</th><th>Sites</th><th>ECE ≥ 0.1, raw</th><th>Platt</th><th>Isotonic</th><th>Brier raw → Platt</th></tr></thead>
+                <tbody>{Object.entries(rows).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v.sites}</td><td>{cell(v.raw)}</td><td>{cell(v.platt)}</td>
+                  <td>{cell(v.isotonic)}</td><td>{fmt(v.raw.brier, 3)} → {fmt(v.platt.brier, 3)}</td></tr>)}</tbody></table>
+            </div>;
+          })}
       </section>
     </div>
   );
