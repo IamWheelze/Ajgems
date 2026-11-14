@@ -162,6 +162,30 @@ What this means:
   - The weights are MIT-licensed but start from ImageNet-pretrained encoders, the same commercial-use question as our U-Net encoder.
   - It costs about 4 s per 512 px patch on two CPU threads.
 
+**On our 40 mining sites** (`scripts/ocm_mining_sites.py`, [evidence/ocm_mining_sites_40.json](evidence/ocm_mining_sites_40.json)). These are the same sites as the option-1 check, re-fetched one at a time with raw files deleted after use. There are no cloud labels, and the scenes are nearly cloud-free.
+
+| | SCL classes 8, 9 | OCM thick | OCM thick or thin |
+| --- | --- | --- | --- |
+| Labelled mine pixels called cloud | 4.47% | **0.28%** | 0.51% |
+| Pixels more than 1 km from labels called cloud | 0.53% | 1.61% | 2.71% |
+| Sites with more than 5% of mine pixels called cloud | 10 of 40 | **0 of 40** | 1 of 40 |
+
+OCM calls clear 99.3% of the mine pixels SCL calls cloud. In the 24 scenes below 1% scene cloud, OCM thick calls 0.10% of mine pixels cloud against SCL's 4.69%.
+
+Away from mines OCM marks more cloud than SCL. Most of it is in the cloudier scenes (6–9% scene cloud), which fits CloudSEN12+, where SCL missed about a third of thick cloud. The one near-clear scene with much far cloud is gmlr-1090 (scene cloud 0.13%, OCM 4.5% of far pixels). Its picture shows the marked areas are visible thin cloud along ridges and a hazy patch, which SCL missed.
+
+Pictures (true colour; labels yellow; SCL cloud cyan in the middle; OCM thick magenta on the right):
+- [evidence/ocm_vs_scl_gmlr-1076.png](evidence/ocm_vs_scl_gmlr-1076.png): SCL marks the bright mine ground, OCM marks none.
+- [evidence/ocm_vs_scl_gmlr-1090.png](evidence/ocm_vs_scl_gmlr-1090.png): OCM marks real cloud and haze that SCL misses.
+
+**Summary for the founder decision.** On expert labels and on our mines, OmniCloudMask at the thick-cloud setting does what option 1 could not. It almost never calls bright mine ground cloud, and it catches more real cloud. Open before adopting it:
+- the commercial question on its ImageNet-pretrained encoders and its training data (KappaSet, unreleased sets);
+- its higher false cloud on clear water;
+- a check on current-baseline Nigerian scenes (after the test lock);
+- the compute cost.
+
+The decision is the founder's. Neither the mask nor the masking report has been changed.
+
 ## Overlaps and splits (2026-11-06)
 
 `minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.
