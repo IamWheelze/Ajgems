@@ -1127,3 +1127,26 @@ def test_review_progress(tmp_path):
     r = review_progress(tmp_path / "l.gpkg")
     assert (r["reviewed_sites"], r["total_sites"], r["ready_to_lock"]) == (1, 2, False)
     assert any("draft" in b for b in r["blockers"])
+
+
+def test_calibration_maps_fix_overconfident_scores_and_keep_order():
+    """FRD 8.5: Platt and isotonic maps fitted on one set reduce ECE on another drawn the same way, and stay monotone."""
+    from minefoot.calibration import fit_isotonic, fit_platt, level_scores, platt_table, reliability
+    rng = np.random.default_rng(0)
+    s = level_scores()
+    true_p = 1 / (1 + np.exp(-(0.5 * np.log(np.clip(s, 1e-3, 1 - 1e-3) / np.clip(1 - s, 1e-3, 1))) + 0.7))  # overconfident
+    n = rng.integers(2000, 4000, s.size)
+
+    def draw():
+        pos = rng.binomial(n, true_p); return pos, n - pos
+    vp, vn = draw(); tp, tn = draw()
+    a, b = fit_platt(vp, vn)
+    assert a == pytest.approx(0.5, abs=0.05) and b == pytest.approx(-0.7, abs=0.05)   # recovers the distortion
+    iso = fit_isotonic(vp, vn)
+    assert np.all(np.diff(iso) >= -1e-12) and np.all(np.diff(platt_table(a, b)) > 0)
+    raw = reliability(tp, tn, s)
+    for t in (platt_table(a, b), iso):
+        r = reliability(tp, tn, t)
+        assert r["ece"] < raw["ece"] / 3 and r["brier"] < raw["brier"]
+    perfect = reliability(tp, tn, true_p)
+    assert perfect["ece"] < 0.02 and perfect["ece_active"] < 0.03

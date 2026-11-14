@@ -1,4 +1,4 @@
-"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, ingest-pool, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, labels-progress, lock-labels, verify-lock, g3, demo."""
+"""Command line: doctor, g2, search, fetch, prepare, view, inspect-dataset, ingest, fetch-sites, label-audit, mask-report, overlaps, split, lock-test, check-split, g1, compare, false-alerts, negatives-template, negatives-check, error-gallery, rescore, curves, calibrate, ingest-pool, conditions-eval, mine-negatives, rasterize-negatives, labelling-kit, labels-check, labels-progress, lock-labels, verify-lock, g3, demo."""
 from __future__ import annotations
 import argparse, json, sys
 from pathlib import Path
@@ -121,6 +121,9 @@ def main(argv=None):
     a.add_argument("--test-regions", default="configs/nigeria_aois.yaml")
     a = sub.add_parser("curves", help="precision-recall and reliability data for a stored run (curves.json)")
     a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a = sub.add_parser("calibrate", help="fit a score calibration on validation sites and measure it on test sites (calibration.json)")
+    a.add_argument("run"); a.add_argument("--prepared-root", required=True); a.add_argument("--labels-root", required=True)
+    a.add_argument("--model", default="unet")
     a = sub.add_parser("labelling-kit", help="Nigerian labelling kit: imagery per region and a QGIS project to digitise in")
     a.add_argument("config", help="regions YAML, e.g. configs/nigeria_aois.yaml"); a.add_argument("--out", required=True)
     a = sub.add_parser("labels-check", help="problems and per-site counts in a mining-label layer")
@@ -377,6 +380,16 @@ def main(argv=None):
                 print(f"{name} {k}: at threshold {r['threshold_score']:.2f} precision {a['precision']:.3f} recall {a['recall']:.3f} "
                       f"(matches the run record)")
         print(Path(x.run) / "curves.json"); return 0
+    if x.cmd == "calibrate":
+        from .calibration import run_calibration
+        c = run_calibration(x.run, x.prepared_root, x.labels_root, model=x.model, log=lambda t: print(t, file=sys.stderr, flush=True))
+        for k in ("val", "test"):
+            a = c[k]["all"]
+            print(f"{k} ({a['sites']} sites): ECE raw {a['raw']['ece']:.3f} {a['raw']['ci95']['ece']}, "
+                  f"platt {a['platt']['ece']:.3f} {a['platt']['ci95']['ece']}, isotonic {a['isotonic']['ece']:.3f}; "
+                  f"on pixels predicted >= 0.1: raw {a['raw']['ece_active']:.3f}, platt {a['platt']['ece_active']:.3f} "
+                  f"{a['platt']['ci95']['ece_active']}")
+        print(Path(x.run) / "calibration.json"); return 0
     if x.cmd == "labelling-kit":
         from .labelling_kit import build_kit
         r = build_kit(x.config, x.out, log=lambda t: print(t, file=sys.stderr, flush=True))
