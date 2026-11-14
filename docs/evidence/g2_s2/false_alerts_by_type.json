@@ -1,0 +1,2874 @@
+{
+  "unet/val": {
+    "model": "unet",
+    "split": "val",
+    "threshold_level": 197,
+    "buffer_px": 50,
+    "source": "ESA WorldCover v200 (2021) proxy types",
+    "by_type": {
+      "farmland": {
+        "pixels": 14495214,
+        "rate": 0.01717739386255353,
+        "ci95": [
+          0.002674172364494284,
+          0.044693822321797874
+        ],
+        "sites_with_type": 43
+      },
+      "settlement": {
+        "pixels": 2755668,
+        "rate": 0.10193136473624544,
+        "ci95": [
+          0.05964540349019944,
+          0.14884086456270196
+        ],
+        "sites_with_type": 53
+      },
+      "riverbank": {
+        "pixels": 651190,
+        "rate": 0.21607518542975168,
+        "ci95": [
+          0.13889722157721388,
+          0.3226712633273194
+        ],
+        "sites_with_type": 56
+      },
+      "bare_ground": {
+        "pixels": 21078367,
+        "rate": 0.06630347597610384,
+        "ci95": [
+          0.017511386320029947,
+          0.14573394705887713
+        ],
+        "sites_with_type": 60
+      },
+      "other_land": {
+        "pixels": 189767198,
+        "rate": 0.010375317867105778,
+        "ci95": [
+          0.006715917965490992,
+          0.014728024962822776
+        ],
+        "sites_with_type": 59
+      }
+    },
+    "per_site": [
+      {
+        "site_id": "gmlr-1002",
+        "farmland": {
+          "pixels": 29920,
+          "predicted": 201
+        },
+        "settlement": {
+          "pixels": 10204,
+          "predicted": 96
+        },
+        "riverbank": {
+          "pixels": 2223,
+          "predicted": 171
+        },
+        "bare_ground": {
+          "pixels": 11052,
+          "predicted": 7257
+        },
+        "other_land": {
+          "pixels": 4040108,
+          "predicted": 7826
+        }
+      },
+      {
+        "site_id": "gmlr-1006",
+        "farmland": {
+          "pixels": 317,
+          "predicted": 6
+        },
+        "settlement": {
+          "pixels": 11871,
+          "predicted": 3
+        },
+        "riverbank": {
+          "pixels": 1454,
+          "predicted": 153
+        },
+        "bare_ground": {
+          "pixels": 5645,
+          "predicted": 532
+        },
+        "other_land": {
+          "pixels": 3977953,
+          "predicted": 1646
+        }
+      },
+      {
+        "site_id": "gmlr-1011",
+        "farmland": {
+          "pixels": 405269,
+          "predicted": 1948
+        },
+        "settlement": {
+          "pixels": 95920,
+          "predicted": 532
+        },
+        "riverbank": {
+          "pixels": 1035,
+          "predicted": 708
+        },
+        "bare_ground": {
+          "pixels": 56320,
+          "predicted": 25639
+        },
+        "other_land": {
+          "pixels": 3570090,
+          "predicted": 56341
+        }
+      },
+      {
+        "site_id": "gmlr-1020",
+        "farmland": {
+          "pixels": 815787,
+          "predicted": 7386
+        },
+        "settlement": {
+          "pixels": 37493,
+          "predicted": 737
+        },
+        "riverbank": {
+          "pixels": 35507,
+          "predicted": 914
+        },
+        "bare_ground": {
+          "pixels": 32923,
+          "predicted": 8473
+        },
+        "other_land": {
+          "pixels": 3010934,
+          "predicted": 23558
+        }
+      },
+      {
+        "site_id": "gmlr-1045",
+        "farmland": {
+          "pixels": 1919944,
+          "predicted": 8702
+        },
+        "settlement": {
+          "pixels": 117278,
+          "predicted": 20107
+        },
+        "riverbank": {
+          "pixels": 1974,
+          "predicted": 988
+        },
+        "bare_ground": {
+          "pixels": 52635,
+          "predicted": 13549
+        },
+        "other_land": {
+          "pixels": 1899605,
+          "predicted": 33930
+        }
+      },
+      {
+        "site_id": "gmlr-1052",
+        "farmland": {
+          "pixels": 37,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 42505,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 2637,
+          "predicted": 9
+        },
+        "other_land": {
+          "pixels": 3759443,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1090",
+        "farmland": {
+          "pixels": 373,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 86780,
+          "predicted": 4
+        },
+        "riverbank": {
+          "pixels": 2800,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 7765,
+          "predicted": 14
+        },
+        "other_land": {
+          "pixels": 3597540,
+          "predicted": 1476
+        }
+      },
+      {
+        "site_id": "gmlr-1136",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 790,
+          "predicted": 34
+        },
+        "bare_ground": {
+          "pixels": 3987750,
+          "predicted": 147921
+        },
+        "other_land": {
+          "pixels": 22515,
+          "predicted": 61
+        }
+      },
+      {
+        "site_id": "gmlr-1137",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 17,
+          "predicted": 12
+        },
+        "riverbank": {
+          "pixels": 6747,
+          "predicted": 6737
+        },
+        "bare_ground": {
+          "pixels": 3071042,
+          "predicted": 640299
+        },
+        "other_land": {
+          "pixels": 613,
+          "predicted": 410
+        }
+      },
+      {
+        "site_id": "gmlr-1163",
+        "farmland": {
+          "pixels": 25722,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 101,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 689634,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 3605754,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1165",
+        "farmland": {
+          "pixels": 1494,
+          "predicted": 32
+        },
+        "settlement": {
+          "pixels": 8990,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 8142,
+          "predicted": 6167
+        },
+        "bare_ground": {
+          "pixels": 1544,
+          "predicted": 108
+        },
+        "other_land": {
+          "pixels": 3831553,
+          "predicted": 13737
+        }
+      },
+      {
+        "site_id": "gmlr-1190",
+        "farmland": {
+          "pixels": 1,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 19013,
+          "predicted": 41
+        },
+        "riverbank": {
+          "pixels": 20124,
+          "predicted": 4691
+        },
+        "bare_ground": {
+          "pixels": 762,
+          "predicted": 94
+        },
+        "other_land": {
+          "pixels": 3084937,
+          "predicted": 12879
+        }
+      },
+      {
+        "site_id": "gmlr-1202",
+        "farmland": {
+          "pixels": 347986,
+          "predicted": 1015
+        },
+        "settlement": {
+          "pixels": 71315,
+          "predicted": 8333
+        },
+        "riverbank": {
+          "pixels": 2856,
+          "predicted": 188
+        },
+        "bare_ground": {
+          "pixels": 16145,
+          "predicted": 3157
+        },
+        "other_land": {
+          "pixels": 3543162,
+          "predicted": 10873
+        }
+      },
+      {
+        "site_id": "gmlr-1209",
+        "farmland": {
+          "pixels": 532,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 12101,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 1062,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 31567,
+          "predicted": 2
+        },
+        "other_land": {
+          "pixels": 3625230,
+          "predicted": 352
+        }
+      },
+      {
+        "site_id": "gmlr-1212",
+        "farmland": {
+          "pixels": 223,
+          "predicted": 93
+        },
+        "settlement": {
+          "pixels": 1899,
+          "predicted": 54
+        },
+        "riverbank": {
+          "pixels": 36,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 15720,
+          "predicted": 442
+        },
+        "other_land": {
+          "pixels": 4030580,
+          "predicted": 2066
+        }
+      },
+      {
+        "site_id": "gmlr-1221",
+        "farmland": {
+          "pixels": 91713,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 1429,
+          "predicted": 2
+        },
+        "riverbank": {
+          "pixels": 14599,
+          "predicted": 1177
+        },
+        "bare_ground": {
+          "pixels": 33056,
+          "predicted": 4099
+        },
+        "other_land": {
+          "pixels": 3850417,
+          "predicted": 11320
+        }
+      },
+      {
+        "site_id": "gmlr-1263",
+        "farmland": {
+          "pixels": 583518,
+          "predicted": 333
+        },
+        "settlement": {
+          "pixels": 124671,
+          "predicted": 1755
+        },
+        "riverbank": {
+          "pixels": 10111,
+          "predicted": 2532
+        },
+        "bare_ground": {
+          "pixels": 5323,
+          "predicted": 1353
+        },
+        "other_land": {
+          "pixels": 2876564,
+          "predicted": 24520
+        }
+      },
+      {
+        "site_id": "gmlr-1270",
+        "farmland": {
+          "pixels": 1208361,
+          "predicted": 3178
+        },
+        "settlement": {
+          "pixels": 593151,
+          "predicted": 32175
+        },
+        "riverbank": {
+          "pixels": 14993,
+          "predicted": 1862
+        },
+        "bare_ground": {
+          "pixels": 23280,
+          "predicted": 7019
+        },
+        "other_land": {
+          "pixels": 1740397,
+          "predicted": 16323
+        }
+      },
+      {
+        "site_id": "gmlr-1272",
+        "farmland": {
+          "pixels": 1766234,
+          "predicted": 197
+        },
+        "settlement": {
+          "pixels": 15461,
+          "predicted": 420
+        },
+        "riverbank": {
+          "pixels": 6954,
+          "predicted": 2051
+        },
+        "bare_ground": {
+          "pixels": 2070,
+          "predicted": 188
+        },
+        "other_land": {
+          "pixels": 1873433,
+          "predicted": 5220
+        }
+      },
+      {
+        "site_id": "gmlr-1281",
+        "farmland": {
+          "pixels": 74112,
+          "predicted": 348
+        },
+        "settlement": {
+          "pixels": 33767,
+          "predicted": 10132
+        },
+        "riverbank": {
+          "pixels": 1901,
+          "predicted": 525
+        },
+        "bare_ground": {
+          "pixels": 8709,
+          "predicted": 1688
+        },
+        "other_land": {
+          "pixels": 3555255,
+          "predicted": 6398
+        }
+      },
+      {
+        "site_id": "gmlr-1288",
+        "farmland": {
+          "pixels": 396163,
+          "predicted": 1182
+        },
+        "settlement": {
+          "pixels": 304267,
+          "predicted": 26147
+        },
+        "riverbank": {
+          "pixels": 5873,
+          "predicted": 581
+        },
+        "bare_ground": {
+          "pixels": 15127,
+          "predicted": 5793
+        },
+        "other_land": {
+          "pixels": 2667957,
+          "predicted": 17805
+        }
+      },
+      {
+        "site_id": "gmlr-1294",
+        "farmland": {
+          "pixels": 128504,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 36100,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 1565,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 5473,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 3247830,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1298",
+        "farmland": {
+          "pixels": 418690,
+          "predicted": 6441
+        },
+        "settlement": {
+          "pixels": 16053,
+          "predicted": 740
+        },
+        "riverbank": {
+          "pixels": 42783,
+          "predicted": 151
+        },
+        "bare_ground": {
+          "pixels": 1791,
+          "predicted": 1027
+        },
+        "other_land": {
+          "pixels": 3642278,
+          "predicted": 12267
+        }
+      },
+      {
+        "site_id": "gmlr-1318",
+        "farmland": {
+          "pixels": 6102,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 5019,
+          "predicted": 179
+        },
+        "riverbank": {
+          "pixels": 45829,
+          "predicted": 372
+        },
+        "bare_ground": {
+          "pixels": 3586,
+          "predicted": 166
+        },
+        "other_land": {
+          "pixels": 3712258,
+          "predicted": 3221
+        }
+      },
+      {
+        "site_id": "gmlr-1379",
+        "farmland": {
+          "pixels": 124924,
+          "predicted": 780
+        },
+        "settlement": {
+          "pixels": 172515,
+          "predicted": 43120
+        },
+        "riverbank": {
+          "pixels": 12830,
+          "predicted": 454
+        },
+        "bare_ground": {
+          "pixels": 199912,
+          "predicted": 82421
+        },
+        "other_land": {
+          "pixels": 3588201,
+          "predicted": 175948
+        }
+      },
+      {
+        "site_id": "gmlr-1410",
+        "farmland": {
+          "pixels": 1403448,
+          "predicted": 235
+        },
+        "settlement": {
+          "pixels": 192242,
+          "predicted": 695
+        },
+        "riverbank": {
+          "pixels": 976,
+          "predicted": 45
+        },
+        "bare_ground": {
+          "pixels": 4136,
+          "predicted": 423
+        },
+        "other_land": {
+          "pixels": 2256056,
+          "predicted": 2160
+        }
+      },
+      {
+        "site_id": "gmlr-1412",
+        "farmland": {
+          "pixels": 66960,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 1327,
+          "predicted": 80
+        },
+        "riverbank": {
+          "pixels": 3364,
+          "predicted": 2249
+        },
+        "bare_ground": {
+          "pixels": 7160,
+          "predicted": 4285
+        },
+        "other_land": {
+          "pixels": 511669,
+          "predicted": 1686
+        }
+      },
+      {
+        "site_id": "gmlr-1417",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 58423,
+          "predicted": 28450
+        },
+        "riverbank": {
+          "pixels": 65942,
+          "predicted": 4990
+        },
+        "bare_ground": {
+          "pixels": 17015,
+          "predicted": 10620
+        },
+        "other_land": {
+          "pixels": 2901473,
+          "predicted": 104919
+        }
+      },
+      {
+        "site_id": "gmlr-1452",
+        "farmland": {
+          "pixels": 397,
+          "predicted": 235
+        },
+        "settlement": {
+          "pixels": 139,
+          "predicted": 98
+        },
+        "riverbank": {
+          "pixels": 60,
+          "predicted": 60
+        },
+        "bare_ground": {
+          "pixels": 3521491,
+          "predicted": 365782
+        },
+        "other_land": {
+          "pixels": 122,
+          "predicted": 22
+        }
+      },
+      {
+        "site_id": "gmlr-1485",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 249,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 4135464,
+          "predicted": 5781
+        },
+        "other_land": {
+          "pixels": 0,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1747",
+        "farmland": {
+          "pixels": 1679643,
+          "predicted": 88773
+        },
+        "settlement": {
+          "pixels": 514599,
+          "predicted": 82630
+        },
+        "riverbank": {
+          "pixels": 46074,
+          "predicted": 14979
+        },
+        "bare_ground": {
+          "pixels": 17205,
+          "predicted": 5903
+        },
+        "other_land": {
+          "pixels": 1434710,
+          "predicted": 168916
+        }
+      },
+      {
+        "site_id": "gmlr-189",
+        "farmland": {
+          "pixels": 19,
+          "predicted": 3
+        },
+        "settlement": {
+          "pixels": 1057,
+          "predicted": 643
+        },
+        "riverbank": {
+          "pixels": 10959,
+          "predicted": 7797
+        },
+        "bare_ground": {
+          "pixels": 5125,
+          "predicted": 2844
+        },
+        "other_land": {
+          "pixels": 4376395,
+          "predicted": 162515
+        }
+      },
+      {
+        "site_id": "gmlr-1917",
+        "farmland": {
+          "pixels": 1034,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 3977,
+          "predicted": 364
+        },
+        "riverbank": {
+          "pixels": 8729,
+          "predicted": 2561
+        },
+        "bare_ground": {
+          "pixels": 2611,
+          "predicted": 877
+        },
+        "other_land": {
+          "pixels": 4412112,
+          "predicted": 75683
+        }
+      },
+      {
+        "site_id": "gmlr-1953",
+        "farmland": {
+          "pixels": 491235,
+          "predicted": 12367
+        },
+        "settlement": {
+          "pixels": 36563,
+          "predicted": 677
+        },
+        "riverbank": {
+          "pixels": 12144,
+          "predicted": 496
+        },
+        "bare_ground": {
+          "pixels": 13467,
+          "predicted": 442
+        },
+        "other_land": {
+          "pixels": 2691225,
+          "predicted": 5924
+        }
+      },
+      {
+        "site_id": "gmlr-2017",
+        "farmland": {
+          "pixels": 220756,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 2751,
+          "predicted": 371
+        },
+        "riverbank": {
+          "pixels": 3510,
+          "predicted": 447
+        },
+        "bare_ground": {
+          "pixels": 930109,
+          "predicted": 4018
+        },
+        "other_land": {
+          "pixels": 3171536,
+          "predicted": 1440
+        }
+      },
+      {
+        "site_id": "gmlr-2025",
+        "farmland": {
+          "pixels": 21357,
+          "predicted": 208
+        },
+        "settlement": {
+          "pixels": 3855,
+          "predicted": 718
+        },
+        "riverbank": {
+          "pixels": 639,
+          "predicted": 438
+        },
+        "bare_ground": {
+          "pixels": 769,
+          "predicted": 295
+        },
+        "other_land": {
+          "pixels": 3460292,
+          "predicted": 14087
+        }
+      },
+      {
+        "site_id": "gmlr-225",
+        "farmland": {
+          "pixels": 1743104,
+          "predicted": 697
+        },
+        "settlement": {
+          "pixels": 13751,
+          "predicted": 345
+        },
+        "riverbank": {
+          "pixels": 39096,
+          "predicted": 2440
+        },
+        "bare_ground": {
+          "pixels": 1874,
+          "predicted": 135
+        },
+        "other_land": {
+          "pixels": 2161220,
+          "predicted": 10274
+        }
+      },
+      {
+        "site_id": "gmlr-2272",
+        "farmland": {
+          "pixels": 372,
+          "predicted": 3
+        },
+        "settlement": {
+          "pixels": 2855,
+          "predicted": 15
+        },
+        "riverbank": {
+          "pixels": 28687,
+          "predicted": 884
+        },
+        "bare_ground": {
+          "pixels": 904,
+          "predicted": 314
+        },
+        "other_land": {
+          "pixels": 3823471,
+          "predicted": 14475
+        }
+      },
+      {
+        "site_id": "gmlr-2328",
+        "farmland": {
+          "pixels": 45725,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 371,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 166,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 93,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 4025287,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-2344",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 18961,
+          "predicted": 2480
+        },
+        "bare_ground": {
+          "pixels": 861,
+          "predicted": 633
+        },
+        "other_land": {
+          "pixels": 3630503,
+          "predicted": 7531
+        }
+      },
+      {
+        "site_id": "gmlr-2346",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 2649,
+          "predicted": 829
+        },
+        "bare_ground": {
+          "pixels": 1082,
+          "predicted": 554
+        },
+        "other_land": {
+          "pixels": 3645811,
+          "predicted": 6726
+        }
+      },
+      {
+        "site_id": "gmlr-2530",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 362,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 6970,
+          "predicted": 651
+        },
+        "other_land": {
+          "pixels": 4456760,
+          "predicted": 3885
+        }
+      },
+      {
+        "site_id": "gmlr-2577",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 788,
+          "predicted": 130
+        },
+        "riverbank": {
+          "pixels": 11808,
+          "predicted": 4665
+        },
+        "bare_ground": {
+          "pixels": 1758,
+          "predicted": 376
+        },
+        "other_land": {
+          "pixels": 3957752,
+          "predicted": 78705
+        }
+      },
+      {
+        "site_id": "gmlr-260",
+        "farmland": {
+          "pixels": 204972,
+          "predicted": 113378
+        },
+        "settlement": {
+          "pixels": 51553,
+          "predicted": 17447
+        },
+        "riverbank": {
+          "pixels": 3243,
+          "predicted": 1704
+        },
+        "bare_ground": {
+          "pixels": 1663,
+          "predicted": 543
+        },
+        "other_land": {
+          "pixels": 3647947,
+          "predicted": 262058
+        }
+      },
+      {
+        "site_id": "gmlr-264",
+        "farmland": {
+          "pixels": 241867,
+          "predicted": 504
+        },
+        "settlement": {
+          "pixels": 35815,
+          "predicted": 2196
+        },
+        "riverbank": {
+          "pixels": 17982,
+          "predicted": 1283
+        },
+        "bare_ground": {
+          "pixels": 8093,
+          "predicted": 2977
+        },
+        "other_land": {
+          "pixels": 3800457,
+          "predicted": 40289
+        }
+      },
+      {
+        "site_id": "gmlr-2645",
+        "farmland": {
+          "pixels": 2,
+          "predicted": 2
+        },
+        "settlement": {
+          "pixels": 1877,
+          "predicted": 721
+        },
+        "riverbank": {
+          "pixels": 22368,
+          "predicted": 17165
+        },
+        "bare_ground": {
+          "pixels": 16744,
+          "predicted": 6960
+        },
+        "other_land": {
+          "pixels": 3946507,
+          "predicted": 128041
+        }
+      },
+      {
+        "site_id": "gmlr-2669",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 498,
+          "predicted": 186
+        },
+        "riverbank": {
+          "pixels": 21384,
+          "predicted": 11567
+        },
+        "bare_ground": {
+          "pixels": 1659,
+          "predicted": 1362
+        },
+        "other_land": {
+          "pixels": 4478981,
+          "predicted": 52197
+        }
+      },
+      {
+        "site_id": "gmlr-2728",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 2688,
+          "predicted": 1141
+        },
+        "bare_ground": {
+          "pixels": 473,
+          "predicted": 459
+        },
+        "other_land": {
+          "pixels": 3700536,
+          "predicted": 24117
+        }
+      },
+      {
+        "site_id": "gmlr-2753",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 16490,
+          "predicted": 14492
+        },
+        "bare_ground": {
+          "pixels": 4387,
+          "predicted": 2490
+        },
+        "other_land": {
+          "pixels": 3984677,
+          "predicted": 90666
+        }
+      },
+      {
+        "site_id": "gmlr-2790",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 3,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 3307,
+          "predicted": 2119
+        },
+        "bare_ground": {
+          "pixels": 12918,
+          "predicted": 11483
+        },
+        "other_land": {
+          "pixels": 4679535,
+          "predicted": 13295
+        }
+      },
+      {
+        "site_id": "gmlr-2825",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 101,
+          "predicted": 85
+        },
+        "riverbank": {
+          "pixels": 9551,
+          "predicted": 6319
+        },
+        "bare_ground": {
+          "pixels": 17058,
+          "predicted": 12146
+        },
+        "other_land": {
+          "pixels": 3951043,
+          "predicted": 97613
+        }
+      },
+      {
+        "site_id": "gmlr-296",
+        "farmland": {
+          "pixels": 14873,
+          "predicted": 124
+        },
+        "settlement": {
+          "pixels": 6327,
+          "predicted": 401
+        },
+        "riverbank": {
+          "pixels": 1657,
+          "predicted": 45
+        },
+        "bare_ground": {
+          "pixels": 4709,
+          "predicted": 1974
+        },
+        "other_land": {
+          "pixels": 4317646,
+          "predicted": 13902
+        }
+      },
+      {
+        "site_id": "gmlr-632",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 115,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 7760,
+          "predicted": 5036
+        },
+        "bare_ground": {
+          "pixels": 100,
+          "predicted": 80
+        },
+        "other_land": {
+          "pixels": 3765874,
+          "predicted": 11924
+        }
+      },
+      {
+        "site_id": "gmlr-637",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 4,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 20057,
+          "predicted": 832
+        },
+        "bare_ground": {
+          "pixels": 391,
+          "predicted": 194
+        },
+        "other_land": {
+          "pixels": 3940154,
+          "predicted": 2262
+        }
+      },
+      {
+        "site_id": "gmlr-792",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 660,
+          "predicted": 24
+        },
+        "bare_ground": {
+          "pixels": 4,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 3541838,
+          "predicted": 239
+        }
+      },
+      {
+        "site_id": "gmlr-912",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 2128,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 14844,
+          "predicted": 806
+        },
+        "bare_ground": {
+          "pixels": 654,
+          "predicted": 225
+        },
+        "other_land": {
+          "pixels": 3638894,
+          "predicted": 9293
+        }
+      },
+      {
+        "site_id": "gmlr-933",
+        "farmland": {
+          "pixels": 677,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 12,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 8611,
+          "predicted": 1760
+        },
+        "bare_ground": {
+          "pixels": 2544,
+          "predicted": 183
+        },
+        "other_land": {
+          "pixels": 3766881,
+          "predicted": 7220
+        }
+      },
+      {
+        "site_id": "gmlr-954",
+        "farmland": {
+          "pixels": 4351,
+          "predicted": 615
+        },
+        "settlement": {
+          "pixels": 136,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 725,
+          "predicted": 411
+        },
+        "bare_ground": {
+          "pixels": 10676,
+          "predicted": 73
+        },
+        "other_land": {
+          "pixels": 3381428,
+          "predicted": 113562
+        }
+      },
+      {
+        "site_id": "gmlr-973",
+        "farmland": {
+          "pixels": 2105,
+          "predicted": 4
+        },
+        "settlement": {
+          "pixels": 3832,
+          "predicted": 48
+        },
+        "riverbank": {
+          "pixels": 3549,
+          "predicted": 186
+        },
+        "bare_ground": {
+          "pixels": 462,
+          "predicted": 200
+        },
+        "other_land": {
+          "pixels": 3941042,
+          "predicted": 5092
+        }
+      },
+      {
+        "site_id": "gmlr-988",
+        "farmland": {
+          "pixels": 6391,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 2400,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 4046270,
+          "predicted": 1037
+        },
+        "other_land": {
+          "pixels": 12757,
+          "predicted": 0
+        }
+      }
+    ]
+  },
+  "unet/test": {
+    "model": "unet",
+    "split": "test",
+    "threshold_level": 197,
+    "buffer_px": 50,
+    "source": "ESA WorldCover v200 (2021) proxy types",
+    "by_type": {
+      "farmland": {
+        "pixels": 20682070,
+        "rate": 0.03308058622758747,
+        "ci95": [
+          0.002815150490836382,
+          0.10580347955351639
+        ],
+        "sites_with_type": 45
+      },
+      "settlement": {
+        "pixels": 2819203,
+        "rate": 0.2467743543121939,
+        "ci95": [
+          0.062250143462592535,
+          0.4730867195750568
+        ],
+        "sites_with_type": 53
+      },
+      "riverbank": {
+        "pixels": 868328,
+        "rate": 0.2736201066877954,
+        "ci95": [
+          0.11601088057556308,
+          0.5227746988103915
+        ],
+        "sites_with_type": 59
+      },
+      "bare_ground": {
+        "pixels": 17810746,
+        "rate": 0.415570352864501,
+        "ci95": [
+          0.09734821735581775,
+          0.6694494519729173
+        ],
+        "sites_with_type": 59
+      },
+      "other_land": {
+        "pixels": 186498047,
+        "rate": 0.02169373387593705,
+        "ci95": [
+          0.011405524523339655,
+          0.03661732387727956
+        ],
+        "sites_with_type": 60
+      }
+    },
+    "per_site": [
+      {
+        "site_id": "gmlr-1024",
+        "farmland": {
+          "pixels": 1647008,
+          "predicted": 22881
+        },
+        "settlement": {
+          "pixels": 3890,
+          "predicted": 126
+        },
+        "riverbank": {
+          "pixels": 1152,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 597934,
+          "predicted": 30788
+        },
+        "other_land": {
+          "pixels": 1315954,
+          "predicted": 57757
+        }
+      },
+      {
+        "site_id": "gmlr-1039",
+        "farmland": {
+          "pixels": 234,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 56133,
+          "predicted": 2
+        },
+        "riverbank": {
+          "pixels": 61,
+          "predicted": 61
+        },
+        "bare_ground": {
+          "pixels": 270,
+          "predicted": 154
+        },
+        "other_land": {
+          "pixels": 4039512,
+          "predicted": 1679
+        }
+      },
+      {
+        "site_id": "gmlr-1048",
+        "farmland": {
+          "pixels": 390,
+          "predicted": 339
+        },
+        "settlement": {
+          "pixels": 29543,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 1884,
+          "predicted": 1882
+        },
+        "bare_ground": {
+          "pixels": 997,
+          "predicted": 577
+        },
+        "other_land": {
+          "pixels": 3495453,
+          "predicted": 7135
+        }
+      },
+      {
+        "site_id": "gmlr-1105",
+        "farmland": {
+          "pixels": 852219,
+          "predicted": 577600
+        },
+        "settlement": {
+          "pixels": 74638,
+          "predicted": 29590
+        },
+        "riverbank": {
+          "pixels": 13107,
+          "predicted": 12312
+        },
+        "bare_ground": {
+          "pixels": 752346,
+          "predicted": 354712
+        },
+        "other_land": {
+          "pixels": 2360341,
+          "predicted": 947131
+        }
+      },
+      {
+        "site_id": "gmlr-1140",
+        "farmland": {
+          "pixels": 17,
+          "predicted": 11
+        },
+        "settlement": {
+          "pixels": 10125,
+          "predicted": 1729
+        },
+        "riverbank": {
+          "pixels": 242,
+          "predicted": 242
+        },
+        "bare_ground": {
+          "pixels": 637713,
+          "predicted": 26688
+        },
+        "other_land": {
+          "pixels": 3438739,
+          "predicted": 86148
+        }
+      },
+      {
+        "site_id": "gmlr-1142",
+        "farmland": {
+          "pixels": 2006537,
+          "predicted": 7527
+        },
+        "settlement": {
+          "pixels": 79162,
+          "predicted": 13907
+        },
+        "riverbank": {
+          "pixels": 34623,
+          "predicted": 1487
+        },
+        "bare_ground": {
+          "pixels": 26499,
+          "predicted": 135
+        },
+        "other_land": {
+          "pixels": 2054087,
+          "predicted": 33156
+        }
+      },
+      {
+        "site_id": "gmlr-1146",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 289,
+          "predicted": 45
+        },
+        "riverbank": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 3181395,
+          "predicted": 334577
+        },
+        "other_land": {
+          "pixels": 1083612,
+          "predicted": 83700
+        }
+      },
+      {
+        "site_id": "gmlr-1176",
+        "farmland": {
+          "pixels": 2338044,
+          "predicted": 842
+        },
+        "settlement": {
+          "pixels": 95634,
+          "predicted": 3074
+        },
+        "riverbank": {
+          "pixels": 4819,
+          "predicted": 788
+        },
+        "bare_ground": {
+          "pixels": 2360,
+          "predicted": 1305
+        },
+        "other_land": {
+          "pixels": 1519218,
+          "predicted": 3047
+        }
+      },
+      {
+        "site_id": "gmlr-1179",
+        "farmland": {
+          "pixels": 4260,
+          "predicted": 66
+        },
+        "settlement": {
+          "pixels": 8667,
+          "predicted": 3376
+        },
+        "riverbank": {
+          "pixels": 969,
+          "predicted": 368
+        },
+        "bare_ground": {
+          "pixels": 10173,
+          "predicted": 5072
+        },
+        "other_land": {
+          "pixels": 3716527,
+          "predicted": 14746
+        }
+      },
+      {
+        "site_id": "gmlr-1181",
+        "farmland": {
+          "pixels": 216,
+          "predicted": 41
+        },
+        "settlement": {
+          "pixels": 1725,
+          "predicted": 323
+        },
+        "riverbank": {
+          "pixels": 19547,
+          "predicted": 13279
+        },
+        "bare_ground": {
+          "pixels": 767,
+          "predicted": 390
+        },
+        "other_land": {
+          "pixels": 3964749,
+          "predicted": 42884
+        }
+      },
+      {
+        "site_id": "gmlr-1185",
+        "farmland": {
+          "pixels": 10982,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 86813,
+          "predicted": 545
+        },
+        "riverbank": {
+          "pixels": 18555,
+          "predicted": 10645
+        },
+        "bare_ground": {
+          "pixels": 11312,
+          "predicted": 2243
+        },
+        "other_land": {
+          "pixels": 3797216,
+          "predicted": 92671
+        }
+      },
+      {
+        "site_id": "gmlr-1261",
+        "farmland": {
+          "pixels": 254908,
+          "predicted": 1337
+        },
+        "settlement": {
+          "pixels": 2647,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 1465,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 1366,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 3711816,
+          "predicted": 35174
+        }
+      },
+      {
+        "site_id": "gmlr-1264",
+        "farmland": {
+          "pixels": 2202,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 39886,
+          "predicted": 1149
+        },
+        "riverbank": {
+          "pixels": 7142,
+          "predicted": 299
+        },
+        "bare_ground": {
+          "pixels": 32144,
+          "predicted": 3675
+        },
+        "other_land": {
+          "pixels": 3331414,
+          "predicted": 29579
+        }
+      },
+      {
+        "site_id": "gmlr-1266",
+        "farmland": {
+          "pixels": 471928,
+          "predicted": 8837
+        },
+        "settlement": {
+          "pixels": 94291,
+          "predicted": 551
+        },
+        "riverbank": {
+          "pixels": 2016,
+          "predicted": 696
+        },
+        "bare_ground": {
+          "pixels": 9229,
+          "predicted": 1345
+        },
+        "other_land": {
+          "pixels": 3319110,
+          "predicted": 11455
+        }
+      },
+      {
+        "site_id": "gmlr-1280",
+        "farmland": {
+          "pixels": 204560,
+          "predicted": 18
+        },
+        "settlement": {
+          "pixels": 32561,
+          "predicted": 6
+        },
+        "riverbank": {
+          "pixels": 7350,
+          "predicted": 2084
+        },
+        "bare_ground": {
+          "pixels": 17055,
+          "predicted": 3
+        },
+        "other_land": {
+          "pixels": 3712888,
+          "predicted": 2907
+        }
+      },
+      {
+        "site_id": "gmlr-1330",
+        "farmland": {
+          "pixels": 1080087,
+          "predicted": 4631
+        },
+        "settlement": {
+          "pixels": 545939,
+          "predicted": 68890
+        },
+        "riverbank": {
+          "pixels": 6666,
+          "predicted": 291
+        },
+        "bare_ground": {
+          "pixels": 9820,
+          "predicted": 1626
+        },
+        "other_land": {
+          "pixels": 2415206,
+          "predicted": 18105
+        }
+      },
+      {
+        "site_id": "gmlr-1354",
+        "farmland": {
+          "pixels": 67956,
+          "predicted": 112
+        },
+        "settlement": {
+          "pixels": 3093,
+          "predicted": 127
+        },
+        "riverbank": {
+          "pixels": 3104,
+          "predicted": 428
+        },
+        "bare_ground": {
+          "pixels": 22489,
+          "predicted": 5254
+        },
+        "other_land": {
+          "pixels": 3963239,
+          "predicted": 256034
+        }
+      },
+      {
+        "site_id": "gmlr-1367",
+        "farmland": {
+          "pixels": 1844,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 122074,
+          "predicted": 68
+        },
+        "riverbank": {
+          "pixels": 20356,
+          "predicted": 19060
+        },
+        "bare_ground": {
+          "pixels": 1117,
+          "predicted": 422
+        },
+        "other_land": {
+          "pixels": 3765499,
+          "predicted": 33937
+        }
+      },
+      {
+        "site_id": "gmlr-1414",
+        "farmland": {
+          "pixels": 421407,
+          "predicted": 859
+        },
+        "settlement": {
+          "pixels": 79324,
+          "predicted": 109
+        },
+        "riverbank": {
+          "pixels": 3742,
+          "predicted": 1187
+        },
+        "bare_ground": {
+          "pixels": 6931,
+          "predicted": 2215
+        },
+        "other_land": {
+          "pixels": 3360656,
+          "predicted": 11072
+        }
+      },
+      {
+        "site_id": "gmlr-1422",
+        "farmland": {
+          "pixels": 2793852,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 7757,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 3788,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 6636,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 1194781,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1438",
+        "farmland": {
+          "pixels": 1107062,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 55206,
+          "predicted": 30
+        },
+        "riverbank": {
+          "pixels": 6779,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 1335,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 2859355,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1440",
+        "farmland": {
+          "pixels": 1192,
+          "predicted": 1176
+        },
+        "settlement": {
+          "pixels": 18239,
+          "predicted": 18200
+        },
+        "riverbank": {
+          "pixels": 2141,
+          "predicted": 2132
+        },
+        "bare_ground": {
+          "pixels": 3800996,
+          "predicted": 3681817
+        },
+        "other_land": {
+          "pixels": 43639,
+          "predicted": 41032
+        }
+      },
+      {
+        "site_id": "gmlr-1463",
+        "farmland": {
+          "pixels": 85013,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 1962,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 181,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 1976960,
+          "predicted": 1549
+        },
+        "other_land": {
+          "pixels": 2044498,
+          "predicted": 15
+        }
+      },
+      {
+        "site_id": "gmlr-1500",
+        "farmland": {
+          "pixels": 14449,
+          "predicted": 40
+        },
+        "settlement": {
+          "pixels": 4615,
+          "predicted": 209
+        },
+        "riverbank": {
+          "pixels": 5195,
+          "predicted": 638
+        },
+        "bare_ground": {
+          "pixels": 1382604,
+          "predicted": 223925
+        },
+        "other_land": {
+          "pixels": 2498910,
+          "predicted": 151419
+        }
+      },
+      {
+        "site_id": "gmlr-1513",
+        "farmland": {
+          "pixels": 20125,
+          "predicted": 8718
+        },
+        "settlement": {
+          "pixels": 577484,
+          "predicted": 480528
+        },
+        "riverbank": {
+          "pixels": 2976,
+          "predicted": 2896
+        },
+        "bare_ground": {
+          "pixels": 3074194,
+          "predicted": 2349682
+        },
+        "other_land": {
+          "pixels": 347429,
+          "predicted": 82808
+        }
+      },
+      {
+        "site_id": "gmlr-1525",
+        "farmland": {
+          "pixels": 2520,
+          "predicted": 59
+        },
+        "settlement": {
+          "pixels": 17020,
+          "predicted": 2093
+        },
+        "riverbank": {
+          "pixels": 6581,
+          "predicted": 134
+        },
+        "bare_ground": {
+          "pixels": 13708,
+          "predicted": 11860
+        },
+        "other_land": {
+          "pixels": 4001262,
+          "predicted": 62112
+        }
+      },
+      {
+        "site_id": "gmlr-1540",
+        "farmland": {
+          "pixels": 1,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 21396,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 231845,
+          "predicted": 207
+        },
+        "bare_ground": {
+          "pixels": 883,
+          "predicted": 4
+        },
+        "other_land": {
+          "pixels": 4042244,
+          "predicted": 1820
+        }
+      },
+      {
+        "site_id": "gmlr-1606",
+        "farmland": {
+          "pixels": 194849,
+          "predicted": 66
+        },
+        "settlement": {
+          "pixels": 271448,
+          "predicted": 260
+        },
+        "riverbank": {
+          "pixels": 3479,
+          "predicted": 1193
+        },
+        "bare_ground": {
+          "pixels": 61610,
+          "predicted": 3107
+        },
+        "other_land": {
+          "pixels": 3291262,
+          "predicted": 29212
+        }
+      },
+      {
+        "site_id": "gmlr-1625",
+        "farmland": {
+          "pixels": 2157495,
+          "predicted": 2
+        },
+        "settlement": {
+          "pixels": 1001,
+          "predicted": 52
+        },
+        "riverbank": {
+          "pixels": 1757,
+          "predicted": 57
+        },
+        "bare_ground": {
+          "pixels": 11838,
+          "predicted": 1570
+        },
+        "other_land": {
+          "pixels": 1860949,
+          "predicted": 317
+        }
+      },
+      {
+        "site_id": "gmlr-1665",
+        "farmland": {
+          "pixels": 978,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 1484,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 599,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 6531,
+          "predicted": 1599
+        },
+        "other_land": {
+          "pixels": 4127826,
+          "predicted": 4698
+        }
+      },
+      {
+        "site_id": "gmlr-1813",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 5,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 24,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "other_land": {
+          "pixels": 3722922,
+          "predicted": 0
+        }
+      },
+      {
+        "site_id": "gmlr-1824",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 936,
+          "predicted": 155
+        },
+        "riverbank": {
+          "pixels": 2816,
+          "predicted": 1578
+        },
+        "bare_ground": {
+          "pixels": 7218,
+          "predicted": 2288
+        },
+        "other_land": {
+          "pixels": 3153427,
+          "predicted": 8850
+        }
+      },
+      {
+        "site_id": "gmlr-183",
+        "farmland": {
+          "pixels": 1214,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 3226,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 3441,
+          "predicted": 236
+        },
+        "bare_ground": {
+          "pixels": 19698,
+          "predicted": 304
+        },
+        "other_land": {
+          "pixels": 4494289,
+          "predicted": 5502
+        }
+      },
+      {
+        "site_id": "gmlr-1914",
+        "farmland": {
+          "pixels": 35215,
+          "predicted": 2020
+        },
+        "settlement": {
+          "pixels": 134346,
+          "predicted": 16700
+        },
+        "riverbank": {
+          "pixels": 32260,
+          "predicted": 2507
+        },
+        "bare_ground": {
+          "pixels": 8107,
+          "predicted": 5323
+        },
+        "other_land": {
+          "pixels": 3023333,
+          "predicted": 90504
+        }
+      },
+      {
+        "site_id": "gmlr-1915",
+        "farmland": {
+          "pixels": 12713,
+          "predicted": 1700
+        },
+        "settlement": {
+          "pixels": 81876,
+          "predicted": 11157
+        },
+        "riverbank": {
+          "pixels": 21784,
+          "predicted": 3478
+        },
+        "bare_ground": {
+          "pixels": 15633,
+          "predicted": 9644
+        },
+        "other_land": {
+          "pixels": 3552593,
+          "predicted": 79679
+        }
+      },
+      {
+        "site_id": "gmlr-2027",
+        "farmland": {
+          "pixels": 237079,
+          "predicted": 1007
+        },
+        "settlement": {
+          "pixels": 25323,
+          "predicted": 329
+        },
+        "riverbank": {
+          "pixels": 9747,
+          "predicted": 7185
+        },
+        "bare_ground": {
+          "pixels": 576872,
+          "predicted": 40251
+        },
+        "other_land": {
+          "pixels": 3376709,
+          "predicted": 23118
+        }
+      },
+      {
+        "site_id": "gmlr-2057",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 3446,
+          "predicted": 2391
+        },
+        "bare_ground": {
+          "pixels": 1404,
+          "predicted": 906
+        },
+        "other_land": {
+          "pixels": 3981861,
+          "predicted": 211311
+        }
+      },
+      {
+        "site_id": "gmlr-2113",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 23157,
+          "predicted": 11127
+        },
+        "bare_ground": {
+          "pixels": 4910,
+          "predicted": 2773
+        },
+        "other_land": {
+          "pixels": 4133404,
+          "predicted": 76966
+        }
+      },
+      {
+        "site_id": "gmlr-2117",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 4,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 22139,
+          "predicted": 363
+        },
+        "bare_ground": {
+          "pixels": 1524,
+          "predicted": 421
+        },
+        "other_land": {
+          "pixels": 3980911,
+          "predicted": 400
+        }
+      },
+      {
+        "site_id": "gmlr-2118",
+        "farmland": {
+          "pixels": 1453815,
+          "predicted": 30531
+        },
+        "settlement": {
+          "pixels": 94014,
+          "predicted": 34056
+        },
+        "riverbank": {
+          "pixels": 2027,
+          "predicted": 1428
+        },
+        "bare_ground": {
+          "pixels": 61410,
+          "predicted": 18549
+        },
+        "other_land": {
+          "pixels": 1879126,
+          "predicted": 117666
+        }
+      },
+      {
+        "site_id": "gmlr-212",
+        "farmland": {
+          "pixels": 10,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 17321,
+          "predicted": 2619
+        },
+        "riverbank": {
+          "pixels": 8567,
+          "predicted": 2686
+        },
+        "bare_ground": {
+          "pixels": 272183,
+          "predicted": 209243
+        },
+        "other_land": {
+          "pixels": 3817286,
+          "predicted": 199461
+        }
+      },
+      {
+        "site_id": "gmlr-2452",
+        "farmland": {
+          "pixels": 3,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 98,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 229,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 485,
+          "predicted": 29
+        },
+        "other_land": {
+          "pixels": 4084553,
+          "predicted": 20
+        }
+      },
+      {
+        "site_id": "gmlr-2454",
+        "farmland": {
+          "pixels": 1004,
+          "predicted": 35
+        },
+        "settlement": {
+          "pixels": 3560,
+          "predicted": 268
+        },
+        "riverbank": {
+          "pixels": 3425,
+          "predicted": 1320
+        },
+        "bare_ground": {
+          "pixels": 9986,
+          "predicted": 3988
+        },
+        "other_land": {
+          "pixels": 4052728,
+          "predicted": 17769
+        }
+      },
+      {
+        "site_id": "gmlr-2655",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 674,
+          "predicted": 134
+        },
+        "riverbank": {
+          "pixels": 3315,
+          "predicted": 1065
+        },
+        "bare_ground": {
+          "pixels": 21886,
+          "predicted": 7036
+        },
+        "other_land": {
+          "pixels": 4060879,
+          "predicted": 21533
+        }
+      },
+      {
+        "site_id": "gmlr-2711",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 2,
+          "predicted": 2
+        },
+        "riverbank": {
+          "pixels": 2707,
+          "predicted": 2086
+        },
+        "bare_ground": {
+          "pixels": 2633,
+          "predicted": 1195
+        },
+        "other_land": {
+          "pixels": 3872753,
+          "predicted": 52998
+        }
+      },
+      {
+        "site_id": "gmlr-2713",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 5465,
+          "predicted": 3823
+        },
+        "bare_ground": {
+          "pixels": 371,
+          "predicted": 243
+        },
+        "other_land": {
+          "pixels": 3547989,
+          "predicted": 11319
+        }
+      },
+      {
+        "site_id": "gmlr-2714",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 731,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 802,
+          "predicted": 121
+        },
+        "other_land": {
+          "pixels": 2891570,
+          "predicted": 1457
+        }
+      },
+      {
+        "site_id": "gmlr-2805",
+        "farmland": {
+          "pixels": 95,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 5,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 39938,
+          "predicted": 5406
+        },
+        "bare_ground": {
+          "pixels": 18313,
+          "predicted": 12426
+        },
+        "other_land": {
+          "pixels": 2973297,
+          "predicted": 103438
+        }
+      },
+      {
+        "site_id": "gmlr-2931",
+        "farmland": {
+          "pixels": 1403607,
+          "predicted": 2298
+        },
+        "settlement": {
+          "pixels": 15999,
+          "predicted": 267
+        },
+        "riverbank": {
+          "pixels": 31482,
+          "predicted": 3885
+        },
+        "bare_ground": {
+          "pixels": 2692,
+          "predicted": 931
+        },
+        "other_land": {
+          "pixels": 2935701,
+          "predicted": 4059
+        }
+      },
+      {
+        "site_id": "gmlr-375",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 316,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 72045,
+          "predicted": 0
+        },
+        "bare_ground": {
+          "pixels": 1535,
+          "predicted": 56
+        },
+        "other_land": {
+          "pixels": 3483411,
+          "predicted": 172
+        }
+      },
+      {
+        "site_id": "gmlr-586",
+        "farmland": {
+          "pixels": 17,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 133,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 14395,
+          "predicted": 4996
+        },
+        "bare_ground": {
+          "pixels": 1095190,
+          "predicted": 28940
+        },
+        "other_land": {
+          "pixels": 2428247,
+          "predicted": 5035
+        }
+      },
+      {
+        "site_id": "gmlr-659",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 389,
+          "predicted": 25
+        },
+        "bare_ground": {
+          "pixels": 2,
+          "predicted": 2
+        },
+        "other_land": {
+          "pixels": 4091750,
+          "predicted": 1179
+        }
+      },
+      {
+        "site_id": "gmlr-684",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 795,
+          "predicted": 379
+        },
+        "bare_ground": {
+          "pixels": 39,
+          "predicted": 36
+        },
+        "other_land": {
+          "pixels": 3721334,
+          "predicted": 4893
+        }
+      },
+      {
+        "site_id": "gmlr-782",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "riverbank": {
+          "pixels": 1977,
+          "predicted": 1655
+        },
+        "bare_ground": {
+          "pixels": 331,
+          "predicted": 52
+        },
+        "other_land": {
+          "pixels": 3395178,
+          "predicted": 18077
+        }
+      },
+      {
+        "site_id": "gmlr-783",
+        "farmland": {
+          "pixels": 876,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 29,
+          "predicted": 3
+        },
+        "riverbank": {
+          "pixels": 25072,
+          "predicted": 1609
+        },
+        "bare_ground": {
+          "pixels": 2515,
+          "predicted": 550
+        },
+        "other_land": {
+          "pixels": 3736544,
+          "predicted": 32560
+        }
+      },
+      {
+        "site_id": "gmlr-924",
+        "farmland": {
+          "pixels": 128,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 9750,
+          "predicted": 1042
+        },
+        "riverbank": {
+          "pixels": 13485,
+          "predicted": 8654
+        },
+        "bare_ground": {
+          "pixels": 1651,
+          "predicted": 699
+        },
+        "other_land": {
+          "pixels": 3240043,
+          "predicted": 34952
+        }
+      },
+      {
+        "site_id": "gmlr-937",
+        "farmland": {
+          "pixels": 31,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 97,
+          "predicted": 5
+        },
+        "riverbank": {
+          "pixels": 2394,
+          "predicted": 181
+        },
+        "bare_ground": {
+          "pixels": 5158,
+          "predicted": 21
+        },
+        "other_land": {
+          "pixels": 2284577,
+          "predicted": 6989
+        }
+      },
+      {
+        "site_id": "gmlr-956",
+        "farmland": {
+          "pixels": 140,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 10608,
+          "predicted": 252
+        },
+        "riverbank": {
+          "pixels": 1994,
+          "predicted": 295
+        },
+        "bare_ground": {
+          "pixels": 3189,
+          "predicted": 1367
+        },
+        "other_land": {
+          "pixels": 3903362,
+          "predicted": 4020
+        }
+      },
+      {
+        "site_id": "gmlr-98",
+        "farmland": {
+          "pixels": 0,
+          "predicted": 0
+        },
+        "settlement": {
+          "pixels": 1837,
+          "predicted": 1467
+        },
+        "riverbank": {
+          "pixels": 106851,
+          "predicted": 96758
+        },
+        "bare_ground": {
+          "pixels": 6586,
+          "predicted": 4448
+        },
+        "other_land": {
+          "pixels": 1921219,
+          "predicted": 695639
+        }
+      },
+      {
+        "site_id": "gmlr-986",
+        "farmland": {
+          "pixels": 1793788,
+          "predicted": 11422
+        },
+        "settlement": {
+          "pixels": 74998,
+          "predicted": 2262
+        },
+        "riverbank": {
+          "pixels": 110,
+          "predicted": 110
+        },
+        "bare_ground": {
+          "pixels": 9211,
+          "predicted": 3482
+        },
+        "other_land": {
+          "pixels": 2079660,
+          "predicted": 74523
+        }
+      }
+    ]
+  }
+}
