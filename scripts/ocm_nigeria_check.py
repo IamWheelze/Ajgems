@@ -11,6 +11,9 @@ Protocol, fixed before measuring (2026-11-14):
   preprocessing path's own `to_reflectance`). Clear windows: the clearest scene in the season. Cloudy windows: scenes
   ordered by distance of tile cloud cover from 30%; the first whose window has at least 5% SCL cloud (8, 9) is used.
   Scene IDs are pinned in the output.
+- Amendment, 2026-11-14, before any window was assessed: the first run picked a Kano scene covering only a sliver of
+  the window (swath edge). Every window now also needs at least 90% of its pixels covered (SCL > 0); scenes are tried
+  in the order above, up to 8, and the first meeting all rules is used.
 - OmniCloudMask 1.8.1, model 4.0, inputs B04, B03, B8A, patch 1000, overlap 300, as in the other studies.
 - There are no cloud labels here, so the measures are agreement and a visual check, not accuracy:
   share of SCL bare (5) and SCL water (6) pixels OmniCloudMask calls cloud (thick, and thick or thin); share of SCL
@@ -35,6 +38,7 @@ from minefoot.reflectance import Radiometry, to_reflectance  # noqa: E402
 
 HALF = 0.09                                     # about 20 km boxes
 MIN_KM_FROM_AOI = 50
+MIN_COVER = 0.90
 WINDOWS = [
     {"name": "kano_dry", "kind": "clear", "lon": 8.52, "lat": 12.00, "start": "2025-12-01", "end": "2026-02-28"},
     {"name": "maiduguri_sand", "kind": "clear", "lon": 13.15, "lat": 11.85, "start": "2025-12-01", "end": "2026-02-28"},
@@ -100,12 +104,12 @@ def run(work, out, panels):
         if w["kind"] == "cloudy":
             items = sorted(items, key=lambda i: (abs(i.properties.get("eo:cloud_cover", 100) - 30), i.id))
         tried = []
-        for item in items[:6]:
+        for item in items[:8]:
             d = catalog.fetch_scene(item, "planetary", bbox, work, name=w["name"])
             meta, rgn, scl = _read(d)
-            win_cloud = float(np.isin(scl, (8, 9)).mean())
-            tried.append({"scene_id": item.id, "window_scl_cloud": round(win_cloud, 4)})
-            if w["kind"] == "clear" or win_cloud >= 0.05:
+            win_cloud = float(np.isin(scl, (8, 9)).mean()); cover = float((scl > 0).mean())
+            tried.append({"scene_id": item.id, "window_scl_cloud": round(win_cloud, 4), "window_covered": round(cover, 4)})
+            if cover >= MIN_COVER and (w["kind"] == "clear" or win_cloud >= 0.05):
                 break
             shutil.rmtree(d)
         else:
