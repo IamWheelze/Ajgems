@@ -1,0 +1,51 @@
+{
+ "rule": "docs/g2_results.md, decision rule fixed before results",
+ "checks": {
+  "f1_interval_above_-0.02_and_point_above_0": false,
+  "false_alarm_area_not_clearly_worse": true,
+  "licence_register_cc_by_4.0": true
+ },
+ "val_f1": {
+  "a": 0.5016228397100527,
+  "b": 0.5018435404283381,
+  "b_minus_a": 0.00022070071828539373,
+  "ci95": [
+   -0.042352101974495154,
+   0.05697525546773239
+  ],
+  "verdict": "no clear difference"
+ },
+ "val_false_alarm_km2_per_1000km2": {
+  "a": 30.12740668991242,
+  "b": 35.096445131071405,
+  "b_minus_a": 4.969038441158986,
+  "ci95": [
+   -6.395168199246989,
+   17.114610858319757
+  ],
+  "verdict": "no clear difference"
+ },
+ "commercial_candidate": "g2_nw_hn",
+ "test_for_record_only": {
+  "f1": {
+   "a": 0.420338352566228,
+   "b": 0.4147439917235362,
+   "b_minus_a": -0.00559436084269177,
+   "ci95": [
+    -0.06442562036626677,
+    0.042480944498260835
+   ],
+   "verdict": "no clear difference"
+  },
+  "false_alarm_km2_per_1000km2": {
+   "a": 56.285322157187935,
+   "b": 64.05637928074393,
+   "b_minus_a": 7.771057123555991,
+   "ci95": [
+    -8.253944220013494,
+    26.814385804738855
+   ],
+   "verdict": "no clear difference"
+  }
+ }
+}

@@ -186,3 +186,42 @@ On test strata (no paired intervals per stratum), `g2_nw_hn` against `g2_hn`:
   - the licence register still shows CC BY 4.0 for the weights.
 - Otherwise `g2_nw_hn` stays the commercial candidate.
 - Either way, `g2_hn` stays the internal-research reference until the ImageNet question is answered.
+
+## Results: `g2_s2` and `g2_s2_hn` (2026-11-14)
+
+All numbers are measured on the same 60 validation and 60 test sites as the earlier runs. Intervals are 95% from resampling sites. Evidence: `docs/evidence/g2_s2/`, `docs/evidence/g2_s2_hn/`, and the rule applied by `scripts/g2_s2_decision.py` in `docs/evidence/g2_s2_hn/decision.json`.
+
+**Training.** `g2_s2` kept epoch 23 of 40 (validation-chip loss 0.613). `g2_s2_hn` kept epoch 1 of its 12-epoch fine-tune (0.712); validation-chip loss rose after that.
+
+| Run | Val F1 | Test F1 | Test precision | Test recall | Test false-alarm km² per 1,000 km² |
+| --- | --- | --- | --- | --- | --- |
+| `g2_s2` | 0.569 (0.499–0.629) | 0.420 (0.324–0.545) | 0.334 | 0.565 | 59.9 |
+| `g2_s2_hn` | 0.502 (0.394–0.615) | 0.415 (0.320–0.541) | 0.324 | 0.577 | 64.1 |
+| `g2_nw_hn` (reference) | 0.502 | 0.420 | 0.341 | 0.548 | 56.3 |
+| `g2_hn` (reference) | 0.555 | 0.479 | 0.404 | 0.588 | 46.0 |
+
+**Decision rule, as declared: `g2_s2_hn` does not replace `g2_nw_hn`.**
+- F1 against `g2_nw_hn` on validation: +0.000 (−0.042 to +0.057). The interval's lower bound is below −0.02, so the first condition fails.
+- False-alarm area against `g2_nw_hn` on validation: +5.0 (−6.4 to +17.1), not clearly worse; the condition holds.
+- Licence: CC BY 4.0 is still recorded; the condition holds.
+- `g2_nw_hn` stays the commercial candidate, and `g2_hn` stays the internal-research reference.
+
+**Other paired results (validation; test in brackets).**
+- `g2_s2_hn` against `g2_hn`: F1 −0.054 (−0.108 to +0.010) [test −0.064, −0.094 to −0.032, worse]; false-alarm area +12.2 (−1.0 to +28.7) [test +18.0, +5.7 to +34.9, worse].
+- `g2_s2_hn` against the G1 random forest: F1 +0.183 (+0.120 to +0.262) [test +0.186].
+- The fine-tune hurt this time: `g2_s2_hn` against `g2_s2`: F1 −0.067 (−0.132 to +0.015), false-alarm area +12.1 (−4.0 to +33.1). With `g2_hn` the same step cut false-alarm area by 31%; here the checkpoint rule kept epoch 1, so the mined negatives had little chance to act.
+- `g2_s2` against `g2_nw` (both before hard negatives): F1 +0.083 (+0.025 to +0.134), false-alarm area −17.1 (−34.6 to −3.0); test F1 +0.036 (−0.023 to +0.105). Sentinel-2 pretraining helps the plain run on validation.
+
+**Chosen after seeing the results, so descriptive only.** Because `g2_s2` looked better than `g2_s2_hn`, it was also compared with the two references (`docs/evidence/g2_s2/posthoc_*`):
+- against `g2_nw_hn`: validation F1 +0.067 (+0.006 to +0.116), test −0.001 (−0.049 to +0.039);
+- against `g2_hn`: validation +0.013 (−0.048 to +0.085), test −0.059 (−0.090 to −0.023), worse.
+The validation lead does not carry over to test, and validation already chose each run's checkpoint and threshold, so it flatters every run. This is not grounds to adopt `g2_s2`; a new rule would have to be declared first and checked on data not yet used, such as the Nigerian sites.
+
+**Calibration.** `g2_s2_hn` is not calibrated: on test, ECE on pixels predicted ≥ 0.1 is 0.405 raw and 0.161 after Platt (0.058–0.281). Keep "model score".
+
+**Registry.** `g2_s2` and `g2_s2_hn` are registered as experimental. Their licence lineage lists the SSL4EO-S12 weights as CC BY 4.0 with attribution and hash; the Global ML-ready share-alike question still applies to them, as to every run.
+
+**What this means.**
+1. Open Sentinel-2 pretraining under CC BY 4.0 gives a clean licence route, but no model trained this way has beaten `g2_nw_hn` on the declared test. The gap to `g2_hn` (ImageNet weights) remains on test.
+2. The encoder differs in size (ResNet-18 against ResNet-34), so this does not show whether pretraining or size is the limit.
+3. The hard-negative fine-tune needs a checkpoint rule that does not stop at epoch 1, or a lower learning rate, before it is tried again with these weights. That would be a new run with its own declared rule.
