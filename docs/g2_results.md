@@ -161,3 +161,28 @@ On test strata (no paired intervals per stratum), `g2_nw_hn` against `g2_hn`:
    - longer training with stronger augmentation; the overfit from epoch 10 suggests regularisation matters more than epochs;
    - encoder weights pretrained on satellite imagery under an explicit permissive licence;
    - more labelled data, which the Nigerian labels and the QC pool will add.
+
+## Planned before training: Sentinel-2-pretrained encoder, `g2_s2` and `g2_s2_hn` (declared 2026-11-14)
+
+**Question.** Does an encoder pretrained on Sentinel-2 under an explicit commercial-friendly licence close the gap between `g2_nw_hn` (no pretrained weights) and `g2_hn` (ImageNet weights)?
+
+**Weights.** SSL4EO-S12 MoCo, ResNet-18. They are released under CC BY 4.0 according to the SSL4EO-S12 README and the Hugging Face card, both read 2026-11-14 and recorded in the licence register. The file is pinned by SHA-256. How they are adapted to our inputs:
+- They were pretrained on Sentinel-2 L1C, 13 bands, DN / 10000.
+- We keep the filters of our 10 L2A bands and fold the training-site normalisation into the first layer.
+- ResNet-18 rather than ResNet-34, because no ResNet-34 Sentinel-2 weights are published. The encoder size therefore differs from the other runs, and the comparison cannot separate pretraining from encoder size.
+
+**Runs.** Both are made from commit `ab52650` by `data/runs/run_g2_s2.sh`, with the same sites, split, preprocessing and evaluation as before.
+
+| Run | Same as | Except |
+| --- | --- | --- |
+| `g2_s2` | `g2_v1` (40 epochs) | `--encoder resnet18 --encoder-weights ssl4eo-s12-moco` |
+| `g2_s2_hn` | `g2_hn` | Hard negatives mined from `g2_s2`'s own errors; fine-tuned for 12 epochs at learning rate 3e-4 |
+
+**Decision rule, fixed now.**
+- The primary comparison is paired validation pixel F1 of `g2_s2_hn` against `g2_nw_hn` and against `g2_hn`. Test is reported, not used to decide.
+- `g2_s2_hn` replaces `g2_nw_hn` as the commercial candidate if all three hold:
+  - against `g2_nw_hn`, its validation F1 difference has an interval wholly above −0.02 and its point estimate is above zero;
+  - its validation false-alarm area is not clearly worse than `g2_nw_hn`'s;
+  - the licence register still shows CC BY 4.0 for the weights.
+- Otherwise `g2_nw_hn` stays the commercial candidate.
+- Either way, `g2_hn` stays the internal-research reference until the ImageNet question is answered.
