@@ -157,7 +157,9 @@ def _pretrained_lineage(cfg, init_from) -> list:
     """Every pretrained-weight source this model descends from: its own encoder weights, plus whatever the run it
     was initialised from descended from (read from that run's config.json)."""
     out = []
-    if cfg.get("encoder_weights") not in (None, "none", "None"):
+    if cfg.get("encoder_weights") in PRETRAINED:
+        out.append(PRETRAINED[cfg["encoder_weights"]]["lineage"])
+    elif cfg.get("encoder_weights") not in (None, "none", "None"):
         out.append(f"{cfg['encoder']} {cfg['encoder_weights']} encoder weights")
     if init_from:
         parent = Path(init_from).parent / "config.json"
@@ -170,8 +172,78 @@ def _pretrained_lineage(cfg, init_from) -> list:
     return sorted(set(out))
 
 
-def build_model(encoder="resnet34", encoder_weights="imagenet"):
+# Encoder weights pretrained on Sentinel-2 with an explicit licence, loaded from a pinned, hash-checked file.
+# SSL4EO-S12 (Wang et al. 2022, arXiv 2211.07044): weights released under CC BY 4.0 (repository README, read 2026-11-14);
+# the torchgeo copy on Hugging Face carries the same licence. Pretrained on Sentinel-2 L1C, 13 bands, DN / 10000.
+PRETRAINED = {
+    "ssl4eo-s12-moco": {
+        "encoder": "resnet18",
+        "file": "resnet18_sentinel2_all_moco-59bfdff9.pth",
+        "url": "https://hf.co/torchgeo/resnet18_sentinel2_all_moco/resolve/5b8cddc9a14f3844350b7f40b85bcd32aed75918/"
+               "resnet18_sentinel2_all_moco-59bfdff9.pth",
+        "sha256": "59bfdff99c7af41adfa2557e684ec59aec79f4cf6bb1a2e9714b802f08e2222e",
+        "bands": ["B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12"],
+        "input": "reflectance (L1C DN / 10000)",
+        "lineage": "SSL4EO-S12 ResNet-18 Sentinel-2 MoCo encoder weights (CC BY 4.0)",
+        "attribution": "Encoder pretrained with SSL4EO-S12 (Wang et al., 2022), CC BY 4.0, https://github.com/zhu-xlab/SSL4EO-S12",
+    },
+}
+
+
+def weights_dir() -> Path:
+    import os
+    return Path(os.environ.get("MINEFOOT_WEIGHTS_DIR", "data/weights"))
+
+
+def pretrained_file(name) -> Path:
+    """The pinned weights file, downloaded once and checked against its SHA-256."""
+    spec = PRETRAINED[name]
+    p = weights_dir() / spec["file"]
+    if not p.exists():
+        import urllib.request
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".part")
+        urllib.request.urlretrieve(spec["url"], tmp)
+        tmp.rename(p)
+    got = hashlib.sha256(p.read_bytes()).hexdigest()
+    if got != spec["sha256"]:
+        raise ValueError(f"{p} has SHA-256 {got}, expected {spec['sha256']}")
+    return p
+
+
+def load_pretrained_encoder(model, name, norm):
+    """Load band-matched pretrained weights into the U-Net encoder.
+
+    The first convolution keeps the pretrained filters of our 10 bands (B01, B09, B10 dropped). Our inputs are
+    standardised, x' = (x - mean) / std, while the weights expect reflectance x, so each band's filters are scaled by
+    that band's training std: W·x = (W·std)·x' + constant, and the constant is absorbed by the batch norm that follows.
+    """
+    import torch
+    spec = PRETRAINED[name]
+    sd = torch.load(pretrained_file(name), map_location="cpu", weights_only=True)
+    idx = [spec["bands"].index(b) for b in BANDS]
+    std = torch.tensor(norm["std"], dtype=sd["conv1.weight"].dtype)
+    sd["conv1.weight"] = sd["conv1.weight"][:, idx] * std[None, :, None, None]
+    sd = {k: v for k, v in sd.items() if not k.startswith("fc.")}
+    have = model.encoder.state_dict()
+    missing = sorted(set(have) - set(sd)); unexpected = sorted(set(sd) - set(have))
+    bad = [k for k in set(have) & set(sd) if have[k].shape != sd[k].shape]
+    if missing or unexpected or bad:
+        raise ValueError(f"pretrained weights do not fit the encoder: missing {missing[:3]}, unexpected {unexpected[:3]}, "
+                         f"wrong shape {bad[:3]}")
+    torch.nn.Module.load_state_dict(model.encoder, sd, strict=True)
+    return model
+
+
+def build_model(encoder="resnet34", encoder_weights="imagenet", norm=None):
     import segmentation_models_pytorch as smp
+    if encoder_weights in PRETRAINED:
+        if encoder != PRETRAINED[encoder_weights]["encoder"]:
+            raise ValueError(f"{encoder_weights} weights are for {PRETRAINED[encoder_weights]['encoder']}, not {encoder}")
+        if norm is None:
+            raise ValueError(f"{encoder_weights} weights need the training normalisation")
+        model = smp.Unet(encoder_name=encoder, encoder_weights=None, in_channels=len(BANDS), classes=1)
+        return load_pretrained_encoder(model, encoder_weights, norm)
     w = None if encoder_weights in (None, "none", "None") else encoder_weights
     return smp.Unet(encoder_name=encoder, encoder_weights=w, in_channels=len(BANDS), classes=1)
 
@@ -241,7 +313,10 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
                    "loss": "masked binary cross-entropy + soft Dice; masked pixels excluded",
                    "checkpoint_rule": "lowest loss on fixed validation chips",
                    "pretrained_lineage": _pretrained_lineage(cfg, init_from)})
-    if config["pretrained_lineage"]:   # kept for older readers; absent when no pretrained weights are in the lineage
+    if cfg["encoder_weights"] in PRETRAINED and not init_from:
+        spec = PRETRAINED[cfg["encoder_weights"]]
+        config["pretrained_weights"] = {k: spec[k] for k in ("url", "sha256", "input", "lineage", "attribution")}
+    if any("imagenet" in x.lower() for x in config["pretrained_lineage"]):   # kept for older readers
         config["encoder_weights_note"] = ("ImageNet-pretrained encoder weights in the lineage: no commercial licence found "
                                           "(docs/licence_register.csv); internal research only")
     import segmentation_models_pytorch as smp
@@ -286,7 +361,7 @@ def run_g2(sites_by_split: dict, split_gpkg, prepared_root, labels_root, out_dir
     loader_kw = dict(batch_size=cfg["batch"], num_workers=cfg["workers"], pin_memory=dev.type == "cuda",
                      persistent_workers=False)
     from torch.utils.data import DataLoader
-    model = build_model(cfg["encoder"], cfg["encoder_weights"] if not init_from else "none").to(dev)
+    model = build_model(cfg["encoder"], cfg["encoder_weights"] if not (init_from or resuming) else "none", norm=norm).to(dev)
     if init_from and not resuming:
         model.load_state_dict(torch.load(init_from, map_location=dev))
         log(f"initialised from {init_from}")

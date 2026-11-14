@@ -31,7 +31,7 @@ def _licence_status(item, licence):
         return "unverified"
     if "by-sa" in text or "share-alike" in text:
         return "review"
-    if "model-mined" in text or "sentinel" in text or "copernicus" in text:
+    if "model-mined" in text or text.startswith("copernicus sentinel"):
         return "cleared"
     for r in _register():
         if r["item"].lower().split(" (")[0] in text:

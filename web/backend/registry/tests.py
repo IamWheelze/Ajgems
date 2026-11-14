@@ -124,6 +124,28 @@ class RegistryTest(TestCase):
         self.assertEqual(d["curves"]["test"]["pr"][0]["precision"], 0.1)
         self.assertEqual(d["missing"], [])
 
+    def test_licensed_sentinel2_weights_cleared_and_credited(self):
+        """FR-071/FR-104: weights with a recorded CC BY 4.0 licence are listed by name with their attribution and do
+        not raise the unverified-weights issue; ImageNet weights in the same lineage still do."""
+        from minefoot.g2 import PRETRAINED
+        from registry.release import issues
+        item = PRETRAINED["ssl4eo-s12-moco"]["lineage"]
+        run = fake_run(self.tmp / "runs", "s2w")
+        cfg = json.loads((run / "config.json").read_text()); cfg.pop("encoder_weights_note")
+        cfg["pretrained_lineage"] = [item]
+        (run / "config.json").write_text(json.dumps(cfg))
+        mv = ModelVersion.objects.get(pk=self.reg(self.ml1, "s2w").json()["id"])
+        lic = {l["item"]: l for l in mv.licences}
+        self.assertIn(item, lic); self.assertIn("SSL4EO-S12", lic[item]["attribution"])
+        self.assertNotIn("pretrained encoder weights", lic)
+        ids = {i["id"] for i in issues(mv)}
+        self.assertNotIn(f"licence:{item}", ids); self.assertNotIn("licence:pretrained encoder weights", ids)
+        run2 = fake_run(self.tmp / "runs", "mixed")
+        cfg["pretrained_lineage"] = [item, "resnet34 imagenet encoder weights"]
+        (run2 / "config.json").write_text(json.dumps(cfg))
+        mv2 = ModelVersion.objects.get(pk=self.reg(self.ml1, "mixed").json()["id"])
+        self.assertIn("licence:pretrained encoder weights", {i["id"] for i in issues(mv2)})
+
     def test_calibration_study_in_review_and_dashboard(self):
         """FRD 8.5: the release review states the measured calibration from calibration.json, per stratum; the
         dashboard shows the study without the large tables; without a study the review says how to run one."""

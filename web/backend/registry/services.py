@@ -28,6 +28,11 @@ def json_safe(x):
     return x
 
 
+def _pretrained_specs() -> dict:
+    from minefoot.g2 import PRETRAINED
+    return PRETRAINED
+
+
 def _licences(cfg) -> list:
     out = [{"item": "Copernicus Sentinel-2 imagery", "licence": "Sentinel Data Legal Notice (free, full and open)"},
            {"item": cfg["dataset"]["name"], "licence": cfg["dataset"]["licence"]}]
@@ -35,9 +40,16 @@ def _licences(cfg) -> list:
     if lineage is None:   # runs from before 2026-11-13: decide from the note and the parameters
         lineage = ["pretrained encoder weights"] if (cfg.get("encoder_weights_note") or cfg.get("params", {}).get(
             "encoder_weights") not in (None, "none", "None") or cfg.get("init_from")) else []
-    if lineage:
+    # Weights with a recorded licence (named in the lineage, e.g. "... (CC BY 4.0)") are listed on their own;
+    # anything else, such as ImageNet weights, stays "pretrained encoder weights", not verified.
+    known = {spec["lineage"]: spec for spec in _pretrained_specs().values()}
+    for item in [x for x in lineage if x in known]:
+        out.append({"item": item, "licence": "CC BY 4.0" if "CC BY 4.0" in item else "see docs/licence_register.csv",
+                    "attribution": known[item]["attribution"], "sha256": known[item]["sha256"]})
+    other = [x for x in lineage if x not in known]
+    if other:
         out.append({"item": "pretrained encoder weights", "licence": "NOT VERIFIED (see docs/licence_register.csv)",
-                    "lineage": lineage})
+                    "lineage": other})
     if cfg.get("hard_negatives"):
         out.append({"item": "hard negatives", "licence": str(cfg["hard_negatives"].get("source"))})
     return out

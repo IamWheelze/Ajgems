@@ -72,8 +72,14 @@ def _gpkg(dets, recs) -> bytes:
 def licence_text(project, dets) -> str:
     years = sorted({d.scene.acquired_at.year for d in dets})
     credits = "\n".join(f"  Contains modified Copernicus Sentinel data {y}" for y in years) or "  (no imagery in this export)"
+    from registry.models import ModelVersion
+    names = sorted({str(d.model_version).split(":")[0] for d in dets})
+    attrib = sorted({l["attribution"] for mv in ModelVersion.objects.filter(name__in=names)
+                     for l in (mv.licences or []) if l.get("attribution")})
+    model_credits = ("Model components:\n" + "\n".join(f"  {a}" for a in attrib) + "\n\n") if attrib else ""
     return (f"Licence and attribution notice\n{'=' * 30}\n\nProject: {project.name}\n\n"
             f"Imagery (Copernicus Sentinel-2, free, full and open under the Sentinel Data Legal Notice):\n{credits}\n\n"
+            f"{model_credits}"
             "Candidate footprints were produced by an automated model and reviewed by people as recorded in each row.\n"
             f"{SCORE_STATEMENT}\n\n"
             "Base maps are not included. If OpenStreetMap is shown alongside, credit: (c) OpenStreetMap contributors.\n")

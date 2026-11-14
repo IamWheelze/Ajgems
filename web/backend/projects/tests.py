@@ -299,6 +299,15 @@ class ExportTest(Base):
                 for n, info in man["files"].items():
                     self.assertEqual(hashlib.sha256(z.read(n)).hexdigest(), info["sha256"])   # FR-109: alteration detectable
                 self.assertIn("Contains modified Copernicus Sentinel data 2026", z.read("LICENCE_AND_ATTRIBUTION.txt").decode())
+        # CC BY model components are credited from the registry lineage of the model that made the candidates.
+        from registry.models import ModelVersion
+        ModelVersion.objects.create(name="g2_hn", run_path="/x", input_schema="s", code_commit="c", dataset={},
+                                    licences=[{"item": "w", "licence": "CC BY 4.0", "attribution": "Encoder pretrained with SSL4EO-S12"}],
+                                    normalisation={}, threshold=0.4, metrics={}, card={},
+                                    registered_by=self.users[("A", "gis")])
+        with mock.patch("projects.pipeline.model_card", return_value=card):
+            txt = self.unzip(self.export("gis", {"format": "geojson"})).read("LICENCE_AND_ATTRIBUTION.txt").decode()
+        self.assertIn("Model components:\n  Encoder pretrained with SSL4EO-S12", txt)
         # GeoJSON fields follow FRD 9.2.
         with mock.patch("projects.pipeline.model_card", return_value=card):
             fc = json.loads(self.unzip(self.export("gis", {"format": "geojson"})).read("candidates.geojson"))

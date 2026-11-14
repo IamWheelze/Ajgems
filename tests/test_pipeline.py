@@ -1157,3 +1157,41 @@ def test_calibration_maps_fix_overconfident_scores_and_keep_order():
         assert r["ece"] < raw["ece"] / 3 and r["brier"] < raw["brier"]
     perfect = reliability(tp, tn, true_p)
     assert perfect["ece"] < 0.02 and perfect["ece_active"] < 0.03
+
+
+def test_sentinel2_pretrained_encoder_band_matched_and_hash_checked(tmp_path, monkeypatch):
+    """Licensed Sentinel-2 weights load into the encoder band by band, with normalisation folded into the first
+    layer; a file with the wrong hash is refused; the lineage names the weights and their licence."""
+    torch = pytest.importorskip("torch"); pytest.importorskip("segmentation_models_pytorch")
+    import hashlib
+    import segmentation_models_pytorch as smp
+    from minefoot import g2
+    ref = smp.Unet(encoder_name="resnet18", encoder_weights=None, in_channels=13, classes=1).encoder.state_dict()
+    gen = torch.Generator().manual_seed(0)
+    sd = {k: (torch.randn(v.shape, generator=gen) if v.is_floating_point() else v) for k, v in ref.items()}
+    sd["fc.weight"] = torch.zeros(1000, 512)                      # the published file has no head; extra keys are dropped
+    f = tmp_path / "w.pth"; torch.save(sd, f)
+    spec = {**g2.PRETRAINED["ssl4eo-s12-moco"], "file": "w.pth", "sha256": hashlib.sha256(f.read_bytes()).hexdigest()}
+    monkeypatch.setitem(g2.PRETRAINED, "ssl4eo-s12-moco", spec)
+    monkeypatch.setenv("MINEFOOT_WEIGHTS_DIR", str(tmp_path))
+    norm = {"std": [0.01 * (i + 1) for i in range(len(g2.BANDS))], "mean": [0.1] * len(g2.BANDS)}
+    m = g2.build_model("resnet18", "ssl4eo-s12-moco", norm=norm)
+    got = m.encoder.state_dict()
+    idx = [spec["bands"].index(b) for b in g2.BANDS]
+    assert idx == [1, 2, 3, 4, 5, 6, 7, 8, 11, 12]                # B01, B09 and B10 dropped
+    want = sd["conv1.weight"][:, idx] * torch.tensor(norm["std"])[None, :, None, None]
+    assert torch.allclose(got["conv1.weight"], want)
+    assert torch.equal(got["layer4.1.conv2.weight"], sd["layer4.1.conv2.weight"])
+    # Standardised input through the folded filters equals reflectance through the original ones, minus a constant.
+    x = torch.rand(1, 10, 32, 32) * 0.3
+    xs = (x - torch.tensor(norm["mean"])[None, :, None, None]) / torch.tensor(norm["std"])[None, :, None, None]
+    conv = lambda w, a: torch.nn.functional.conv2d(a, w, stride=2, padding=3)
+    diff = conv(want, xs) - conv(sd["conv1.weight"][:, idx], x)
+    assert torch.allclose(diff[..., 4:-4, 4:-4], diff[..., 4:5, 4:5].expand_as(diff[..., 4:-4, 4:-4]), atol=1e-4)
+    with pytest.raises(ValueError, match="for resnet18"):
+        g2.build_model("resnet34", "ssl4eo-s12-moco", norm=norm)
+    assert g2._pretrained_lineage({"encoder_weights": "ssl4eo-s12-moco"}, None) == [spec["lineage"]]
+    assert "CC BY 4.0" in spec["lineage"]
+    f.write_bytes(f.read_bytes() + b"x")
+    with pytest.raises(ValueError, match="SHA-256"):
+        g2.build_model("resnet18", "ssl4eo-s12-moco", norm=norm)
