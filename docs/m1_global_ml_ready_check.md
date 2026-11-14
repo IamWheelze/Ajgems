@@ -85,6 +85,45 @@ Licences read 2026-11-14 (rows in `docs/licence_register.csv`):
 
 Suggested order, founder's call: measure SCL, and any option-1 rule, on CloudSEN12+ L2A patches first (free, public domain). Then test OmniCloudMask on the same patches and on our 40 study sites.
 
+### SCL measured against CloudSEN12+ expert labels (2026-11-14)
+
+`scripts/cloudsen12_scl_study.py` ([evidence/cloudsen12_scl_study.json](evidence/cloudsen12_scl_study.json)). The founder approved the test; no mask was changed. The protocol is in the script and was fixed before measuring:
+- Patches with expert labels of type "high", 509 px. 535 validation patches (107 regions) for fitting, 975 test patches (195 regions) measured once. None failed to read.
+- Truth is the expert label. "SCL cloud" means classes 8 and 9, the ones our mask drops. Results are broken down by WorldCover class.
+- Intervals are 95%, from resampling regions.
+
+On test:
+
+| Measure | Value (95% interval) |
+| --- | --- |
+| Expert-clear pixels SCL calls cloud, all land cover | 3.9% (2.5–5.5%) |
+| on bare / sparse vegetation | **7.9% (3.8–12.8%)** |
+| on built-up | 8.4% (3.2–14.4%) |
+| on trees | 2.3% (1.1–3.8%) |
+| on crops | 3.0% (0.6–6.4%) |
+| on water | 0.7% (0.3–1.3%) |
+| Expert-clear pixels SCL calls cirrus (class 10, not masked by us) | 6.6% (5.0–8.2%) |
+| SCL-cloud pixels that experts call clear | 8.7% (5.7–11.5%) |
+| Expert thick cloud that SCL puts in classes 8 or 9 | 63.2% (60.5–66.0%) |
+
+So SCL's false cloud on clear ground is about three times as common on bare ground and built-up areas as on trees. That matches what we saw on mines (1.49% of labelled mining pixels against 0.12% far away, on nearly cloud-free scenes).
+
+**Option 1 rule, fitted on validation, measured on test.** The rule re-admits an SCL-cloud pixel when B02 < t. The fitted value is the largest t with at most 1% of expert thick cloud re-admitted on validation: **t = 0.12**. On test:
+- Thick cloud re-admitted: 0.69% (0.42–1.00%).
+- Thin cloud re-admitted: 11.5% (6.2–18.4%).
+- False cloud on clear ground recovered: 18.6% (10.4–32.2%), and on bare ground 19.1% (10.3–26.6%).
+
+On our 40 mining sites, the same cut re-admits 29.0% of SCL-cloud pixels on mines and 14.3% of those more than 1 km away (the table above, now with 0.12).
+
+What this means:
+- A blue cut safe for thick cloud recovers only about a fifth of SCL's false cloud, and about 29% on our mines. It also lets through about one in nine thin-cloud pixels.
+- It would help, but it is not a fix: most bright mine ground that SCL calls cloud has B02 above 0.12, where real cloud also lies.
+- The mask-report thresholds (option 3) stay necessary whatever is chosen.
+- Indicative only for current SCL: these patches are from 2018–2020, processed by Google Earth Engine with older Sen2Cor versions, while our Nigerian scenes are baseline 05.xx.
+- Next options, founder's call:
+  - adopt the B02 < 0.12 re-admit as a labelled "suspect bright" class, as class 11 (snow) is handled today;
+  - test OmniCloudMask on these test patches and our 40 sites. Check first whether CloudSEN12 is in its training data, which would make this test optimistic.
+
 ## Overlaps and splits (2026-11-06)
 
 `minefoot overlaps` on the 1,207 sites found 985 pairs: 430 sharing a scene, 306 with overlapping tile footprints and 249 with overlapping labels. All are within this one dataset; cross-dataset checks start when a second dataset is ingested.

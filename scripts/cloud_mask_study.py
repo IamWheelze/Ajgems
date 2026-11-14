@@ -30,7 +30,7 @@ from minefoot.schema import BANDS  # noqa: E402
 FAR_PX = 100                          # 1 km at 10 m
 CLOUD = (8, 9)
 B = {b: i for i, b in enumerate(BANDS)}
-BLUE_T = [0.15, 0.20, 0.25, 0.30, 0.35, 0.40]
+BLUE_T = [0.12, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40]
 RATIO_T = [0.6, 0.8, 1.0]             # B02 / B11: soil and tailings are redder (low), cloud is flat or blue (high)
 PER_GROUP = 20000                     # sampled pixels kept per site and group, so a few big sites cannot dominate
 

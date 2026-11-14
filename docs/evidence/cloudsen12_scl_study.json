@@ -1,0 +1,413 @@
+{
+ "protocol": "- Patches: label_type \"high\", 509 x 509 (the 2000 x 2000 patches are left out). Validation split to fit, test split to\n  measure once. Pixels with label 99 (no data), SCL 0 or zero reflectance are dropped.\n- Truth: expert label 0 clear, 1 thick cloud, 2 thin cloud, 3 shadow. \"SCL cloud\" is classes 8 and 9, the ones our\n  mask drops as cloud (cirrus 10 is reported separately).\n- Main measure: share of expert-clear pixels SCL calls cloud, per WorldCover class. Bare / sparse vegetation (60) is\n  the analogue of mine ground; built-up (50) and the rest are reported too.\n- Option 1 rule: re-admit an SCL-cloud pixel when B02 < t. t is the largest value (step 0.01) for which, on\n  validation, at most 1% of the SCL-cloud pixels that experts call thick cloud would be re-admitted. Then on test:\n  that leak, and the share of false cloud on clear ground recovered, pooled and on bare ground.\n- Intervals: 95% from resampling regions (roi_id) with replacement, 1000 times.\n- L2A here is Google Earth Engine's, from 2018-2020 (processing baselines before 04.00, no -1000 offset), so\n  reflectance is DN / 10000, matching minefoot.reflectance for those baselines. SCL here comes from those older\n  Sen2Cor versions; our Nigerian scenes use baseline 05.xx. Read results as indicative for current SCL.",
+ "dataset": "CloudSEN12+ v1.1.2 (CC0 1.0), tacofoundation/cloudsen12, label_type high, 509 px patches",
+ "rule_fitted_on": "validation",
+ "rule": {
+  "B02_below": 0.12,
+  "leak_max_on_validation": 0.01
+ },
+ "validation": {
+  "patches": 535,
+  "regions": 107,
+  "pooled": {
+   "false_cloud_on_clear": 0.028785027636337213,
+   "cirrus_on_clear": 0.040888602673879317,
+   "thick_caught": 0.6115754877673976,
+   "thick_or_thin_caught_incl_cirrus": 0.7070604192249732,
+   "scl_cloud_that_is_clear": 0.06527500465525797,
+   "per_landcover": {
+    "tree": {
+     "clear_pixels": 20105653,
+     "false_cloud_on_clear": 0.025459207915306207,
+     "scl_bare_on_clear": 0.07176409540142765
+    },
+    "shrub": {
+     "clear_pixels": 5779704,
+     "false_cloud_on_clear": 0.0034607308609575856,
+     "scl_bare_on_clear": 0.7137119824821478
+    },
+    "grass": {
+     "clear_pixels": 14000671,
+     "false_cloud_on_clear": 0.01893452106688315,
+     "scl_bare_on_clear": 0.5339605508907395
+    },
+    "crop": {
+     "clear_pixels": 9058353,
+     "false_cloud_on_clear": 0.015547086760694797,
+     "scl_bare_on_clear": 0.47198668455512827
+    },
+    "built-up": {
+     "clear_pixels": 2077678,
+     "false_cloud_on_clear": 0.11759570058497996,
+     "scl_bare_on_clear": 0.6362472914474716
+    },
+    "bare / sparse": {
+     "clear_pixels": 11459448,
+     "false_cloud_on_clear": 0.05974249370475786,
+     "scl_bare_on_clear": 0.7179174773514396
+    },
+    "snow / ice": {
+     "clear_pixels": 1206079,
+     "false_cloud_on_clear": 0.08196146355255336,
+     "scl_bare_on_clear": 0.02884636910185817
+    },
+    "water": {
+     "clear_pixels": 9306531,
+     "false_cloud_on_clear": 0.012117296982087095,
+     "scl_bare_on_clear": 0.003321001133505062
+    },
+    "wetland": {
+     "clear_pixels": 52102,
+     "false_cloud_on_clear": 0.11080188860312463,
+     "scl_bare_on_clear": 0.1016467697977045
+    },
+    "mangrove": {
+     "clear_pixels": 115927,
+     "false_cloud_on_clear": 0.012706272050514548,
+     "scl_bare_on_clear": 0.029208036091678383
+    },
+    "moss / lichen": {
+     "clear_pixels": 575737,
+     "false_cloud_on_clear": 0.06415081886347412,
+     "scl_bare_on_clear": 0.13508424853709244
+    }
+   },
+   "rule": {
+    "B02_below": 0.12,
+    "thick_cloud_readmitted": 0.009826463114517936,
+    "thin_cloud_readmitted": 0.08232793548208284,
+    "false_cloud_recovered": 0.1508927717501662,
+    "false_cloud_recovered_bare": 0.06848510697967912
+   }
+  },
+  "ci95": {
+   "false_cloud_on_clear": [
+    0.01875151873824507,
+    0.03978496636953375
+   ],
+   "cirrus_on_clear": [
+    0.025689320616625648,
+    0.058831223019559564
+   ],
+   "thick_caught": [
+    0.5727189626979322,
+    0.6472790597768354
+   ],
+   "thick_or_thin_caught_incl_cirrus": [
+    0.673719541104486,
+    0.7369551832989721
+   ],
+   "scl_cloud_that_is_clear": [
+    0.04452468499667292,
+    0.08965819209716189
+   ],
+   "per_landcover.tree.false_cloud_on_clear": [
+    0.01143597696446384,
+    0.0415915910341345
+   ],
+   "per_landcover.tree.scl_bare_on_clear": [
+    0.04464472634901241,
+    0.10781065782320666
+   ],
+   "per_landcover.shrub.false_cloud_on_clear": [
+    0.0010734311895943581,
+    0.008180145170964215
+   ],
+   "per_landcover.shrub.scl_bare_on_clear": [
+    0.5566695588068057,
+    0.8422596264298826
+   ],
+   "per_landcover.grass.false_cloud_on_clear": [
+    0.007315212256145744,
+    0.03651361002568235
+   ],
+   "per_landcover.grass.scl_bare_on_clear": [
+    0.4254635222861187,
+    0.6323899742449586
+   ],
+   "per_landcover.crop.false_cloud_on_clear": [
+    0.005855395330367113,
+    0.031046742375608765
+   ],
+   "per_landcover.crop.scl_bare_on_clear": [
+    0.36605521380279243,
+    0.577514623024525
+   ],
+   "per_landcover.built-up.false_cloud_on_clear": [
+    0.07799863937413518,
+    0.13681874712265674
+   ],
+   "per_landcover.built-up.scl_bare_on_clear": [
+    0.36034261559087216,
+    0.791034834978643
+   ],
+   "per_landcover.bare / sparse.false_cloud_on_clear": [
+    0.029086977632048764,
+    0.09709661542404277
+   ],
+   "per_landcover.bare / sparse.scl_bare_on_clear": [
+    0.6021169706837391,
+    0.8122648091931421
+   ],
+   "per_landcover.snow / ice.false_cloud_on_clear": [
+    0.0,
+    0.1903605254205931
+   ],
+   "per_landcover.snow / ice.scl_bare_on_clear": [
+    0.0,
+    0.062894508069698
+   ],
+   "per_landcover.water.false_cloud_on_clear": [
+    0.0036589029518742464,
+    0.0259867255780573
+   ],
+   "per_landcover.water.scl_bare_on_clear": [
+    0.0013040217889860833,
+    0.007186080026677279
+   ],
+   "per_landcover.wetland.false_cloud_on_clear": [
+    0.006893619854430943,
+    0.19029648895920756
+   ],
+   "per_landcover.wetland.scl_bare_on_clear": [
+    0.05084019689546494,
+    0.16496080266268578
+   ],
+   "per_landcover.mangrove.false_cloud_on_clear": [
+    0.007194244604316547,
+    0.012911942876061455
+   ],
+   "per_landcover.mangrove.scl_bare_on_clear": [
+    0.027935610297341554,
+    0.06330935251798561
+   ],
+   "per_landcover.moss / lichen.false_cloud_on_clear": [
+    0.049007335306573696,
+    0.1292377715153654
+   ],
+   "per_landcover.moss / lichen.scl_bare_on_clear": [
+    0.09731662894531937,
+    0.3141663839395393
+   ],
+   "rule.thick_cloud_readmitted": [
+    0.0036436245563523616,
+    0.01802070907235774
+   ],
+   "rule.thin_cloud_readmitted": [
+    0.04824299632553364,
+    0.12555097789674227
+   ],
+   "rule.false_cloud_recovered": [
+    0.0894014019014946,
+    0.24057741987160705
+   ],
+   "rule.false_cloud_recovered_bare": [
+    0.02530712669456526,
+    0.17299326958685726
+   ]
+  },
+  "failed": []
+ },
+ "test": {
+  "patches": 975,
+  "regions": 195,
+  "pooled": {
+   "false_cloud_on_clear": 0.03908966563255988,
+   "cirrus_on_clear": 0.06561137735241837,
+   "thick_caught": 0.6317163711444431,
+   "thick_or_thin_caught_incl_cirrus": 0.6819998338626052,
+   "scl_cloud_that_is_clear": 0.0868837310045778,
+   "per_landcover": {
+    "tree": {
+     "clear_pixels": 36057915,
+     "false_cloud_on_clear": 0.02336596555846338,
+     "scl_bare_on_clear": 0.0853410964000553
+    },
+    "shrub": {
+     "clear_pixels": 11819242,
+     "false_cloud_on_clear": 0.012962421786439434,
+     "scl_bare_on_clear": 0.6307676922090266
+    },
+    "grass": {
+     "clear_pixels": 27964252,
+     "false_cloud_on_clear": 0.03041658328640437,
+     "scl_bare_on_clear": 0.42476280073573935
+    },
+    "crop": {
+     "clear_pixels": 12167799,
+     "false_cloud_on_clear": 0.03040500586835795,
+     "scl_bare_on_clear": 0.372668795728792
+    },
+    "built-up": {
+     "clear_pixels": 5521556,
+     "false_cloud_on_clear": 0.083621356009067,
+     "scl_bare_on_clear": 0.7000329255014347
+    },
+    "bare / sparse": {
+     "clear_pixels": 14803768,
+     "false_cloud_on_clear": 0.07892294718479782,
+     "scl_bare_on_clear": 0.649986206214526
+    },
+    "snow / ice": {
+     "clear_pixels": 3401831,
+     "false_cloud_on_clear": 0.30543081064285676,
+     "scl_bare_on_clear": 0.008023326261651446
+    },
+    "water": {
+     "clear_pixels": 14634361,
+     "false_cloud_on_clear": 0.007339712338652846,
+     "scl_bare_on_clear": 0.00362749012409903
+    },
+    "wetland": {
+     "clear_pixels": 4226770,
+     "false_cloud_on_clear": 0.033376313355115136,
+     "scl_bare_on_clear": 0.08620838134083472
+    },
+    "mangrove": {
+     "clear_pixels": 0,
+     "false_cloud_on_clear": null,
+     "scl_bare_on_clear": null
+    },
+    "moss / lichen": {
+     "clear_pixels": 1737969,
+     "false_cloud_on_clear": 0.0224911951824227,
+     "scl_bare_on_clear": 0.38420996001654806
+    }
+   },
+   "rule": {
+    "B02_below": 0.12,
+    "thick_cloud_readmitted": 0.006878096082379351,
+    "thin_cloud_readmitted": 0.11477651019419136,
+    "false_cloud_recovered": 0.18615725768802283,
+    "false_cloud_recovered_bare": 0.19143463855653708
+   }
+  },
+  "ci95": {
+   "false_cloud_on_clear": [
+    0.024845352247426723,
+    0.05466579378036519
+   ],
+   "cirrus_on_clear": [
+    0.04961988583905771,
+    0.08188538759707668
+   ],
+   "thick_caught": [
+    0.6048837722470627,
+    0.6600426114963494
+   ],
+   "thick_or_thin_caught_incl_cirrus": [
+    0.6548826365527509,
+    0.7087060580878549
+   ],
+   "scl_cloud_that_is_clear": [
+    0.057456394224943114,
+    0.1149650404057645
+   ],
+   "per_landcover.tree.false_cloud_on_clear": [
+    0.011080091954702725,
+    0.037851292118683044
+   ],
+   "per_landcover.tree.scl_bare_on_clear": [
+    0.05884179916001256,
+    0.1121628308176462
+   ],
+   "per_landcover.shrub.false_cloud_on_clear": [
+    0.002015903610796727,
+    0.03266215056047836
+   ],
+   "per_landcover.shrub.scl_bare_on_clear": [
+    0.5109223578942937,
+    0.7335698854718093
+   ],
+   "per_landcover.grass.false_cloud_on_clear": [
+    0.01653128200932248,
+    0.04847285860467362
+   ],
+   "per_landcover.grass.scl_bare_on_clear": [
+    0.347292201956803,
+    0.5016655902739816
+   ],
+   "per_landcover.crop.false_cloud_on_clear": [
+    0.005891597135428422,
+    0.06387606622896407
+   ],
+   "per_landcover.crop.scl_bare_on_clear": [
+    0.3040596459675294,
+    0.44826438673400293
+   ],
+   "per_landcover.built-up.false_cloud_on_clear": [
+    0.031681305371239615,
+    0.1444681812885059
+   ],
+   "per_landcover.built-up.scl_bare_on_clear": [
+    0.5757518137205226,
+    0.8117847067433207
+   ],
+   "per_landcover.bare / sparse.false_cloud_on_clear": [
+    0.03782614361677437,
+    0.12849862708506293
+   ],
+   "per_landcover.bare / sparse.scl_bare_on_clear": [
+    0.5618630827362674,
+    0.7386075403482155
+   ],
+   "per_landcover.snow / ice.false_cloud_on_clear": [
+    0.027687857249111124,
+    0.6320651597849464
+   ],
+   "per_landcover.snow / ice.scl_bare_on_clear": [
+    0.0012338015447665275,
+    0.026951647316732625
+   ],
+   "per_landcover.water.false_cloud_on_clear": [
+    0.0031025172229802735,
+    0.013125801376812431
+   ],
+   "per_landcover.water.scl_bare_on_clear": [
+    0.0018425424730519,
+    0.006426782672895117
+   ],
+   "per_landcover.wetland.false_cloud_on_clear": [
+    0.0017203299959642829,
+    0.08668115861021927
+   ],
+   "per_landcover.wetland.scl_bare_on_clear": [
+    0.04313779604417394,
+    0.14264879059642735
+   ],
+   "per_landcover.mangrove.false_cloud_on_clear": [
+    NaN,
+    NaN
+   ],
+   "per_landcover.mangrove.scl_bare_on_clear": [
+    NaN,
+    NaN
+   ],
+   "per_landcover.moss / lichen.false_cloud_on_clear": [
+    0.008928794964270173,
+    0.04700227749157338
+   ],
+   "per_landcover.moss / lichen.scl_bare_on_clear": [
+    0.29737449707151237,
+    0.47024967437514253
+   ],
+   "rule.thick_cloud_readmitted": [
+    0.0042034611235522564,
+    0.010035241726154415
+   ],
+   "rule.thin_cloud_readmitted": [
+    0.062448375154823786,
+    0.18359374180875862
+   ],
+   "rule.false_cloud_recovered": [
+    0.10384765824543382,
+    0.32198145606942347
+   ],
+   "rule.false_cloud_recovered_bare": [
+    0.1034316157847269,
+    0.26597091484035196
+   ]
+  },
+  "failed": []
+ }
+}
